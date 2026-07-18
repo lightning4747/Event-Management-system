@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS "certificate_requirements" (
 	"submission_deadline" date NOT NULL,
 	"rejection_reason" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "unique_app_id_seq_num" UNIQUE("application_id","sequence_number")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "certificates" (
@@ -61,7 +62,8 @@ CREATE TABLE IF NOT EXISTS "certificates" (
 	"is_current" boolean DEFAULT true NOT NULL,
 	"uploaded_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "unique_req_id_upload_ver" UNIQUE("requirement_id","upload_version")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "faculty" (
@@ -179,6 +181,7 @@ CREATE INDEX IF NOT EXISTS "cert_requirements_app_id_idx" ON "certificate_requir
 CREATE INDEX IF NOT EXISTS "cert_requirements_status_idx" ON "certificate_requirements" USING btree ("status");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "certificates_req_id_idx" ON "certificates" USING btree ("requirement_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "certificates_is_current_idx" ON "certificates" USING btree ("is_current");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "cert_one_current_per_req_idx" ON "certificates" USING btree ("requirement_id") WHERE "certificates"."is_current" = true;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "od_applications_student_id_idx" ON "od_applications" USING btree ("student_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "od_applications_status_idx" ON "od_applications" USING btree ("status");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "od_applications_date_range_idx" ON "od_applications" USING btree ("from_date","to_date");--> statement-breakpoint
