@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"username" varchar(255) NOT NULL,
 	"password_hash" text NOT NULL,
 	"role" "role" NOT NULL,
+	"created_by" varchar(255),
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
@@ -158,6 +159,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "students" ADD CONSTRAINT "students_mentor_id_faculty_user_id_fk" FOREIGN KEY ("mentor_id") REFERENCES "public"."faculty"("user_id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "users" ADD CONSTRAINT "users_created_by_users_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("user_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

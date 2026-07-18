@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial, foreignKey } from 'drizzle-orm/pg-core';
 
 // 1. Enum Definitions
 export const roleEnum = pgEnum('role', [
@@ -42,10 +42,16 @@ export const users = pgTable('users', {
   username: varchar('username', { length: 255 }).unique().notNull(),
   passwordHash: text('password_hash').notNull(),
   role: roleEnum('role').notNull(),
+  createdBy: varchar('created_by', { length: 255 }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true })
-});
+}, (table) => ({
+  createdByFk: foreignKey({
+    columns: [table.createdBy],
+    foreignColumns: [table.userId]
+  })
+}));
 
 // FACULTY Table
 export const faculty = pgTable('faculty', {
@@ -66,7 +72,7 @@ export const students = pgTable('students', {
 
 // OD_APPLICATIONS Table
 export const odApplications = pgTable('od_applications', {
-  applicationId: bigserial('application_id', { mode: 'number' }).primaryKey(),
+  applicationId: bigserial('application_id', { mode: 'bigint' }).primaryKey(),
   studentId: varchar('student_id', { length: 255 }).references(() => students.userId).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   location: varchar('location', { length: 255 }).notNull(),
@@ -82,8 +88,8 @@ export const odApplications = pgTable('od_applications', {
 
 // APPLICATION_APPROVAL_HISTORY Table
 export const applicationApprovalHistory = pgTable('application_approval_history', {
-  historyId: bigserial('history_id', { mode: 'number' }).primaryKey(),
-  applicationId: bigint('application_id', { mode: 'number' }).references(() => odApplications.applicationId).notNull(),
+  historyId: bigserial('history_id', { mode: 'bigint' }).primaryKey(),
+  applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull(),
   approverId: varchar('approver_id', { length: 255 }).references(() => users.userId).notNull(),
   approverRole: roleEnum('approver_role').notNull(),
   decision: decisionEnum('decision').notNull(),
@@ -93,8 +99,8 @@ export const applicationApprovalHistory = pgTable('application_approval_history'
 
 // CERTIFICATE_REQUIREMENTS Table
 export const certificateRequirements = pgTable('certificate_requirements', {
-  requirementId: bigserial('requirement_id', { mode: 'number' }).primaryKey(),
-  applicationId: bigint('application_id', { mode: 'number' }).references(() => odApplications.applicationId).notNull(),
+  requirementId: bigserial('requirement_id', { mode: 'bigint' }).primaryKey(),
+  applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull(),
   sequenceNumber: smallint('sequence_number').notNull(),
   status: certStatusEnum('status').notNull(),
   submissionDeadline: date('submission_deadline').notNull(),
@@ -105,8 +111,8 @@ export const certificateRequirements = pgTable('certificate_requirements', {
 
 // CERTIFICATES Table
 export const certificates = pgTable('certificates', {
-  certificateId: bigserial('certificate_id', { mode: 'number' }).primaryKey(),
-  requirementId: bigint('requirement_id', { mode: 'number' }).references(() => certificateRequirements.requirementId).notNull(),
+  certificateId: bigserial('certificate_id', { mode: 'bigint' }).primaryKey(),
+  requirementId: bigint('requirement_id', { mode: 'bigint' }).references(() => certificateRequirements.requirementId).notNull(),
   filePath: text('file_path').notNull(),
   uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -115,8 +121,8 @@ export const certificates = pgTable('certificates', {
 
 // CERTIFICATE_DEADLINE_EXTENSIONS Table
 export const certificateDeadlineExtensions = pgTable('certificate_deadline_extensions', {
-  extensionId: bigserial('extension_id', { mode: 'number' }).primaryKey(),
-  applicationId: bigint('application_id', { mode: 'number' }).references(() => odApplications.applicationId).notNull(),
+  extensionId: bigserial('extension_id', { mode: 'bigint' }).primaryKey(),
+  applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull(),
   extendedBy: varchar('extended_by', { length: 255 }).references(() => faculty.userId).notNull(),
   newDeadline: date('new_deadline').notNull(),
   reason: text('reason').notNull(),
