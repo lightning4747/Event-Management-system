@@ -1,5 +1,5 @@
 {
-  "id": "55c5f1dc-60be-4d5f-bd63-b749e2e78e07",
+  "id": "2b930546-d004-407a-8e6b-4fec0d155ac0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -54,7 +54,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "app_approval_history_app_id_idx": {
+          "name": "app_approval_history_app_id_idx",
+          "columns": [
+            {
+              "expression": "application_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "app_approval_history_approver_id_idx": {
+          "name": "app_approval_history_approver_id_idx",
+          "columns": [
+            {
+              "expression": "approver_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "application_approval_history_application_id_od_applications_application_id_fk": {
           "name": "application_approval_history_application_id_od_applications_application_id_fk",
@@ -128,7 +159,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "cert_extensions_extended_by_idx": {
+          "name": "cert_extensions_extended_by_idx",
+          "columns": [
+            {
+              "expression": "extended_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "certificate_deadline_extensions_application_id_od_applications_application_id_fk": {
           "name": "certificate_deadline_extensions_application_id_od_applications_application_id_fk",
@@ -158,7 +205,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "certificate_deadline_extensions_application_id_unique": {
+          "name": "certificate_deadline_extensions_application_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "application_id"
+          ]
+        }
+      }
     },
     "public.certificate_requirements": {
       "name": "certificate_requirements",
@@ -216,7 +271,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "cert_requirements_app_id_idx": {
+          "name": "cert_requirements_app_id_idx",
+          "columns": [
+            {
+              "expression": "application_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cert_requirements_status_idx": {
+          "name": "cert_requirements_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "certificate_requirements_application_id_od_applications_application_id_fk": {
           "name": "certificate_requirements_application_id_od_applications_application_id_fk",
@@ -251,11 +337,24 @@
           "primaryKey": false,
           "notNull": true
         },
-        "file_path": {
-          "name": "file_path",
+        "file_url": {
+          "name": "file_url",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "upload_version": {
+          "name": "upload_version",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_current": {
+          "name": "is_current",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         },
         "uploaded_at": {
           "name": "uploaded_at",
@@ -279,7 +378,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "certificates_req_id_idx": {
+          "name": "certificates_req_id_idx",
+          "columns": [
+            {
+              "expression": "requirement_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "certificates_is_current_idx": {
+          "name": "certificates_is_current_idx",
+          "columns": [
+            {
+              "expression": "is_current",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "certificates_requirement_id_certificate_requirements_requirement_id_fk": {
           "name": "certificates_requirement_id_certificate_requirements_requirement_id_fk",
@@ -420,7 +550,59 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "od_applications_student_id_idx": {
+          "name": "od_applications_student_id_idx",
+          "columns": [
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "od_applications_status_idx": {
+          "name": "od_applications_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "od_applications_date_range_idx": {
+          "name": "od_applications_date_range_idx",
+          "columns": [
+            {
+              "expression": "from_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "to_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "od_applications_student_id_students_user_id_fk": {
           "name": "od_applications_student_id_students_user_id_fk",
@@ -480,7 +662,23 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "students_mentor_id_idx": {
+          "name": "students_mentor_id_idx",
+          "columns": [
+            {
+              "expression": "mentor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "students_user_id_users_user_id_fk": {
           "name": "students_user_id_users_user_id_fk",
@@ -632,7 +830,6 @@
       "name": "application_status",
       "schema": "public",
       "values": [
-        "Draft",
         "In Progress: Event Coordinator",
         "In Progress: Mentor",
         "In Progress: Program Coordinator",

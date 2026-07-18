@@ -17,7 +17,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- CREATE TYPE "public"."application_status" AS ENUM('Draft', 'In Progress: Event Coordinator', 'In Progress: Mentor', 'In Progress: Program Coordinator', 'In Progress: Head of Department', 'Approved', 'Rejected', 'Withdrawn');
+ CREATE TYPE "public"."application_status" AS ENUM('In Progress: Event Coordinator', 'In Progress: Mentor', 'In Progress: Program Coordinator', 'In Progress: Head of Department', 'Approved', 'Rejected', 'Withdrawn');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS "certificate_deadline_extensions" (
 	"extended_by" varchar(255) NOT NULL,
 	"new_deadline" date NOT NULL,
 	"reason" text NOT NULL,
-	"extended_at" timestamp with time zone DEFAULT now() NOT NULL
+	"extended_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "certificate_deadline_extensions_application_id_unique" UNIQUE("application_id")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "certificate_requirements" (
@@ -55,7 +56,9 @@ CREATE TABLE IF NOT EXISTS "certificate_requirements" (
 CREATE TABLE IF NOT EXISTS "certificates" (
 	"certificate_id" bigserial PRIMARY KEY NOT NULL,
 	"requirement_id" bigint NOT NULL,
-	"file_path" text NOT NULL,
+	"file_url" text NOT NULL,
+	"upload_version" smallint NOT NULL,
+	"is_current" boolean DEFAULT true NOT NULL,
 	"uploaded_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -168,3 +171,15 @@ DO $$ BEGIN
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "app_approval_history_app_id_idx" ON "application_approval_history" USING btree ("application_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "app_approval_history_approver_id_idx" ON "application_approval_history" USING btree ("approver_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "cert_extensions_extended_by_idx" ON "certificate_deadline_extensions" USING btree ("extended_by");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "cert_requirements_app_id_idx" ON "certificate_requirements" USING btree ("application_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "cert_requirements_status_idx" ON "certificate_requirements" USING btree ("status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "certificates_req_id_idx" ON "certificates" USING btree ("requirement_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "certificates_is_current_idx" ON "certificates" USING btree ("is_current");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "od_applications_student_id_idx" ON "od_applications" USING btree ("student_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "od_applications_status_idx" ON "od_applications" USING btree ("status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "od_applications_date_range_idx" ON "od_applications" USING btree ("from_date","to_date");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "students_mentor_id_idx" ON "students" USING btree ("mentor_id");

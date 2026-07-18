@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial, foreignKey } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial, foreignKey, index, boolean } from 'drizzle-orm/pg-core';
 
 // 1. Enum Definitions
 export const roleEnum = pgEnum('role', [
@@ -11,7 +11,6 @@ export const roleEnum = pgEnum('role', [
 ]);
 
 export const statusEnum = pgEnum('application_status', [
-  'Draft',
   'In Progress: Event Coordinator',
   'In Progress: Mentor',
   'In Progress: Program Coordinator',
@@ -68,7 +67,9 @@ export const students = pgTable('students', {
   dateOfBirth: date('date_of_birth').notNull(),
   admissionYear: smallint('admission_year').notNull(),
   section: varchar('section', { length: 50 }).notNull()
-});
+}, (table) => ({
+  mentorIdIdx: index('students_mentor_id_idx').on(table.mentorId)
+}));
 
 // OD_APPLICATIONS Table
 export const odApplications = pgTable('od_applications', {
@@ -84,7 +85,11 @@ export const odApplications = pgTable('od_applications', {
   withdrawnAt: timestamp('withdrawn_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (table) => ({
+  studentIdIdx: index('od_applications_student_id_idx').on(table.studentId),
+  statusIdx: index('od_applications_status_idx').on(table.status),
+  dateRangeIdx: index('od_applications_date_range_idx').on(table.fromDate, table.toDate)
+}));
 
 // APPLICATION_APPROVAL_HISTORY Table
 export const applicationApprovalHistory = pgTable('application_approval_history', {
@@ -95,7 +100,10 @@ export const applicationApprovalHistory = pgTable('application_approval_history'
   decision: decisionEnum('decision').notNull(),
   comments: text('comments'),
   decidedAt: timestamp('decided_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (table) => ({
+  applicationIdIdx: index('app_approval_history_app_id_idx').on(table.applicationId),
+  approverIdIdx: index('app_approval_history_approver_id_idx').on(table.approverId)
+}));
 
 // CERTIFICATE_REQUIREMENTS Table
 export const certificateRequirements = pgTable('certificate_requirements', {
@@ -107,24 +115,34 @@ export const certificateRequirements = pgTable('certificate_requirements', {
   rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (table) => ({
+  applicationIdIdx: index('cert_requirements_app_id_idx').on(table.applicationId),
+  statusIdx: index('cert_requirements_status_idx').on(table.status)
+}));
 
 // CERTIFICATES Table
 export const certificates = pgTable('certificates', {
   certificateId: bigserial('certificate_id', { mode: 'bigint' }).primaryKey(),
   requirementId: bigint('requirement_id', { mode: 'bigint' }).references(() => certificateRequirements.requirementId).notNull(),
-  filePath: text('file_path').notNull(),
+  fileUrl: text('file_url').notNull(),
+  uploadVersion: smallint('upload_version').notNull(),
+  isCurrent: boolean('is_current').default(true).notNull(),
   uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (table) => ({
+  requirementIdIdx: index('certificates_req_id_idx').on(table.requirementId),
+  isCurrentIdx: index('certificates_is_current_idx').on(table.isCurrent)
+}));
 
 // CERTIFICATE_DEADLINE_EXTENSIONS Table
 export const certificateDeadlineExtensions = pgTable('certificate_deadline_extensions', {
   extensionId: bigserial('extension_id', { mode: 'bigint' }).primaryKey(),
-  applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull(),
+  applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull().unique(),
   extendedBy: varchar('extended_by', { length: 255 }).references(() => faculty.userId).notNull(),
   newDeadline: date('new_deadline').notNull(),
   reason: text('reason').notNull(),
   extendedAt: timestamp('extended_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (table) => ({
+  extendedByIdx: index('cert_extensions_extended_by_idx').on(table.extendedBy)
+}));
