@@ -1,4 +1,5 @@
-import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial, foreignKey, index, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial, foreignKey, index, boolean, check, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 // 1. Enum Definitions
 export const roleEnum = pgEnum('role', [
@@ -88,7 +89,9 @@ export const odApplications = pgTable('od_applications', {
 }, (table) => ({
   studentIdIdx: index('od_applications_student_id_idx').on(table.studentId),
   statusIdx: index('od_applications_status_idx').on(table.status),
-  dateRangeIdx: index('od_applications_date_range_idx').on(table.fromDate, table.toDate)
+  dateRangeIdx: index('od_applications_date_range_idx').on(table.fromDate, table.toDate),
+  fromDateLessToDateCheck: check('from_date_less_to_date_check', sql`${table.fromDate} <= ${table.toDate}`),
+  numberOfEventsPositiveCheck: check('number_of_events_positive_check', sql`${table.numberOfEvents} > 0`)
 }));
 
 // APPLICATION_APPROVAL_HISTORY Table
@@ -117,7 +120,8 @@ export const certificateRequirements = pgTable('certificate_requirements', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   applicationIdIdx: index('cert_requirements_app_id_idx').on(table.applicationId),
-  statusIdx: index('cert_requirements_status_idx').on(table.status)
+  statusIdx: index('cert_requirements_status_idx').on(table.status),
+  uniqueAppIdSeqNum: unique('unique_app_id_seq_num').on(table.applicationId, table.sequenceNumber)
 }));
 
 // CERTIFICATES Table
@@ -132,7 +136,9 @@ export const certificates = pgTable('certificates', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   requirementIdIdx: index('certificates_req_id_idx').on(table.requirementId),
-  isCurrentIdx: index('certificates_is_current_idx').on(table.isCurrent)
+  isCurrentIdx: index('certificates_is_current_idx').on(table.isCurrent),
+  uniqueReqIdUploadVer: unique('unique_req_id_upload_ver').on(table.requirementId, table.uploadVersion),
+  uniqueCurrentCertPerReqIdx: uniqueIndex('cert_one_current_per_req_idx').on(table.requirementId).where(sql`${table.isCurrent} = true`)
 }));
 
 // CERTIFICATE_DEADLINE_EXTENSIONS Table

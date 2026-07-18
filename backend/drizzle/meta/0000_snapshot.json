@@ -1,5 +1,5 @@
 {
-  "id": "2b930546-d004-407a-8e6b-4fec0d155ac0",
+  "id": "08c47e07-2611-466b-96f0-d363407270ce",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -319,7 +319,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "unique_app_id_seq_num": {
+          "name": "unique_app_id_seq_num",
+          "nullsNotDistinct": false,
+          "columns": [
+            "application_id",
+            "sequence_number"
+          ]
+        }
+      }
     },
     "public.certificates": {
       "name": "certificates",
@@ -408,6 +417,22 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "cert_one_current_per_req_idx": {
+          "name": "cert_one_current_per_req_idx",
+          "columns": [
+            {
+              "expression": "requirement_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"certificates\".\"is_current\" = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -426,7 +451,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "unique_req_id_upload_ver": {
+          "name": "unique_req_id_upload_ver",
+          "nullsNotDistinct": false,
+          "columns": [
+            "requirement_id",
+            "upload_version"
+          ]
+        }
+      }
     },
     "public.faculty": {
       "name": "faculty",
