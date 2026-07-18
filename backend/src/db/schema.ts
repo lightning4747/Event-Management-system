@@ -65,7 +65,7 @@ export const students = pgTable('students', {
   userId: varchar('user_id', { length: 255 }).primaryKey().references(() => users.userId),
   mentorId: varchar('mentor_id', { length: 255 }).references(() => faculty.userId).notNull(),
   fullName: varchar('full_name', { length: 255 }).notNull(),
-  dateOfBirth: date('date_of_birth').notNull(),
+  dateOfBirth: date('date_of_birth', { mode: 'string' }).notNull(),
   admissionYear: smallint('admission_year').notNull(),
   section: varchar('section', { length: 50 }).notNull()
 }, (table) => ({
@@ -78,8 +78,8 @@ export const odApplications = pgTable('od_applications', {
   studentId: varchar('student_id', { length: 255 }).references(() => students.userId).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   location: varchar('location', { length: 255 }).notNull(),
-  fromDate: date('from_date').notNull(),
-  toDate: date('to_date').notNull(),
+  fromDate: date('from_date', { mode: 'string' }).notNull(),
+  toDate: date('to_date', { mode: 'string' }).notNull(),
   numberOfEvents: smallint('number_of_events').notNull(),
   status: statusEnum('status').notNull(),
   finalApprovedAt: timestamp('final_approved_at', { withTimezone: true }),
@@ -114,7 +114,7 @@ export const certificateRequirements = pgTable('certificate_requirements', {
   applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull(),
   sequenceNumber: smallint('sequence_number').notNull(),
   status: certStatusEnum('status').notNull(),
-  submissionDeadline: date('submission_deadline').notNull(),
+  submissionDeadline: date('submission_deadline', { mode: 'string' }).notNull(),
   rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
@@ -146,7 +146,7 @@ export const certificateDeadlineExtensions = pgTable('certificate_deadline_exten
   extensionId: bigserial('extension_id', { mode: 'bigint' }).primaryKey(),
   applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull().unique(),
   extendedBy: varchar('extended_by', { length: 255 }).references(() => faculty.userId).notNull(),
-  newDeadline: date('new_deadline').notNull(),
+  newDeadline: date('new_deadline', { mode: 'string' }).notNull(),
   reason: text('reason').notNull(),
   extendedAt: timestamp('extended_at', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
