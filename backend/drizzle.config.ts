@@ -1,10 +1,14 @@
 import { defineConfig } from 'drizzle-kit';
 
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is missing.');
+}
+
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgres://postgres:password123@localhost:5432/od_approval_db',
+    url: process.env.DATABASE_URL,
   },
 });
