@@ -1,0 +1,14 @@
+{
+  "name": "mcet-ods-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "typescript": "^5.4.5"
+  }
+}

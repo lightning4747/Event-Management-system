@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcet_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: od_approval_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mcet_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mcet_backend
+    restart: always
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgres://postgres:password123@postgres:5432/od_approval_db
+      JWT_SECRET: supersecretjwtkeychangeinprod123
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - mcet_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mcet_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - mcet_network
+
+volumes:
+  postgres_data:
+
+networks:
+  mcet_network:
+    driver: bridge
