@@ -14,4 +14,8 @@ export const pool = new pg.Pool({
   connectionString: databaseUrl,
 });
 
+pool.on('error', (err) => {
+  logger.error({ err }, 'Unexpected error on idle client');
+});
+
 export const db = drizzle(pool, { schema });
