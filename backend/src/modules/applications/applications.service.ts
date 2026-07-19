@@ -1,5 +1,5 @@
 import { db } from '../../db';
-import { odApplications, students, applicationApprovalHistory, certificateRequirements, certificates } from '../../db/schema';
+import { odApplications, students, applicationApprovalHistory, certificateRequirements, certificates, certificateDeadlineExtensions } from '../../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { CreateApplicationInput } from './applications.types';
@@ -216,10 +216,21 @@ export const getApplicationDetails = async (
     .leftJoin(certificates, eq(certificateRequirements.requirementId, certificates.requirementId))
     .where(eq(certificateRequirements.applicationId, applicationId));
 
+  const [ext] = await db
+    .select({
+      extensionId: certificateDeadlineExtensions.extensionId,
+      newDeadline: certificateDeadlineExtensions.newDeadline,
+      reason: certificateDeadlineExtensions.reason,
+    })
+    .from(certificateDeadlineExtensions)
+    .where(eq(certificateDeadlineExtensions.applicationId, applicationId))
+    .limit(1);
+
   return {
     application: app,
     history,
     certificates: certs,
+    extension: ext ? { ...ext, extensionId: ext.extensionId.toString() } : null,
   };
 };
 
