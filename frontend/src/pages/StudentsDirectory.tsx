@@ -5,8 +5,8 @@ import { DashboardShell } from '../components/DashboardShell';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import {
-  Search, Users, GraduationCap, Calendar, FileText, CheckCircle,
-  Clock, XCircle, ArrowLeft, ExternalLink, AlertCircle
+  Search, Users, GraduationCap, FileText, CheckCircle,
+  Clock, ArrowLeft, ExternalLink, AlertCircle
 } from 'lucide-react';
 
 interface StudentRow {

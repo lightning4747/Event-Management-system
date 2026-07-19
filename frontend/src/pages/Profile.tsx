@@ -117,7 +117,6 @@ export const Profile: React.FC = () => {
     updateMutation.mutate(values);
   };
 
-  const isStudent = user?.role === 'Student';
 
   if (isLoading) {
     return (

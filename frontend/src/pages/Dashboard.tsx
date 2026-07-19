@@ -12,9 +12,9 @@ import { Label } from '../components/ui/Label';
 import { Select } from '../components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../components/ui/Dialog';
 import {
-  FileText, Clock, CheckCircle, XCircle, AlertCircle, Plus, PlusCircle,
+  FileText, Clock, CheckCircle, XCircle, PlusCircle,
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList,
-  User as UserIcon, UserPlus, Calendar, Hourglass, Download, Settings,
+  UserPlus, Calendar, Hourglass, Download, Settings,
   AlertTriangle, Users
 } from 'lucide-react';
 
@@ -135,33 +135,7 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  color: string;
-  onClick?: () => void;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, onClick }) => (
-  <div
-    onClick={onClick}
-    className={`bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm transition-all ${
-      onClick ? 'cursor-pointer hover:border-blue-300 hover:shadow-md active:scale-[0.98]' : ''
-    }`}
-  >
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
-      {icon}
-    </div>
-    <div>
-      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</p>
-      <p className="text-xl font-bold text-gray-900 leading-tight">{value}</p>
-    </div>
-    {onClick && <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />}
-  </div>
-);
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => (
   <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${getStatusColor(status)}`}>
@@ -251,25 +225,25 @@ export const Dashboard: React.FC = () => {
 
   // ─── Queries ──────────────────────────────────────────────────────────────────
 
-  const { data: studentMetrics } = useQuery({
+  const { data: _studentMetrics } = useQuery({
     queryKey: ['studentMetrics'],
     queryFn: async () => { const res = await apiFetch('/dashboards/student'); return res.json(); },
     enabled: isStudent,
   });
 
-  const { data: ecMetrics } = useQuery({
+  const { data: _ecMetrics } = useQuery({
     queryKey: ['ecMetrics'],
     queryFn: async () => { const res = await apiFetch('/dashboards/coordinator'); return res.json(); },
     enabled: isEC,
   });
 
-  const { data: mentorMetrics } = useQuery({
+  const { data: _mentorMetrics } = useQuery({
     queryKey: ['mentorMetrics'],
     queryFn: async () => { const res = await apiFetch('/dashboards/mentor'); return res.json(); },
     enabled: isMentor,
   });
 
-  const { data: hodMetrics } = useQuery({
+  const { data: _hodMetrics } = useQuery({
     queryKey: ['hodMetrics'],
     queryFn: async () => { const res = await apiFetch('/dashboards/hod'); return res.json(); },
     enabled: isHOD,
@@ -393,7 +367,7 @@ export const Dashboard: React.FC = () => {
       }
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminFacultyList'] });
     },
     onError: (err: any) => {
