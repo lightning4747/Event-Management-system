@@ -236,7 +236,7 @@ export const checkApplicationImmutability = async (applicationId: bigint): Promi
     throw new AppError(404, 'NOT_FOUND', 'On-Duty application not found.');
   }
 
-  if (app.status === 'Approved' || app.status === 'Rejected') {
+  if (app.status === 'Approved' || app.status === 'Rejected' || app.status == 'Withdrawn') {
     throw new AppError(400, 'APPLICATION_IMMUTABLE', 'This On-Duty application has already been decided and is immutable.');
   }
 };
