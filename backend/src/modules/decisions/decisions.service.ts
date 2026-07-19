@@ -1,8 +1,14 @@
 import { db } from '../../db';
-import { odApplications, students, applicationApprovalHistory } from '../../db/schema';
+import { odApplications, students, applicationApprovalHistory, certificateRequirements } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { MakeDecisionInput } from './decisions.types';
+
+const addDays = (dateStr: string, days: number): string => {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+};
 
 export const makeApprovalDecision = async (
   applicationId: bigint,
@@ -16,6 +22,8 @@ export const makeApprovalDecision = async (
       applicationId: odApplications.applicationId,
       status: odApplications.status,
       mentorId: students.mentorId,
+      numberOfEvents: odApplications.numberOfEvents,
+      toDate: odApplications.toDate,
     })
     .from(odApplications)
     .innerJoin(students, eq(odApplications.studentId, students.userId))
@@ -80,11 +88,12 @@ export const makeApprovalDecision = async (
     if (!ecApproval || !mentorApproval) {
       throw new AppError(400, 'INVALID_STAGE_HISTORY', 'Missing required previous review approvals in audit history.');
     }
-  } else {
-    // Other stages placeholder
-    if (role !== 'Event Coordinator' && role !== 'Mentor' && role !== 'Program Coordinator') {
-      throw new AppError(403, 'FORBIDDEN', 'Only authorized faculty members can review applications.');
+  } else if (currentStatus === 'In Progress: Head of Department') {
+    if (role !== 'Head of Department') {
+      throw new AppError(403, 'FORBIDDEN', 'Only the Head of Department can review applications at this stage.');
     }
+  } else {
+    throw new AppError(400, 'INVALID_STAGE', 'The application is in an invalid review stage.');
   }
 
   let newStatus: 'In Progress: Event Coordinator' | 'In Progress: Mentor' | 'In Progress: Program Coordinator' | 'In Progress: Head of Department' | 'Approved' | 'Rejected' | 'Withdrawn';
@@ -99,19 +108,27 @@ export const makeApprovalDecision = async (
     } else if (currentStatus === 'In Progress: Program Coordinator') {
       newStatus = 'In Progress: Head of Department';
     } else {
-      newStatus = 'Approved'; // Placeholder fallback
+      newStatus = 'Approved';
     }
   }
 
   await db.transaction(async (tx) => {
+    // A. Update application status
+    const updateData: Partial<typeof odApplications.$inferInsert> = {
+      status: newStatus,
+      updatedAt: new Date(),
+    };
+
+    if (newStatus === 'Approved') {
+      updateData.finalApprovedAt = new Date();
+    }
+
     await tx
       .update(odApplications)
-      .set({
-        status: newStatus,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(odApplications.applicationId, applicationId));
 
+    // B. Insert log record
     await tx.insert(applicationApprovalHistory).values({
       applicationId,
       approverId: userId,
@@ -119,6 +136,19 @@ export const makeApprovalDecision = async (
       decision: input.decision,
       comments: input.comments || null,
     });
+
+    // C. Trigger certificate requirement generation
+    if (newStatus === 'Approved') {
+      const deadline = addDays(app.toDate, 7);
+      const requirementsToInsert = Array.from({ length: app.numberOfEvents }).map((_, index) => ({
+        applicationId,
+        sequenceNumber: index + 1,
+        status: 'Pending Upload' as const,
+        submissionDeadline: deadline,
+      }));
+
+      await tx.insert(certificateRequirements).values(requirementsToInsert);
+    }
   });
 
   return { newStatus };
