@@ -1,0 +1,19 @@
+{
+  "id": "a1f9e2b1-6a1a-4710-91a5-829d8a1c97a2",
+  "name": "MCET Local Environment",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

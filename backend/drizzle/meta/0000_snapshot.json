@@ -1,0 +1,893 @@
+{
+  "id": "08c47e07-2611-466b-96f0-d363407270ce",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.application_approval_history": {
+      "name": "application_approval_history",
+      "schema": "",
+      "columns": {
+        "history_id": {
+          "name": "history_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approver_id": {
+          "name": "approver_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approver_role": {
+          "name": "approver_role",
+          "type": "role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decision": {
+          "name": "decision",
+          "type": "decision",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "comments": {
+          "name": "comments",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "app_approval_history_app_id_idx": {
+          "name": "app_approval_history_app_id_idx",
+          "columns": [
+            {
+              "expression": "application_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "app_approval_history_approver_id_idx": {
+          "name": "app_approval_history_approver_id_idx",
+          "columns": [
+            {
+              "expression": "approver_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "application_approval_history_application_id_od_applications_application_id_fk": {
+          "name": "application_approval_history_application_id_od_applications_application_id_fk",
+          "tableFrom": "application_approval_history",
+          "tableTo": "od_applications",
+          "columnsFrom": [
+            "application_id"
+          ],
+          "columnsTo": [
+            "application_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "application_approval_history_approver_id_users_user_id_fk": {
+          "name": "application_approval_history_approver_id_users_user_id_fk",
+          "tableFrom": "application_approval_history",
+          "tableTo": "users",
+          "columnsFrom": [
+            "approver_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.certificate_deadline_extensions": {
+      "name": "certificate_deadline_extensions",
+      "schema": "",
+      "columns": {
+        "extension_id": {
+          "name": "extension_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extended_by": {
+          "name": "extended_by",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "new_deadline": {
+          "name": "new_deadline",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extended_at": {
+          "name": "extended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "cert_extensions_extended_by_idx": {
+          "name": "cert_extensions_extended_by_idx",
+          "columns": [
+            {
+              "expression": "extended_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "certificate_deadline_extensions_application_id_od_applications_application_id_fk": {
+          "name": "certificate_deadline_extensions_application_id_od_applications_application_id_fk",
+          "tableFrom": "certificate_deadline_extensions",
+          "tableTo": "od_applications",
+          "columnsFrom": [
+            "application_id"
+          ],
+          "columnsTo": [
+            "application_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "certificate_deadline_extensions_extended_by_faculty_user_id_fk": {
+          "name": "certificate_deadline_extensions_extended_by_faculty_user_id_fk",
+          "tableFrom": "certificate_deadline_extensions",
+          "tableTo": "faculty",
+          "columnsFrom": [
+            "extended_by"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "certificate_deadline_extensions_application_id_unique": {
+          "name": "certificate_deadline_extensions_application_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "application_id"
+          ]
+        }
+      }
+    },
+    "public.certificate_requirements": {
+      "name": "certificate_requirements",
+      "schema": "",
+      "columns": {
+        "requirement_id": {
+          "name": "requirement_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "application_id": {
+          "name": "application_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence_number": {
+          "name": "sequence_number",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "cert_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submission_deadline": {
+          "name": "submission_deadline",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rejection_reason": {
+          "name": "rejection_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "cert_requirements_app_id_idx": {
+          "name": "cert_requirements_app_id_idx",
+          "columns": [
+            {
+              "expression": "application_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cert_requirements_status_idx": {
+          "name": "cert_requirements_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "certificate_requirements_application_id_od_applications_application_id_fk": {
+          "name": "certificate_requirements_application_id_od_applications_application_id_fk",
+          "tableFrom": "certificate_requirements",
+          "tableTo": "od_applications",
+          "columnsFrom": [
+            "application_id"
+          ],
+          "columnsTo": [
+            "application_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unique_app_id_seq_num": {
+          "name": "unique_app_id_seq_num",
+          "nullsNotDistinct": false,
+          "columns": [
+            "application_id",
+            "sequence_number"
+          ]
+        }
+      }
+    },
+    "public.certificates": {
+      "name": "certificates",
+      "schema": "",
+      "columns": {
+        "certificate_id": {
+          "name": "certificate_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "requirement_id": {
+          "name": "requirement_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_url": {
+          "name": "file_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "upload_version": {
+          "name": "upload_version",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_current": {
+          "name": "is_current",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "uploaded_at": {
+          "name": "uploaded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "certificates_req_id_idx": {
+          "name": "certificates_req_id_idx",
+          "columns": [
+            {
+              "expression": "requirement_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "certificates_is_current_idx": {
+          "name": "certificates_is_current_idx",
+          "columns": [
+            {
+              "expression": "is_current",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cert_one_current_per_req_idx": {
+          "name": "cert_one_current_per_req_idx",
+          "columns": [
+            {
+              "expression": "requirement_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"certificates\".\"is_current\" = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "certificates_requirement_id_certificate_requirements_requirement_id_fk": {
+          "name": "certificates_requirement_id_certificate_requirements_requirement_id_fk",
+          "tableFrom": "certificates",
+          "tableTo": "certificate_requirements",
+          "columnsFrom": [
+            "requirement_id"
+          ],
+          "columnsTo": [
+            "requirement_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unique_req_id_upload_ver": {
+          "name": "unique_req_id_upload_ver",
+          "nullsNotDistinct": false,
+          "columns": [
+            "requirement_id",
+            "upload_version"
+          ]
+        }
+      }
+    },
+    "public.faculty": {
+      "name": "faculty",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "designation": {
+          "name": "designation",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "faculty_user_id_users_user_id_fk": {
+          "name": "faculty_user_id_users_user_id_fk",
+          "tableFrom": "faculty",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.od_applications": {
+      "name": "od_applications",
+      "schema": "",
+      "columns": {
+        "application_id": {
+          "name": "application_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_date": {
+          "name": "from_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_date": {
+          "name": "to_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "number_of_events": {
+          "name": "number_of_events",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "application_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "final_approved_at": {
+          "name": "final_approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "withdrawn_at": {
+          "name": "withdrawn_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "od_applications_student_id_idx": {
+          "name": "od_applications_student_id_idx",
+          "columns": [
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "od_applications_status_idx": {
+          "name": "od_applications_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "od_applications_date_range_idx": {
+          "name": "od_applications_date_range_idx",
+          "columns": [
+            {
+              "expression": "from_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "to_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "od_applications_student_id_students_user_id_fk": {
+          "name": "od_applications_student_id_students_user_id_fk",
+          "tableFrom": "od_applications",
+          "tableTo": "students",
+          "columnsFrom": [
+            "student_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "from_date_less_to_date_check": {
+          "name": "from_date_less_to_date_check",
+          "value": "from_date <= to_date"
+        },
+        "number_of_events_positive_check": {
+          "name": "number_of_events_positive_check",
+          "value": "number_of_events > 0"
+        }
+      }
+    },
+    "public.students": {
+      "name": "students",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "mentor_id": {
+          "name": "mentor_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_of_birth": {
+          "name": "date_of_birth",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "admission_year": {
+          "name": "admission_year",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section": {
+          "name": "section",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "students_mentor_id_idx": {
+          "name": "students_mentor_id_idx",
+          "columns": [
+            {
+              "expression": "mentor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "students_user_id_users_user_id_fk": {
+          "name": "students_user_id_users_user_id_fk",
+          "tableFrom": "students",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "students_mentor_id_faculty_user_id_fk": {
+          "name": "students_mentor_id_faculty_user_id_fk",
+          "tableFrom": "students",
+          "tableTo": "faculty",
+          "columnsFrom": [
+            "mentor_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "users_created_by_users_user_id_fk": {
+          "name": "users_created_by_users_user_id_fk",
+          "tableFrom": "users",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      }
+    }
+  },
+  "enums": {
+    "public.cert_status": {
+      "name": "cert_status",
+      "schema": "public",
+      "values": [
+        "Pending Upload",
+        "Uploaded",
+        "Verified",
+        "Rejected",
+        "Deadline Expired"
+      ]
+    },
+    "public.decision": {
+      "name": "decision",
+      "schema": "public",
+      "values": [
+        "Approve",
+        "Reject"
+      ]
+    },
+    "public.role": {
+      "name": "role",
+      "schema": "public",
+      "values": [
+        "Student",
+        "Event Coordinator",
+        "Mentor",
+        "Program Coordinator",
+        "Head of Department",
+        "Administrator"
+      ]
+    },
+    "public.application_status": {
+      "name": "application_status",
+      "schema": "public",
+      "values": [
+        "In Progress: Event Coordinator",
+        "In Progress: Mentor",
+        "In Progress: Program Coordinator",
+        "In Progress: Head of Department",
+        "Approved",
+        "Rejected",
+        "Withdrawn"
+      ]
+    }
+  },
+  "schemas": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

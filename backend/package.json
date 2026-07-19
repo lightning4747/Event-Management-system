@@ -6,6 +6,8 @@
     "start": "bun src/index.ts",
     "dev": "bun --watch src/index.ts",
     "build": "tsc",
+    "db:seed": "bun src/db/seed.ts",
+    "test": "bun --env-file=.env vitest run",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
@@ -13,7 +15,7 @@
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
-    "drizzle-orm": "^0.31.2",
+    "drizzle-orm": "0.45.2",
     "express": "^4.19.2",
     "helmet": "^7.1.0",
     "isomorphic-fetch": "^3.0.0",
@@ -37,6 +39,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-security": "^3.0.1",
     "pino-pretty": "^11.2.1",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^4.1.10"
   }
 }

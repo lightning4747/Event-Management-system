@@ -40,7 +40,7 @@ flowchart TD
     end
 
     subgraph Data_Layer["Data & File Layer"]
-        Postgres[("PostgreSQL DB (Neon/Supabase)")]
+        Postgres[("PostgreSQL DB (Supabase)")]
         OneDrive["Microsoft OneDrive Storage"]
     end
 
