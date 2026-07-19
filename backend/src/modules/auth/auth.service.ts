@@ -12,20 +12,20 @@ export const loginUser = async (input: LoginInput): Promise<{ token: string; rol
     .from(users)
     .where(
       and(
-        eq(users.username, input.username),
+        eq(users.userId, input.userId),
         isNull(users.deletedAt)
       )
     )
     .limit(1);
 
   if (!user) {
-    throw new AppError(401, 'INVALID_CREDENTIALS', 'The username or password provided is incorrect.');
+    throw new AppError(401, 'INVALID_CREDENTIALS', 'The Register/Faculty ID or password provided is incorrect.');
   }
 
   const isPasswordValid = await comparePassword(input.password, user.passwordHash);
 
   if (!isPasswordValid) {
-    throw new AppError(401, 'INVALID_CREDENTIALS', 'The username or password provided is incorrect.');
+    throw new AppError(401, 'INVALID_CREDENTIALS', 'The Register/Faculty ID or password provided is incorrect.');
   }
 
   const token = signToken({
