@@ -7,6 +7,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Profile } from './pages/Profile';
+import { NewApplication } from './pages/NewApplication';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -40,6 +41,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/applications/new"
+              element={
+                <ProtectedRoute>
+                  <NewApplication />
                 </ProtectedRoute>
               }
             />
