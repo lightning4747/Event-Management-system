@@ -47,7 +47,7 @@ describe('NewApplication Form Validations', () => {
     );
 
     fireEvent.change(screen.getByLabelText(/Event Title/i), { target: { value: 'TechFest' } });
-    fireEvent.change(screen.getByLabelText(/Event Location/i), { target: { value: 'Block C' } });
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Block C' } });
     fireEvent.change(screen.getByLabelText(/Start Date/i), { target: { value: '2026-07-20' } });
     fireEvent.change(screen.getByLabelText(/End Date/i), { target: { value: '2026-07-18' } });
 

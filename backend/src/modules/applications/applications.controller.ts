@@ -108,7 +108,7 @@ export const viewApplicationDetails = async (req: Request, res: Response, next: 
         requirementId: item.requirementId.toString(),
         uploadVersion: item.uploadVersion !== null ? Number(item.uploadVersion) : null,
       })),
-      extension: (details as any).extension || null,
+      extension: details.extension || null,
     };
 
     res.status(200).json(serializedDetails);

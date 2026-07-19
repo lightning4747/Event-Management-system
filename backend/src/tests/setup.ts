@@ -7,15 +7,17 @@ if (process.env.DATABASE_URL) {
 }
 
 import { beforeAll } from 'vitest';
-import { db } from '../db';
 import { sql } from 'drizzle-orm';
-import { users, faculty, students } from '../db/schema';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Dynamically import to ensure process.env.DATABASE_URL modification takes effect
+const { db } = await import('../db');
+const { users, faculty, students } = await import('../db/schema');
+const { migrate } = await import('drizzle-orm/node-postgres/migrator');
 
 export const clearDatabase = async () => {
   await db.execute(sql`
