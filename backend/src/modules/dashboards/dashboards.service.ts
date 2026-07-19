@@ -1,5 +1,5 @@
 import { db } from '../../db';
-import { odApplications, certificateRequirements } from '../../db/schema';
+import { odApplications, certificateRequirements, students } from '../../db/schema';
 import { eq, and, or, sql } from 'drizzle-orm';
 
 export interface StudentDashboardMetrics {
@@ -14,6 +14,12 @@ export interface ECDashboardMetrics {
   totalApplications: number;
   pendingECApprovals: number;
   pendingCertificateVerifications: number;
+}
+
+export interface MentorDashboardMetrics {
+  totalMentees: number;
+  pendingMenteeApprovals: number;
+  menteesWithExpiredDeadlines: number;
 }
 
 export const getStudentDashboardMetrics = async (studentId: string): Promise<StudentDashboardMetrics> => {
@@ -101,5 +107,50 @@ export const getECDashboardMetrics = async (): Promise<ECDashboardMetrics> => {
     totalApplications,
     pendingECApprovals,
     pendingCertificateVerifications: certsCount ? Number(certsCount.count) : 0,
+  };
+};
+
+export const getMentorDashboardMetrics = async (mentorId: string): Promise<MentorDashboardMetrics> => {
+  // 1. Total mentees
+  const [menteesCount] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(students)
+    .where(eq(students.mentorId, mentorId));
+
+  // 2. Pending approvals for cohort mentees (status = 'In Progress: Mentor')
+  const [pendingApprovals] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(odApplications)
+    .innerJoin(students, eq(odApplications.studentId, students.userId))
+    .where(
+      and(
+        eq(students.mentorId, mentorId),
+        eq(odApplications.status, 'In Progress: Mentor')
+      )
+    );
+
+  // 3. Mentees with expired deadlines
+  const [expiredCount] = await db
+    .select({
+      count: sql<number>`count(distinct ${students.userId})::int`,
+    })
+    .from(students)
+    .innerJoin(odApplications, eq(students.userId, odApplications.studentId))
+    .innerJoin(certificateRequirements, eq(odApplications.applicationId, certificateRequirements.applicationId))
+    .where(
+      and(
+        eq(students.mentorId, mentorId),
+        eq(certificateRequirements.status, 'Deadline Expired')
+      )
+    );
+
+  return {
+    totalMentees: menteesCount ? Number(menteesCount.count) : 0,
+    pendingMenteeApprovals: pendingApprovals ? Number(pendingApprovals.count) : 0,
+    menteesWithExpiredDeadlines: expiredCount ? Number(expiredCount.count) : 0,
   };
 };

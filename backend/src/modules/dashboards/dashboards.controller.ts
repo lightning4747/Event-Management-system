@@ -30,3 +30,18 @@ export const getCoordinatorDashboard = async (req: Request, res: Response, next:
     next(error);
   }
 };
+
+export const getMentorDashboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const mentorUserId = req.user?.userId;
+    const role = req.user?.role;
+    if (!mentorUserId || role !== 'Mentor') {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Mentors can access the mentor dashboard.');
+    }
+
+    const metrics = await dashboardsService.getMentorDashboardMetrics(mentorUserId);
+    res.status(200).json(metrics);
+  } catch (error) {
+    next(error);
+  }
+};
