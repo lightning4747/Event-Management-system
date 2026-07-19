@@ -10,7 +10,7 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 
 const loginFormSchema = z.object({
-  userId: z.string().min(1, 'Register Number or Faculty ID is required.'),
+  userId: z.string().min(1, 'Register Number or Faculty ID is required.').trim(),
   password: z.string().min(1, 'Password is required.'),
 });
 
@@ -38,9 +38,14 @@ export const Login: React.FC = () => {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
+      const cleanedValues = {
+        userId: values.userId.trim(),
+        password: values.password,
+      };
+      
       const response = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify(values),
+        body: JSON.stringify(cleanedValues),
       });
       const data = await response.json();
       login(data.token, data.role, data.userId);
