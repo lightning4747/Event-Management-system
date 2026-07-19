@@ -33,7 +33,7 @@ export const apiFetch = async (
 
   if (!response.ok) {
     const errBody = await response.json().catch(() => ({}));
-    const errorMsg = errBody.message || 'An unexpected error occurred.';
+    const errorMsg = errBody.error?.message || errBody.message || 'An unexpected error occurred.';
     const error = new Error(errorMsg) as APIError;
     error.status = response.status;
     error.code = errBody.code;

@@ -9,15 +9,26 @@ import { DashboardShell } from '../components/DashboardShell';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
+import { User, Shield, GraduationCap, CheckCircle2, AlertCircle } from 'lucide-react';
 
-// Faculty updates schema requiring currentPassword whenever username/password is changed
 const facultyUpdateSchema = z.object({
   username: z.string().min(1, 'Username cannot be empty.').optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters.').or(z.literal('')),
-  currentPassword: z.string().min(1, 'Current password is required to change credentials.'),
+  password: z
+    .string()
+    .refine((val) => val === '' || val.length >= 6, {
+      message: 'New password must be at least 6 characters.',
+    }),
+  currentPassword: z.string().min(1, 'Current password is required to make any changes.'),
 });
 
 type FacultyUpdateValues = z.infer<typeof facultyUpdateSchema>;
+
+const FieldItem = ({ label, value }: { label: string; value: string }) => (
+  <div className="space-y-1">
+    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{label}</p>
+    <p className="text-sm font-semibold text-gray-900">{value || 'N/A'}</p>
+  </div>
+);
 
 export const Profile: React.FC = () => {
   const { user } = useAuth();
@@ -25,7 +36,6 @@ export const Profile: React.FC = () => {
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // 1. Fetch user profile payload using React Query
   const { data: profile, isLoading, error } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
@@ -41,30 +51,18 @@ export const Profile: React.FC = () => {
     formState: { errors },
   } = useForm<FacultyUpdateValues>({
     resolver: zodResolver(facultyUpdateSchema),
-    defaultValues: {
-      username: '',
-      password: '',
-      currentPassword: '',
-    },
+    defaultValues: { username: '', password: '', currentPassword: '' },
   });
 
-  // Automatically sync form default values once profile loads
   React.useEffect(() => {
     if (profile) {
-      reset({
-        username: profile.username || '',
-        password: '',
-        currentPassword: '',
-      });
+      reset({ username: profile.username || '', password: '', currentPassword: '' });
     }
   }, [profile, reset]);
 
-  // 2. React Query Mutation to update credentials
   const updateMutation = useMutation({
     mutationFn: async (values: FacultyUpdateValues) => {
-      const payload: any = {
-        currentPassword: values.currentPassword,
-      };
+      const payload: any = { currentPassword: values.currentPassword };
       if (values.username && values.username !== profile?.username) {
         payload.username = values.username;
       }
@@ -78,15 +76,14 @@ export const Profile: React.FC = () => {
       return res.json();
     },
     onSuccess: () => {
-      setSuccessMsg('Profile credentials updated successfully.');
+      setSuccessMsg('Your credentials have been updated successfully.');
+      setErrorMsg(null);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      reset({
-        password: '',
-        currentPassword: '',
-      });
+      reset({ password: '', currentPassword: '' });
     },
     onError: (err: any) => {
       setErrorMsg(err.message || 'Failed to update credentials.');
+      setSuccessMsg(null);
     },
   });
 
@@ -96,11 +93,16 @@ export const Profile: React.FC = () => {
     updateMutation.mutate(values);
   };
 
+  const isStudent = user?.role === 'Student';
+
   if (isLoading) {
     return (
       <DashboardShell>
-        <div className="py-8 text-center text-xs text-muted-foreground animate-pulse font-medium">
-          LOADING PROFILE DETAILS...
+        <div className="flex items-center justify-center py-16">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-gray-500 font-medium">Loading profile...</p>
+          </div>
         </div>
       </DashboardShell>
     );
@@ -109,140 +111,144 @@ export const Profile: React.FC = () => {
   if (error || !profile) {
     return (
       <DashboardShell>
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-4 rounded-lg text-center font-medium">
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-4 rounded-xl font-medium">
           Failed to load profile. Please sign out and sign in again.
         </div>
       </DashboardShell>
     );
   }
 
-  const isStudent = user?.role === 'Student';
-
   return (
     <DashboardShell>
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header */}
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-gray-900">User Profile</h2>
-          <p className="text-xs text-gray-500">View registry information and update security credentials</p>
+          <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+          <p className="text-sm text-gray-500 mt-1">View your registry details and manage account security</p>
         </div>
 
-        {/* Core registry details (Read-Only fields) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 border border-gray-200 rounded-lg">
-          <div className="space-y-1">
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Full Name</span>
-            <span className="text-sm font-semibold text-gray-900">{profile.fullName || 'N/A'}</span>
+        {/* Identity Card */}
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <User className="w-4 h-4 text-gray-400" />
+            <h2 className="text-sm font-bold text-gray-900">Identity Information</h2>
           </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">
-              {isStudent ? 'Register Number' : 'Faculty ID'}
-            </span>
-            <span className="text-sm font-semibold text-gray-900">{profile.userId}</span>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">System Role</span>
-            <span className="text-sm font-semibold text-gray-900 uppercase tracking-wider text-xs bg-gray-200 px-2 py-0.5 rounded w-max block">
-              {profile.role}
-            </span>
-          </div>
-
-          {isStudent ? (
-            <>
-              <div className="space-y-1">
-                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Class Section</span>
-                <span className="text-sm font-semibold text-gray-900">{profile.section || 'N/A'}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Admission Year</span>
-                <span className="text-sm font-semibold text-gray-900">{profile.admissionYear || 'N/A'}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Date of Birth</span>
-                <span className="text-sm font-semibold text-gray-900">{profile.dateOfBirth || 'N/A'}</span>
-              </div>
-            </>
-          ) : (
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <FieldItem label="Full Name" value={profile.fullName} />
+            <FieldItem label={isStudent ? 'Register Number' : 'Faculty ID'} value={profile.userId} />
             <div className="space-y-1">
-              <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Academic Designation</span>
-              <span className="text-sm font-semibold text-gray-900">{profile.designation || 'N/A'}</span>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">System Role</p>
+              <span className="inline-block text-xs font-bold px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
+                {profile.role}
+              </span>
             </div>
-          )}
+
+            {isStudent ? (
+              <>
+                <FieldItem label="Class Section" value={profile.section} />
+                <FieldItem label="Admission Year" value={String(profile.admissionYear)} />
+                <FieldItem label="Date of Birth" value={profile.dateOfBirth} />
+              </>
+            ) : (
+              <>
+                <FieldItem label="Academic Designation" value={profile.designation} />
+                <FieldItem label="Login Username" value={profile.username} />
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Security Settings Area */}
+        {/* Security Section */}
         {isStudent ? (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 text-xs p-4 rounded-lg font-medium">
-            Note: Student credentials are managed by your supervisor. If you need to reset or update your credentials, please request changes through your assigned cohort mentor.
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-3">
+            <GraduationCap className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-blue-800">Student credentials are managed by faculty</p>
+              <p className="text-xs text-blue-700 mt-1">
+                If you need to reset or update your login credentials, please contact your assigned cohort Mentor.
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="space-y-6 pt-4 border-t border-gray-200">
-            <div>
-              <h3 className="text-sm font-bold text-gray-900">Security Credentials</h3>
-              <p className="text-[11px] text-gray-500">Modify your login username and password settings</p>
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-gray-400" />
+              <h2 className="text-sm font-bold text-gray-900">Security & Credentials</h2>
             </div>
 
-            {successMsg && (
-              <div className="bg-green-50 border border-green-200 text-green-700 text-xs p-3 rounded-lg text-center font-semibold">
-                {successMsg}
-              </div>
-            )}
+            <div className="p-6 space-y-5">
+              {successMsg && (
+                <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 text-green-800 text-sm p-3.5 rounded-xl font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                  {successMsg}
+                </div>
+              )}
+              {errorMsg && (
+                <div className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-800 text-sm p-3.5 rounded-xl font-medium">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  {errorMsg}
+                </div>
+              )}
 
-            {errorMsg && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg text-center font-medium">
-                {errorMsg}
-              </div>
-            )}
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="username" className="text-sm font-semibold text-gray-700">Login Username</Label>
+                  <Input
+                    id="username"
+                    {...register('username')}
+                    disabled={updateMutation.isPending}
+                    className="h-10"
+                  />
+                  {errors.username && (
+                    <p className="text-xs text-red-600 font-medium">{errors.username.message}</p>
+                  )}
+                </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md">
-              <div className="space-y-2">
-                <Label htmlFor="username">Login Username</Label>
-                <Input
-                  id="username"
-                  {...register('username')}
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-sm font-semibold text-gray-700">New Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    {...register('password')}
+                    disabled={updateMutation.isPending}
+                    className="h-10"
+                  />
+                  <p className="text-[11px] text-gray-400 font-medium">
+                    Leave blank to keep your current password. Minimum 6 characters if changing.
+                  </p>
+                  {errors.password && (
+                    <p className="text-xs text-red-600 font-medium">{errors.password.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                  <Label htmlFor="currentPassword" className="text-sm font-semibold text-gray-700">
+                    Current Password <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    {...register('currentPassword')}
+                    disabled={updateMutation.isPending}
+                    className="h-10"
+                  />
+                  <p className="text-[11px] text-gray-400 font-medium">Required to confirm any credential changes.</p>
+                  {errors.currentPassword && (
+                    <p className="text-xs text-red-600 font-medium">{errors.currentPassword.message}</p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
                   disabled={updateMutation.isPending}
-                />
-                {errors.username && (
-                  <p className="text-xs text-destructive font-medium">{errors.username.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">New Password (Optional)</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  {...register('password')}
-                  disabled={updateMutation.isPending}
-                />
-                {errors.password && (
-                  <p className="text-xs text-destructive font-medium">{errors.password.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Confirm Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  {...register('currentPassword')}
-                  disabled={updateMutation.isPending}
-                />
-                {errors.currentPassword && (
-                  <p className="text-xs text-destructive font-medium">{errors.currentPassword.message}</p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full mt-2"
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? 'Saving Changes...' : 'Update Credentials'}
-              </Button>
-            </form>
+                  className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
+                >
+                  {updateMutation.isPending ? 'Saving Changes...' : 'Update Credentials'}
+                </Button>
+              </form>
+            </div>
           </div>
         )}
       </div>
