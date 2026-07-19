@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '.
 import { 
   FileText, Clock, CheckCircle, XCircle, AlertCircle, Plus, 
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList, Eye,
-  User as UserIcon, UserPlus
+  User as UserIcon, UserPlus, Calendar, Hourglass
 } from 'lucide-react';
 
 interface ApplicationRow {
@@ -47,6 +47,21 @@ interface ApplicationDetails extends ApplicationRow {
     rejectionReason: string | null;
     fileUrl?: string | null;
   }>;
+  extension?: {
+    extensionId: string;
+    newDeadline: string;
+    reason: string;
+  } | null;
+}
+
+interface ExtensionRequestMock {
+  applicationId: string;
+  title: string;
+  studentId: string;
+  studentName: string;
+  reason: string;
+  requestedDays: number;
+  requestedAt: string;
 }
 
 const oneDriveSchema = z
@@ -59,6 +74,20 @@ export const Dashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedAppId, setSelectedAppId] = React.useState<string | null>(null);
   
+  // Extension request states (Student side)
+  const [requestExtensionOpen, setRequestExtensionOpen] = React.useState(false);
+  const [extensionReason, setExtensionReason] = React.useState('');
+  const [requestedDays, setRequestedDays] = React.useState(7);
+  const [extensionFormError, setExtensionFormError] = React.useState<string | null>(null);
+  const [extensionFormSuccess, setExtensionFormSuccess] = React.useState<string | null>(null);
+
+  // Extension grant states (Mentor side)
+  const [grantExtensionOpen, setGrantExtensionOpen] = React.useState(false);
+  const [grantAppId, setGrantAppId] = React.useState<string | null>(null);
+  const [grantNewDeadline, setGrantNewDeadline] = React.useState('');
+  const [grantReason, setGrantReason] = React.useState('');
+  const [grantError, setGrantError] = React.useState<string | null>(null);
+
   // Faculty student onboarding form states
   const [createStudentOpen, setCreateStudentOpen] = React.useState(false);
   const [studentFormValues, setStudentFormValues] = React.useState({
@@ -87,7 +116,7 @@ export const Dashboard: React.FC = () => {
   const [certErrors, setCertErrors] = React.useState<Record<string, string | null>>({});
 
   // Active queue filter tabs
-  const [activeTab, setActiveTab] = React.useState<'pending' | 'certificates' | 'all'>('pending');
+  const [activeTab, setActiveTab] = React.useState<'pending' | 'certificates' | 'extensions' | 'all'>('pending');
 
   const isStudent = user?.role === 'Student';
   const isEC = user?.role === 'Event Coordinator';
@@ -151,7 +180,7 @@ export const Dashboard: React.FC = () => {
     enabled: !isStudent,
   });
 
-  // 3. Fetch specific application details (for modal timeline & uploads)
+  // 3. Fetch specific application details
   const { data: appDetails } = useQuery<ApplicationDetails>({
     queryKey: ['applicationDetails', selectedAppId],
     queryFn: async () => {
@@ -248,6 +277,41 @@ export const Dashboard: React.FC = () => {
     },
     onError: (err: any) => {
       setCreateStudentError(err.message || 'Failed to create student account.');
+    },
+  });
+
+  // 8. Mutation to grant deadline extension (Mentor side)
+  const grantExtensionMutation = useMutation({
+    mutationFn: async (payload: { applicationId: string; newDeadline: string; reason: string }) => {
+      const res = await apiFetch('/extensions', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      // Remove mock request from localStorage upon database grant success
+      if (grantAppId) {
+        const stored = localStorage.getItem('mcet_extension_requests');
+        if (stored) {
+          const parsed = JSON.parse(stored) as ExtensionRequestMock[];
+          const filtered = parsed.filter(r => r.applicationId !== grantAppId);
+          localStorage.setItem('mcet_extension_requests', JSON.stringify(filtered));
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['applicationDetails', selectedAppId || grantAppId] });
+      queryClient.invalidateQueries({ queryKey: ['departmentApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
+      
+      setGrantExtensionOpen(false);
+      setGrantAppId(null);
+      setGrantReason('');
+      setGrantNewDeadline('');
+      setSelectedAppId(null);
+    },
+    onError: (err: any) => {
+      setGrantError(err.message || 'Failed to grant deadline extension.');
     },
   });
 
@@ -362,6 +426,93 @@ export const Dashboard: React.FC = () => {
     onboardStudentMutation.mutate(studentFormValues);
   };
 
+  // Submit simulated extension request to localStorage (Student side)
+  const handleExtensionRequestSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setExtensionFormError(null);
+    setExtensionFormSuccess(null);
+
+    if (extensionReason.trim().length < 10) {
+      setExtensionFormError('Please provide a descriptive reason (minimum 10 characters).');
+      return;
+    }
+
+    if (!appDetails) return;
+
+    // Enforce Rule 7.4 client-side: check if extension was already granted
+    if (appDetails.extension) {
+      setExtensionFormError('Rule Check: Subsequent extensions are blocked. An extension was already granted.');
+      return;
+    }
+
+    const newRequest: ExtensionRequestMock = {
+      applicationId: appDetails.applicationId,
+      title: appDetails.title,
+      studentId: appDetails.studentId,
+      studentName: appDetails.studentName,
+      reason: extensionReason,
+      requestedDays: requestedDays,
+      requestedAt: new Date().toISOString(),
+    };
+
+    const stored = localStorage.getItem('mcet_extension_requests');
+    const list: ExtensionRequestMock[] = stored ? JSON.parse(stored) : [];
+    
+    // Check if a request is already pending
+    const exists = list.some(r => r.applicationId === appDetails.applicationId);
+    if (exists) {
+      setExtensionFormError('An extension request for this application is already pending review.');
+      return;
+    }
+
+    list.push(newRequest);
+    localStorage.setItem('mcet_extension_requests', JSON.stringify(list));
+
+    setExtensionFormSuccess('Extension request submitted successfully to your Mentor!');
+    setExtensionReason('');
+    
+    setTimeout(() => {
+      setRequestExtensionOpen(false);
+      setExtensionFormSuccess(null);
+    }, 1500);
+  };
+
+  // Submit database extension grant (Mentor side)
+  const handleGrantExtensionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGrantError(null);
+
+    if (!grantAppId) return;
+    if (grantReason.trim().length < 10) {
+      setGrantError('Reason must be at least 10 characters long.');
+      return;
+    }
+
+    const currentDateStr = new Date().toISOString().split('T')[0];
+    if (grantNewDeadline <= currentDateStr) {
+      setGrantError('The new deadline must be a future date.');
+      return;
+    }
+
+    grantExtensionMutation.mutate({
+      applicationId: grantAppId,
+      newDeadline: grantNewDeadline,
+      reason: grantReason,
+    });
+  };
+
+  // Check if student has any overdue uploads (expired deadlines)
+  const getHasOverdueCerts = () => {
+    if (!isStudent) return false;
+    return studentApps.some(app => {
+      if (app.status !== 'Approved') return false;
+      const dl = getDeadlineInfo(app.toDate);
+      return dl.isOverdue;
+    });
+  };
+
+  const hasOverdueCerts = getHasOverdueCerts();
+
   // 7. Client-side filters for active queues
   const getFacultyPendingStatus = () => {
     if (isEC) return 'In Progress: Event Coordinator';
@@ -370,6 +521,15 @@ export const Dashboard: React.FC = () => {
     if (isHOD) return 'In Progress: Head of Department';
     return '';
   };
+
+  // Load mock requests from localStorage for active queue (Mentor side)
+  const getMockExtensionRequests = (): ExtensionRequestMock[] => {
+    if (!isMentor) return [];
+    const stored = localStorage.getItem('mcet_extension_requests');
+    return stored ? JSON.parse(stored) : [];
+  };
+
+  const mockExtensionRequests = getMockExtensionRequests();
 
   const getFilteredApps = () => {
     const targetStatus = getFacultyPendingStatus();
@@ -393,6 +553,17 @@ export const Dashboard: React.FC = () => {
   const isAppApproved = appDetails?.status === 'Approved';
   const showUploadSection = isAppApproved && isPostEvent;
 
+  // Check if an extension request has already been sent/pending locally
+  const getIsExtensionRequestPending = () => {
+    if (!appDetails) return false;
+    const stored = localStorage.getItem('mcet_extension_requests');
+    if (!stored) return false;
+    const list = JSON.parse(stored) as ExtensionRequestMock[];
+    return list.some(r => r.applicationId === appDetails.applicationId);
+  };
+
+  const isExtensionPending = getIsExtensionRequestPending();
+
   const tableHeaders: TableHeader[] = [
     { label: 'Student', key: 'studentName' },
     { label: 'Event Title', key: 'title' },
@@ -404,6 +575,21 @@ export const Dashboard: React.FC = () => {
   return (
     <DashboardShell>
       <div className="space-y-6">
+        {/* ========================================================
+            OVERDUE WARNING BANNER (Task 7.1)
+           ======================================================== */}
+        {hasOverdueCerts && (
+          <div className="bg-red-50 border border-red-200 text-red-800 text-xs p-4 rounded-lg flex items-start gap-2.5 animate-in slide-in-from-top duration-300 font-semibold shadow-sm">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+            <div>
+              <p className="font-bold">⚠️ Overdue Upload Warning!</p>
+              <p className="text-gray-700 font-medium mt-0.5">
+                One or more of your approved On-Duty certificate deadlines have expired. Please submit your OneDrive links or contact your assigned cohort mentor immediately to request a deadline extension.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ========================================================
             1. STUDENT DASHBOARD
            ======================================================== */}
@@ -682,6 +868,18 @@ export const Dashboard: React.FC = () => {
                   <ClipboardList className="w-3.5 h-3.5" /> Certificate Queue
                 </button>
               )}
+              {isMentor && (
+                <button
+                  onClick={() => setActiveTab('extensions')}
+                  className={`py-2 px-3 border-b-2 text-xs font-bold transition-all -mb-px flex items-center gap-1.5 ${
+                    activeTab === 'extensions'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <Hourglass className="w-3.5 h-3.5" /> Extension Requests ({mockExtensionRequests.length})
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab('all')}
                 className={`py-2 px-3 border-b-2 text-xs font-bold transition-all -mb-px flex items-center gap-1.5 ${
@@ -696,7 +894,64 @@ export const Dashboard: React.FC = () => {
 
             {/* Active Queue lists */}
             <div className="space-y-4">
-              {deptAppsLoading ? (
+              {activeTab === 'extensions' && isMentor ? (
+                /* ============ EXTENSION REVIEW CONSOLE (Task 7.3) ============ */
+                mockExtensionRequests.length === 0 ? (
+                  <div className="border border-dashed border-gray-200 rounded-lg p-8 text-center text-xs text-gray-500 font-medium">
+                    No pending deadline extension requests from cohort students.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {mockExtensionRequests.map((req) => (
+                      <div
+                        key={req.applicationId}
+                        className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between gap-3"
+                      >
+                        <div className="space-y-1">
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                            {req.studentName} ({req.studentId})
+                          </span>
+                          <h4 className="font-bold text-sm text-gray-900 truncate">{req.title}</h4>
+                          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded px-2.5 py-1.5 mt-2 font-medium">
+                            <span className="font-bold block">Requested Days: {req.requestedDays}</span>
+                            Reason: {req.reason}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-[11px] h-8 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                            onClick={() => {
+                              // Rejection: simply delete request from mock list
+                              const stored = localStorage.getItem('mcet_extension_requests');
+                              if (stored) {
+                                const list = JSON.parse(stored) as ExtensionRequestMock[];
+                                const filtered = list.filter(r => r.applicationId !== req.applicationId);
+                                localStorage.setItem('mcet_extension_requests', JSON.stringify(filtered));
+                                queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
+                              }
+                            }}
+                          >
+                            Deny
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="flex-1 text-[11px] h-8"
+                            onClick={() => {
+                              setGrantAppId(req.applicationId);
+                              setGrantReason(`Granted requested extension of ${req.requestedDays} days: ${req.reason}`);
+                              setGrantExtensionOpen(true);
+                            }}
+                          >
+                            Grant Extension
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : deptAppsLoading ? (
                 <div className="py-8 text-center text-xs text-muted-foreground animate-pulse font-medium">
                   LOADING REGISTRY QUEUES...
                 </div>
@@ -803,13 +1058,48 @@ export const Dashboard: React.FC = () => {
                   </p>
                 </div>
 
-                {/* ============ STUDENT UPLOAD CONSOLE ============ */}
+                {/* ============ EXTENSION STATUS AND RULE GAUGES (Task 7.4) ============ */}
+                {appDetails.extension && (
+                  <div className="bg-blue-50 border border-blue-200 text-blue-800 text-[11px] p-3 rounded-lg flex items-start gap-2 font-medium">
+                    <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Deadline Extension Active</p>
+                      <p className="text-gray-700 font-medium mt-0.5">
+                        New upload deadline granted: <span className="font-bold">{appDetails.extension.newDeadline}</span>.
+                      </p>
+                      <p className="text-gray-500 font-medium text-[10px] mt-0.5">Reason: {appDetails.extension.reason}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ============ STUDENT UPLOAD CONSOLE & EXTENSION CTA (Task 7.2) ============ */}
                 {isStudent && showUploadSection && appDetails.certificates && appDetails.certificates.length > 0 && (
                   <div className="space-y-3 pt-3 border-t border-gray-200 animate-in fade-in duration-200">
-                    <h5 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Post-Event Certificate Submission</h5>
+                    <div className="flex justify-between items-center gap-2">
+                      <h5 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Post-Event Certificate Submission</h5>
+                      
+                      {/* Extension request CTA button */}
+                      {!appDetails.extension ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isExtensionPending}
+                          onClick={() => setRequestExtensionOpen(true)}
+                          className="text-[10px] h-7 px-2 border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 flex items-center gap-1 font-bold"
+                        >
+                          <Hourglass className="w-3 h-3" />
+                          {isExtensionPending ? 'Extension Pending' : 'Request Extension'}
+                        </Button>
+                      ) : (
+                        <span className="text-[10px] text-gray-400 font-bold border border-gray-200 bg-gray-50 px-2 py-0.5 rounded select-none">
+                          Extension Granted
+                        </span>
+                      )}
+                    </div>
+
                     <div className="space-y-4">
                       {appDetails.certificates.map((cert) => {
-                        const deadlineInfo = getDeadlineInfo(appDetails.toDate);
+                        const deadlineInfo = getDeadlineInfo(cert.submissionDeadline);
                         const isUploaded = cert.status === 'Submitted' || cert.status === 'Verified';
 
                         return (
@@ -889,7 +1179,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
 
-                {/* ============ DECISIONS CONSOLE (Task 6.3) ============ */}
+                {/* ============ DECISIONS CONSOLE ============ */}
                 {!isStudent && isUserCurrentReviewer && (
                   <div className="border border-amber-200 bg-amber-50/30 rounded-lg p-3 space-y-3.5">
                     <h5 className="text-[10px] text-amber-800 font-bold uppercase tracking-wider flex items-center gap-1">
@@ -960,7 +1250,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
 
-                {/* ============ CERTIFICATES VERIFICATION CONSOLE (Task 6.4) ============ */}
+                {/* ============ CERTIFICATES VERIFICATION CONSOLE ============ */}
                 {!isStudent && isEC && appDetails.certificates && appDetails.certificates.length > 0 && (
                   <div className="space-y-3 pt-3 border-t border-gray-200">
                     <h5 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Post-Event Certificate verification</h5>
@@ -1168,7 +1458,7 @@ export const Dashboard: React.FC = () => {
         </Dialog>
 
         {/* ========================================================
-            4. COHORT STUDENT ONBOARDING DIALOG (Task 6.4)
+            4. COHORT STUDENT ONBOARDING DIALOG
            ======================================================== */}
         <Dialog open={createStudentOpen} onOpenChange={(open) => !open && setCreateStudentOpen(false)}>
           <DialogContent className="max-w-md bg-white border border-gray-200">
@@ -1284,6 +1574,138 @@ export const Dashboard: React.FC = () => {
                   disabled={onboardStudentMutation.isPending}
                 >
                   {onboardStudentMutation.isPending ? 'Creating Account...' : 'Create Account'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================
+            5. STUDENT REQUEST EXTENSION DIALOG (Task 7.2)
+           ======================================================== */}
+        <Dialog open={requestExtensionOpen} onOpenChange={(open) => !open && setRequestExtensionOpen(false)}>
+          <DialogContent className="max-w-sm bg-white border border-gray-200">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-gray-900">Request Deadline Extension</DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleExtensionRequestSubmit} className="space-y-4 pt-2">
+              {extensionFormSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-700 text-xs p-3 rounded-lg text-center font-semibold">
+                  {extensionFormSuccess}
+                </div>
+              )}
+
+              {extensionFormError && (
+                <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg text-center font-medium">
+                  {extensionFormError}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="reqDays">Days Requested (Max 7 days)</Label>
+                <Select
+                  id="reqDays"
+                  value={requestedDays}
+                  onChange={(e) => setRequestedDays(parseInt(e.target.value) || 7)}
+                >
+                  <option value="1">1 Day</option>
+                  <option value="2">2 Days</option>
+                  <option value="3">3 Days</option>
+                  <option value="4">4 Days</option>
+                  <option value="5">5 Days</option>
+                  <option value="6">6 Days</option>
+                  <option value="7">7 Days (Standard)</option>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reqReason">Extension Reason (Min 10 chars)</Label>
+                <textarea
+                  id="reqReason"
+                  rows={3}
+                  required
+                  placeholder="Explain why you need more time to upload the certificate..."
+                  value={extensionReason}
+                  onChange={(e) => setExtensionReason(e.target.value)}
+                  className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 text-xs h-9"
+                  onClick={() => setRequestExtensionOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1 text-xs h-9">
+                  Submit Request
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================
+            6. MENTOR GRANT EXTENSION DIALOG (Task 7.3)
+           ======================================================== */}
+        <Dialog open={grantExtensionOpen} onOpenChange={(open) => !open && setGrantExtensionOpen(false)}>
+          <DialogContent className="max-w-sm bg-white border border-gray-200">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-gray-900">Grant Deadline Extension</DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleGrantExtensionSubmit} className="space-y-4 pt-2">
+              {grantError && (
+                <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg text-center font-medium">
+                  {grantError}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="newDl">New Deadline Date</Label>
+                <Input
+                  id="newDl"
+                  type="date"
+                  required
+                  value={grantNewDeadline}
+                  onChange={(e) => setGrantNewDeadline(e.target.value)}
+                  disabled={grantExtensionMutation.isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="newReason">Extension Reason (Min 10 chars)</Label>
+                <textarea
+                  id="newReason"
+                  rows={3}
+                  required
+                  value={grantReason}
+                  onChange={(e) => setGrantReason(e.target.value)}
+                  disabled={grantExtensionMutation.isPending}
+                  className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 text-xs h-9"
+                  onClick={() => setGrantExtensionOpen(false)}
+                  disabled={grantExtensionMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 text-xs h-9"
+                  disabled={grantExtensionMutation.isPending}
+                >
+                  {grantExtensionMutation.isPending ? 'Saving...' : 'Grant Extension'}
                 </Button>
               </div>
             </form>
