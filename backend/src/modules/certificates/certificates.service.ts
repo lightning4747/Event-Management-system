@@ -2,7 +2,7 @@ import { db } from '../../db';
 import { odApplications, certificateRequirements, certificates } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
-import { UploadCertificateInput } from './certificates.types';
+import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
 
 export const uploadCertificate = async (
   userId: string,
@@ -55,7 +55,7 @@ export const uploadCertificate = async (
     throw new AppError(400, 'DEADLINE_EXPIRED', 'The submission deadline has expired. Contact your mentor for an extension.');
   }
 
-  // 6. Perform upload inserts in transaction
+  // 6. Perform upload inserts in transaction (supports re-upload while preserving history)
   const result = await db.transaction(async (tx) => {
     // Check previous upload count
     const existingCerts = await tx
@@ -87,11 +87,12 @@ export const uploadCertificate = async (
         uploadVersion: certificates.uploadVersion,
       });
 
-    // Update requirement status
+    // Update requirement status to Uploaded
     await tx
       .update(certificateRequirements)
       .set({
         status: 'Uploaded',
+        rejectionReason: null, // Clear past rejection comments upon re-upload
         updatedAt: new Date(),
       })
       .where(eq(certificateRequirements.requirementId, reqId));
@@ -102,5 +103,40 @@ export const uploadCertificate = async (
   return {
     ...result,
     uploadVersion: Number(result.uploadVersion),
+  };
+};
+
+export const verifyCertificate = async (
+  requirementId: bigint,
+  input: VerifyCertificateInput
+): Promise<{ requirementId: bigint; status: 'Verified' | 'Rejected'; rejectionReason: string | null }> => {
+  const [req] = await db
+    .select()
+    .from(certificateRequirements)
+    .where(eq(certificateRequirements.requirementId, requirementId))
+    .limit(1);
+
+  if (!req) {
+    throw new AppError(404, 'NOT_FOUND', 'Certificate requirement not found.');
+  }
+
+  // Verification can only be done if status is Uploaded
+  if (req.status !== 'Uploaded') {
+    throw new AppError(400, 'INVALID_STATUS', 'No active certificate upload is available to verify for this requirement.');
+  }
+
+  await db
+    .update(certificateRequirements)
+    .set({
+      status: input.status,
+      rejectionReason: input.status === 'Rejected' ? input.comments || null : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(certificateRequirements.requirementId, requirementId));
+
+  return {
+    requirementId,
+    status: input.status,
+    rejectionReason: input.status === 'Rejected' ? input.comments || null : null,
   };
 };
