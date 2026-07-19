@@ -37,12 +37,12 @@ export const createDeadlineExtension = async (
     throw new AppError(400, 'INVALID_APPLICATION_STATUS', 'Deadline extensions can only be granted for approved applications.');
   }
 
-  // 2. Cohort Verification (Task 8.1)
+  // 2. Cohort Verification 
   if (app.mentorId !== mentorUserId) {
     throw new AppError(403, 'FORBIDDEN', 'Access Denied: You can only grant extensions to students in your cohort.');
   }
 
-  // 3. Enforce Single Extension Constraint (Task 8.2)
+  // 3. Enforce Single Extension Constraint 
   const [existingExtension] = await db
     .select()
     .from(certificateDeadlineExtensions)
@@ -59,42 +59,53 @@ export const createDeadlineExtension = async (
     throw new AppError(400, 'INVALID_DEADLINE', 'The new deadline must be a future date.');
   }
 
-  // 5. Execute transaction (Task 8.3)
-  const insertedExtension = await db.transaction(async (tx) => {
-    // A. Insert extension log
-    const [inserted] = await tx
-      .insert(certificateDeadlineExtensions)
-      .values({
-        applicationId: appId,
-        extendedBy: mentorUserId,
-        newDeadline: input.newDeadline,
-        reason: input.reason,
-      })
-      .returning({
-        extensionId: certificateDeadlineExtensions.extensionId,
-        newDeadline: certificateDeadlineExtensions.newDeadline,
-      });
+  try {
+    // 5. Execute transaction 
+    const insertedExtension = await db.transaction(async (tx) => {
+      // A. Insert extension log
+      const [inserted] = await tx
+        .insert(certificateDeadlineExtensions)
+        .values({
+          applicationId: appId,
+          extendedBy: mentorUserId,
+          newDeadline: input.newDeadline,
+          reason: input.reason,
+        })
+        .returning({
+          extensionId: certificateDeadlineExtensions.extensionId,
+          newDeadline: certificateDeadlineExtensions.newDeadline,
+        });
 
-    // B. Update requirements status and deadlines
-    await tx
-      .update(certificateRequirements)
-      .set({
-        status: 'Pending Upload',
-        submissionDeadline: input.newDeadline,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(certificateRequirements.applicationId, appId),
-          or(
-            eq(certificateRequirements.status, 'Pending Upload'),
-            eq(certificateRequirements.status, 'Deadline Expired')
+      // B. Update requirements status and deadlines
+      await tx
+        .update(certificateRequirements)
+        .set({
+          status: 'Pending Upload',
+          submissionDeadline: input.newDeadline,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(certificateRequirements.applicationId, appId),
+            or(
+              eq(certificateRequirements.status, 'Pending Upload'),
+              eq(certificateRequirements.status, 'Deadline Expired')
+            )
           )
-        )
-      );
+        );
 
-    return inserted;
-  });
+      return inserted;
+    });
 
-  return insertedExtension;
+    return insertedExtension;
+  } catch (error) {
+    const pgErr = error as { code?: string; detail?: string; constraint?: string };
+    if (pgErr && pgErr.code === '23505') {
+      const detail = pgErr.detail || '';
+      if (detail.includes('application_id') || pgErr.constraint === 'certificate_deadline_extensions_application_id_unique') {
+        throw new AppError(400, 'EXTENSION_ALREADY_GRANTED', 'An extension has already been granted for this application.');
+      }
+    }
+    throw error;
+  }
 };
