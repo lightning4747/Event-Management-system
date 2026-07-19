@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { odApplications, students, applicationApprovalHistory } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { MakeDecisionInput } from './decisions.types';
 
@@ -33,7 +33,7 @@ export const makeApprovalDecision = async (
     throw new AppError(400, 'APPLICATION_IMMUTABLE', 'This On-Duty application has already been decided or withdrawn.');
   }
 
-  // Validate Event Coordinator and Mentor stages
+  // Validate stages
   if (currentStatus === 'In Progress: Event Coordinator') {
     if (role !== 'Event Coordinator') {
       throw new AppError(403, 'FORBIDDEN', 'Only Event Coordinators can review applications at this stage.');
@@ -46,9 +46,43 @@ export const makeApprovalDecision = async (
     if (app.mentorId !== userId) {
       throw new AppError(403, 'FORBIDDEN', 'Access Denied: You are not the assigned mentor for this student.');
     }
+  } else if (currentStatus === 'In Progress: Program Coordinator') {
+    if (role !== 'Program Coordinator') {
+      throw new AppError(403, 'FORBIDDEN', 'Only Program Coordinators can review applications at this stage.');
+    }
+
+    // Verify EC approval exists in history
+    const [ecApproval] = await db
+      .select()
+      .from(applicationApprovalHistory)
+      .where(
+        and(
+          eq(applicationApprovalHistory.applicationId, applicationId),
+          eq(applicationApprovalHistory.approverRole, 'Event Coordinator'),
+          eq(applicationApprovalHistory.decision, 'Approve')
+        )
+      )
+      .limit(1);
+
+    // Verify Mentor approval exists in history
+    const [mentorApproval] = await db
+      .select()
+      .from(applicationApprovalHistory)
+      .where(
+        and(
+          eq(applicationApprovalHistory.applicationId, applicationId),
+          eq(applicationApprovalHistory.approverRole, 'Mentor'),
+          eq(applicationApprovalHistory.decision, 'Approve')
+        )
+      )
+      .limit(1);
+
+    if (!ecApproval || !mentorApproval) {
+      throw new AppError(400, 'INVALID_STAGE_HISTORY', 'Missing required previous review approvals in audit history.');
+    }
   } else {
     // Other stages placeholder
-    if (role !== 'Event Coordinator' && role !== 'Mentor') {
+    if (role !== 'Event Coordinator' && role !== 'Mentor' && role !== 'Program Coordinator') {
       throw new AppError(403, 'FORBIDDEN', 'Only authorized faculty members can review applications.');
     }
   }
@@ -62,6 +96,8 @@ export const makeApprovalDecision = async (
       newStatus = 'In Progress: Mentor';
     } else if (currentStatus === 'In Progress: Mentor') {
       newStatus = 'In Progress: Program Coordinator';
+    } else if (currentStatus === 'In Progress: Program Coordinator') {
+      newStatus = 'In Progress: Head of Department';
     } else {
       newStatus = 'Approved'; // Placeholder fallback
     }
