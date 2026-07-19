@@ -45,3 +45,17 @@ export const getMentorDashboard = async (req: Request, res: Response, next: Next
     next(error);
   }
 };
+
+export const getHODDashboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const role = req.user?.role;
+    if (role !== 'Head of Department') {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Head of Department can access the HOD dashboard.');
+    }
+
+    const metrics = await dashboardsService.getHODDashboardMetrics();
+    res.status(200).json(metrics);
+  } catch (error) {
+    next(error);
+  }
+};

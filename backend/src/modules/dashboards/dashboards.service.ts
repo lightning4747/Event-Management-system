@@ -22,6 +22,13 @@ export interface MentorDashboardMetrics {
   menteesWithExpiredDeadlines: number;
 }
 
+export interface HODDashboardMetrics {
+  totalApplications: number;
+  approvedApplications: number;
+  activeStudentsCount: number;
+  pendingHODApprovals: number;
+}
+
 export const getStudentDashboardMetrics = async (studentId: string): Promise<StudentDashboardMetrics> => {
   const statusCounts = await db
     .select({
@@ -152,5 +159,45 @@ export const getMentorDashboardMetrics = async (mentorId: string): Promise<Mento
     totalMentees: menteesCount ? Number(menteesCount.count) : 0,
     pendingMenteeApprovals: pendingApprovals ? Number(pendingApprovals.count) : 0,
     menteesWithExpiredDeadlines: expiredCount ? Number(expiredCount.count) : 0,
+  };
+};
+
+export const getHODDashboardMetrics = async (): Promise<HODDashboardMetrics> => {
+  // 1. Total, Approved and HOD queue count
+  const statusCounts = await db
+    .select({
+      status: odApplications.status,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(odApplications)
+    .groupBy(odApplications.status);
+
+  let totalApplications = 0;
+  let approvedApplications = 0;
+  let pendingHODApprovals = 0;
+
+  for (const item of statusCounts) {
+    const count = Number(item.count);
+    totalApplications += count;
+
+    if (item.status === 'Approved') {
+      approvedApplications = count;
+    } else if (item.status === 'In Progress: Head of Department') {
+      pendingHODApprovals = count;
+    }
+  }
+
+  // 2. Active students count (distinct studentId)
+  const [activeCount] = await db
+    .select({
+      count: sql<number>`count(distinct ${odApplications.studentId})::int`,
+    })
+    .from(odApplications);
+
+  return {
+    totalApplications,
+    approvedApplications,
+    activeStudentsCount: activeCount ? Number(activeCount.count) : 0,
+    pendingHODApprovals,
   };
 };
