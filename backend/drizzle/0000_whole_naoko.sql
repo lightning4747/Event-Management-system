@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS "od_applications" (
 	"final_approved_at" timestamp with time zone,
 	"withdrawn_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "from_date_less_to_date_check" CHECK ("from_date" <= "to_date"),
+	CONSTRAINT "number_of_events_positive_check" CHECK ("number_of_events" > 0)
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "students" (

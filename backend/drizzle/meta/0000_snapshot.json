@@ -653,7 +653,17 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "from_date_less_to_date_check": {
+          "name": "from_date_less_to_date_check",
+          "value": "from_date <= to_date"
+        },
+        "number_of_events_positive_check": {
+          "name": "number_of_events_positive_check",
+          "value": "number_of_events > 0"
+        }
+      }
     },
     "public.students": {
       "name": "students",
