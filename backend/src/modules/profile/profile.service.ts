@@ -1,7 +1,7 @@
 import { db } from '../../db';
 import { users, students, faculty } from '../../db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { hashPassword } from '../../utils/crypto';
+import { hashPassword, comparePassword } from '../../utils/crypto';
 import { AppError } from '../../lib/errors';
 import { UpdateProfileInput } from './profile.types';
 
@@ -114,6 +114,17 @@ export const updateProfile = async (
 
   if (!user) {
     throw new AppError(404, 'NOT_FOUND', 'User account not found.');
+  }
+
+  // Verify current password if trying to update username or password
+  if (input.username || input.password) {
+    if (!input.currentPassword) {
+      throw new AppError(400, 'BAD_REQUEST', 'Current password is required to change username or password.');
+    }
+    const isPasswordValid = await comparePassword(input.currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new AppError(400, 'INVALID_CREDENTIALS', 'Invalid current password.');
+    }
   }
 
   const updateData: Partial<typeof users.$inferInsert> = {
