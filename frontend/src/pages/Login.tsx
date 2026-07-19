@@ -39,7 +39,7 @@ export const Login: React.FC = () => {
     setErrorMsg(null);
     try {
       const cleanedValues = {
-        userId: values.userId.trim(),
+        userId: values.userId.trim().toUpperCase(),
         password: values.password,
       };
       

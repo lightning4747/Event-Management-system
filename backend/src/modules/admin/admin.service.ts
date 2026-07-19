@@ -9,25 +9,17 @@ export const createFaculty = async (
   input: CreateFacultyInput,
   adminUserId: string
 ): Promise<{ userId: string; username: string; fullName: string; role: string }> => {
-  // Check if userId or username already exists
+  const cleanUserId = input.userId.trim().toUpperCase();
+
+  // Check if userId already exists
   const [existingUserById] = await db
     .select()
     .from(users)
-    .where(eq(users.userId, input.userId))
+    .where(eq(users.userId, cleanUserId))
     .limit(1);
 
   if (existingUserById) {
     throw new AppError(400, 'USER_EXISTS', 'A user with this Register/Faculty ID already exists.');
-  }
-
-  const [existingUserByName] = await db
-    .select()
-    .from(users)
-    .where(eq(users.username, input.username))
-    .limit(1);
-
-  if (existingUserByName) {
-    throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
   }
 
   const passwordHash = await hashPassword(input.password);
@@ -36,15 +28,15 @@ export const createFaculty = async (
     // Run in a database transaction to ensure atomicity
     await db.transaction(async (tx) => {
       await tx.insert(users).values({
-        userId: input.userId,
-        username: input.username,
+        userId: cleanUserId,
+        username: cleanUserId, // Set username to cleanUserId to eliminate separate concept
         passwordHash,
         role: input.role,
         createdBy: adminUserId,
       });
 
       await tx.insert(faculty).values({
-        userId: input.userId,
+        userId: cleanUserId,
         fullName: input.fullName,
         designation: input.designation,
       });
@@ -57,15 +49,15 @@ export const createFaculty = async (
         throw new AppError(400, 'USER_EXISTS', 'A user with this Register/Faculty ID already exists.');
       }
       if (detail.includes('username') || pgErr.constraint === 'users_username_unique') {
-        throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
+        throw new AppError(400, 'USERNAME_TAKEN', 'A user with this Register/Faculty ID already exists.');
       }
     }
     throw error;
   }
 
   return {
-    userId: input.userId,
-    username: input.username,
+    userId: cleanUserId,
+    username: cleanUserId,
     fullName: input.fullName,
     role: input.role,
   };

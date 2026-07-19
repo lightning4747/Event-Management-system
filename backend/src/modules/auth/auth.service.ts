@@ -12,7 +12,7 @@ export const loginUser = async (input: LoginInput): Promise<{ token: string; rol
     .from(users)
     .where(
       and(
-        eq(users.userId, input.userId),
+        eq(users.userId, input.userId.trim().toUpperCase()),
         isNull(users.deletedAt)
       )
     )

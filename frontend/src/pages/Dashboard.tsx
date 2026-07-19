@@ -193,8 +193,7 @@ export const Dashboard: React.FC = () => {
   // ── Student onboard (mentor) ──
   const [createStudentOpen, setCreateStudentOpen] = React.useState(false);
   const [studentFormValues, setStudentFormValues] = React.useState({
-    userId: '', username: '', fullName: '', dateOfBirth: '',
-    admissionYear: new Date().getFullYear(), section: 'A',
+    userId: '', fullName: '', dateOfBirth: '', section: 'A',
   });
   const [createStudentError, setCreateStudentError] = React.useState<string | null>(null);
   const [createStudentSuccess, setCreateStudentSuccess] = React.useState<string | null>(null);
@@ -202,10 +201,19 @@ export const Dashboard: React.FC = () => {
   // ── Faculty onboard (admin) ──
   const [createFacultyOpen, setCreateFacultyOpen] = React.useState(false);
   const [facultyFormValues, setFacultyFormValues] = React.useState({
-    userId: '', username: '', fullName: '', password: '', role: 'Mentor', designation: 'Assistant Professor',
+    userId: '', fullName: '', password: '', role: 'Mentor', designation: 'Assistant Professor',
   });
   const [createFacultyError, setCreateFacultyError] = React.useState<string | null>(null);
   const [createFacultySuccess, setCreateFacultySuccess] = React.useState<string | null>(null);
+
+  const yearOptions = React.useMemo(() => {
+    const current = new Date().getFullYear();
+    const list = [];
+    for (let y = 2026; y <= current; y++) {
+      list.push(y);
+    }
+    return list;
+  }, []);
 
   // ── CSV Export ──
   const [filterFromDate, setFilterFromDate] = React.useState('');
@@ -327,7 +335,7 @@ export const Dashboard: React.FC = () => {
 
   const onboardStudentMutation = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await apiFetch('/mentor/student', { method: 'POST', body: JSON.stringify(payload) });
+      const res = await apiFetch('/mentor/students', { method: 'POST', body: JSON.stringify(payload) });
       return res.json();
     },
     onSuccess: () => {
@@ -335,7 +343,7 @@ export const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['departmentApplications'] });
       queryClient.invalidateQueries({ queryKey: ['menteesList'] });
-      setStudentFormValues({ userId: '', username: '', fullName: '', dateOfBirth: '', admissionYear: new Date().getFullYear(), section: 'A' });
+      setStudentFormValues({ userId: '', fullName: '', dateOfBirth: '', section: 'A' });
       setTimeout(() => { setCreateStudentOpen(false); setCreateStudentSuccess(null); }, 1500);
     },
     onError: (err: any) => setCreateStudentError(err.message || 'Failed to create student account.'),
@@ -349,7 +357,7 @@ export const Dashboard: React.FC = () => {
     onSuccess: () => {
       setCreateFacultySuccess('Faculty account created successfully.');
       queryClient.invalidateQueries({ queryKey: ['adminFacultyList'] });
-      setFacultyFormValues({ userId: '', username: '', fullName: '', password: '', role: 'Mentor', designation: 'Assistant Professor' });
+      setFacultyFormValues({ userId: '', fullName: '', password: '', role: 'Mentor', designation: 'Assistant Professor' });
       setTimeout(() => { setCreateFacultyOpen(false); setCreateFacultySuccess(null); }, 1500);
     },
     onError: (err: any) => setCreateFacultyError(err.message || 'Failed to create faculty account.'),
@@ -689,7 +697,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Action Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <Link
                 to="/applications/new"
                 className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-4 cursor-pointer"
@@ -702,19 +710,6 @@ export const Dashboard: React.FC = () => {
                   <p className="text-[11px] text-gray-500 mt-1 leading-normal">Submit a new request for academic event On-Duty approval and verification steps.</p>
                 </div>
               </Link>
-
-              <div
-                onClick={() => document.getElementById('applications-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-4 cursor-pointer"
-              >
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
-                  <ClipboardList className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">View Application History</h3>
-                  <p className="text-[11px] text-gray-500 mt-1 leading-normal">Track ongoing requests, check approval stages, and upload event certificates.</p>
-                </div>
-              </div>
             </div>
 
             {/* Applications */}
@@ -867,7 +862,12 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-gray-500">Admission Year</Label>
-                    <Input type="number" placeholder="e.g. 2024" value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 text-sm" />
+                    <Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 text-sm">
+                      <option value="">All Years</option>
+                      {yearOptions.map((y) => (
+                        <option key={y} value={String(y)}>{y}</option>
+                      ))}
+                    </Select>
                   </div>
                 </div>
                 <div className="flex justify-end">
@@ -1363,27 +1363,17 @@ export const Dashboard: React.FC = () => {
                 <Input placeholder="e.g. NEERAJ K" required value={studentFormValues.fullName} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, fullName: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-gray-700">Login Username</Label>
-                <Input placeholder="e.g. neeraj_k" required value={studentFormValues.username} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, username: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10" />
-              </div>
-              <div className="space-y-1.5">
                 <Label className="text-sm font-semibold text-gray-700">Date of Birth</Label>
                 <Input type="date" required value={studentFormValues.dateOfBirth} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, dateOfBirth: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10" />
                 <p className="text-[11px] text-gray-400">Default password: DDMMYYYY from this date.</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-semibold text-gray-700">Admission Year</Label>
-                  <Input type="number" required value={studentFormValues.admissionYear} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, admissionYear: parseInt(e.target.value) || 2024 }))} disabled={onboardStudentMutation.isPending} className="h-10" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-semibold text-gray-700">Section</Label>
-                  <Select value={studentFormValues.section} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, section: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10">
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
-                    <option value="C">Section C</option>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold text-gray-700">Section</Label>
+                <Select value={studentFormValues.section} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, section: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10">
+                  <option value="A">Section A</option>
+                  <option value="B">Section B</option>
+                  <option value="C">Section C</option>
+                </Select>
               </div>
               <div className="flex gap-3 pt-1">
                 <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setCreateStudentOpen(false)} disabled={onboardStudentMutation.isPending}>Cancel</Button>
@@ -1412,10 +1402,7 @@ export const Dashboard: React.FC = () => {
                 <Label className="text-sm font-semibold text-gray-700">Full Name</Label>
                 <Input placeholder="e.g. Dr. ARUN PRASAD" required value={facultyFormValues.fullName} onChange={(e) => setFacultyFormValues((prev) => ({ ...prev, fullName: e.target.value }))} disabled={onboardFacultyMutation.isPending} className="h-10" />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-gray-700">Login Username</Label>
-                <Input placeholder="e.g. arun_p" required value={facultyFormValues.username} onChange={(e) => setFacultyFormValues((prev) => ({ ...prev, username: e.target.value }))} disabled={onboardFacultyMutation.isPending} className="h-10" />
-              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold text-gray-700">Account Password <span className="text-red-500">*</span></Label>
                 <Input type="password" placeholder="Minimum 6 characters" required value={facultyFormValues.password} onChange={(e) => setFacultyFormValues((prev) => ({ ...prev, password: e.target.value }))} disabled={onboardFacultyMutation.isPending} className="h-10" />

@@ -91,6 +91,14 @@ export const StudentsDirectory: React.FC = () => {
   const [selectedYear, setSelectedYear] = React.useState<string>('Third Year');
   const [selectedSection, setSelectedSection] = React.useState<string>('All');
   const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
   
   // Selected Student
   const [selectedStudentId, setSelectedStudentId] = React.useState<string | null>(null);
@@ -122,23 +130,28 @@ export const StudentsDirectory: React.FC = () => {
     setDetailsTab('applications');
   };
 
-  // Filter students based on year category, section tab, and search query
-  const filteredStudents = studentsList.filter((std) => {
-    const yearCategory = getAcademicYearName(std.admissionYear);
-    if (yearCategory !== selectedYear) return false;
-    
-    if (selectedSection !== 'All' && std.section !== selectedSection) return false;
-    
-    if (searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase();
-      return (
-        std.fullName.toLowerCase().includes(query) ||
-        std.userId.toLowerCase().includes(query)
-      );
-    }
-    
-    return true;
-  });
+  // Filter and sort students based on year category, section tab, and search query
+  const filteredStudents = React.useMemo(() => {
+    const filtered = studentsList.filter((std) => {
+      const yearCategory = getAcademicYearName(std.admissionYear);
+      if (yearCategory !== selectedYear) return false;
+      
+      if (selectedSection !== 'All' && std.section !== selectedSection) return false;
+      
+      if (debouncedSearchQuery.trim() !== '') {
+        const query = debouncedSearchQuery.toLowerCase();
+        return (
+          std.fullName.toLowerCase().includes(query) ||
+          std.userId.toLowerCase().includes(query)
+        );
+      }
+      
+      return true;
+    });
+
+    // Sort based on roll number (userId)
+    return [...filtered].sort((a, b) => a.userId.localeCompare(b.userId));
+  }, [studentsList, selectedYear, selectedSection, debouncedSearchQuery]);
 
   // Calculate unique sections for the currently selected Year Category
   const sectionsForYear = React.useMemo(() => {
@@ -311,7 +324,7 @@ export const StudentsDirectory: React.FC = () => {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-gray-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-3 border-t border-gray-100">
                       <div className="space-y-0.5">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Academic Year</p>
                         <p className="text-xs font-bold text-gray-800">{getAcademicYearName(studentDetails.student.admissionYear)}</p>
@@ -319,10 +332,6 @@ export const StudentsDirectory: React.FC = () => {
                       <div className="space-y-0.5">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Class Section</p>
                         <p className="text-xs font-bold text-gray-800">Section {studentDetails.student.section}</p>
-                      </div>
-                      <div className="space-y-0.5">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Department</p>
-                        <p className="text-xs font-bold text-gray-800">AI & DS</p>
                       </div>
                       <div className="space-y-0.5">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Cohort Mentor</p>
@@ -480,17 +489,6 @@ export const StudentsDirectory: React.FC = () => {
                   </div>
                 </>
               )}
-            </div>
-          )}
-
-          {/* ── Right Pane: Empty State Placeholder ── */}
-          {!selectedStudentId && (
-            <div className="hidden lg:block lg:col-span-7 bg-white border border-gray-200 border-dashed rounded-2xl p-32 text-center shadow-sm">
-              <GraduationCap className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-base font-bold text-gray-700">Select a Student</h3>
-              <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1 leading-relaxed">
-                Click on any student card from the registry list on the left to view their detailed academic event record, history, and uploaded certificates.
-              </p>
             </div>
           )}
         </div>

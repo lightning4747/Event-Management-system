@@ -14,7 +14,7 @@ export const getAllStudents = async () => {
     .from(students)
     .innerJoin(users, eq(students.userId, users.userId))
     .where(isNull(users.deletedAt))
-    .orderBy(students.fullName);
+    .orderBy(students.userId);
 };
 
 export const getStudentCompleteRecord = async (studentId: string) => {

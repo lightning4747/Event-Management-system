@@ -32,11 +32,26 @@ export const apiFetch = async (
   });
 
   if (!response.ok) {
-    const errBody = await response.json().catch(() => ({}));
-    const errorMsg = errBody.error?.message || errBody.message || 'An unexpected error occurred.';
+    let errorMsg = 'An unexpected error occurred.';
+    let errBody: any = {};
+    try {
+      errBody = await response.json();
+      errorMsg = errBody.error?.message || errBody.message || errorMsg;
+    } catch {
+      try {
+        const textBody = await response.text();
+        if (textBody && textBody.length < 150 && !textBody.trim().startsWith('<')) {
+          errorMsg = textBody;
+        } else {
+          errorMsg = `Server error ${response.status}: ${response.statusText}`;
+        }
+      } catch {
+        errorMsg = `Server error ${response.status}: ${response.statusText}`;
+      }
+    }
     const error = new Error(errorMsg) as APIError;
     error.status = response.status;
-    error.code = errBody.code;
+    error.code = errBody?.error?.code || errBody?.code;
     throw error;
   }
 

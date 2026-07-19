@@ -5,29 +5,43 @@ import { hashPassword } from '../../utils/crypto';
 import { AppError } from '../../lib/errors';
 import { CreateStudentInput } from './mentor.types';
 
+const parseAdmissionYear = (userId: string): number => {
+  // Roll number format e.g. 727624BAD115
+  // We ignore the college code (first 4 digits "7276") and extract the next 2 digits "24"
+  if (userId.length >= 6) {
+    const yearStr = userId.substring(4, 6);
+    const yearNum = parseInt(yearStr);
+    if (!isNaN(yearNum)) {
+      return 2000 + yearNum;
+    }
+  }
+  throw new AppError(400, 'INVALID_REGISTER_NUMBER', 'Failed to extract Admission Year from Register Number. Ensure it is in the correct format (e.g. 727624BAD001).');
+};
+
 export const createStudent = async (
   input: CreateStudentInput,
   mentorUserId: string
 ): Promise<{ userId: string; username: string; fullName: string; role: string }> => {
-  // Check if userId or username already exists
+  const cleanUserId = input.userId.trim().toUpperCase();
+
+  // Parse admission year from roll number
+  const admissionYear = parseAdmissionYear(cleanUserId);
+
+  // Validate admission year is not in the future
+  const currentYear = new Date().getFullYear();
+  if (admissionYear > currentYear) {
+    throw new AppError(400, 'INVALID_ADMISSION_YEAR', `Admission year ${admissionYear} cannot be in the future.`);
+  }
+
+  // Check if userId already exists
   const [existingUserById] = await db
     .select()
     .from(users)
-    .where(eq(users.userId, input.userId))
+    .where(eq(users.userId, cleanUserId))
     .limit(1);
 
   if (existingUserById) {
     throw new AppError(400, 'USER_EXISTS', 'A student with this Register Number already exists.');
-  }
-
-  const [existingUserByName] = await db
-    .select()
-    .from(users)
-    .where(eq(users.username, input.username))
-    .limit(1);
-
-  if (existingUserByName) {
-    throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
   }
 
   const dobParts = input.dateOfBirth.split('-');
@@ -38,19 +52,19 @@ export const createStudent = async (
     // Run in a database transaction to ensure atomicity
     await db.transaction(async (tx) => {
       await tx.insert(users).values({
-        userId: input.userId,
-        username: input.username,
+        userId: cleanUserId,
+        username: cleanUserId, // concept of username removed: set identical to userId
         passwordHash,
         role: 'Student',
         createdBy: mentorUserId,
       });
 
       await tx.insert(students).values({
-        userId: input.userId,
+        userId: cleanUserId,
         mentorId: mentorUserId,
         fullName: input.fullName,
         dateOfBirth: input.dateOfBirth,
-        admissionYear: input.admissionYear,
+        admissionYear,
         section: input.section,
       });
     });
@@ -62,15 +76,15 @@ export const createStudent = async (
         throw new AppError(400, 'USER_EXISTS', 'A student with this Register Number already exists.');
       }
       if (detail.includes('username') || pgErr.constraint === 'users_username_unique') {
-        throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
+        throw new AppError(400, 'USERNAME_TAKEN', 'A user with this username/Register Number already exists.');
       }
     }
     throw error;
   }
 
   return {
-    userId: input.userId,
-    username: input.username,
+    userId: cleanUserId,
+    username: cleanUserId,
     fullName: input.fullName,
     role: 'Student',
   };
