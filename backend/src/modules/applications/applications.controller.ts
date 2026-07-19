@@ -29,3 +29,24 @@ export const submitApplication = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+export const getStudentHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const studentId = req.user?.userId;
+    if (!studentId) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated student details.');
+    }
+
+    const history = await applicationsService.getStudentApplications(studentId);
+    
+    // Serialize BigInt fields to string for JSON serialization compatibility
+    const serializedHistory = history.map(app => ({
+      ...app,
+      applicationId: app.applicationId.toString(),
+    }));
+
+    res.status(200).json(serializedHistory);
+  } catch (error) {
+    next(error);
+  }
+};

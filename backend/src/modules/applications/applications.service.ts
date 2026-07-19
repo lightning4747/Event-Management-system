@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { odApplications, students } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { CreateApplicationInput } from './applications.types';
 
@@ -39,4 +39,27 @@ export const createApplication = async (
     });
 
   return insertedApp;
+};
+
+export const getStudentApplications = async (
+  studentId: string
+): Promise<Array<{
+  applicationId: bigint;
+  studentId: string;
+  title: string;
+  location: string;
+  fromDate: string;
+  toDate: string;
+  numberOfEvents: number;
+  status: 'In Progress: Event Coordinator' | 'In Progress: Mentor' | 'In Progress: Program Coordinator' | 'In Progress: Head of Department' | 'Approved' | 'Rejected' | 'Withdrawn';
+  finalApprovedAt: Date | null;
+  withdrawnAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}>> => {
+  return db
+    .select()
+    .from(odApplications)
+    .where(eq(odApplications.studentId, studentId))
+    .orderBy(desc(odApplications.createdAt));
 };
