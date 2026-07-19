@@ -32,22 +32,36 @@ export const createFaculty = async (
 
   const passwordHash = await hashPassword(input.password);
 
-  // Run in a database transaction to ensure atomicity
-  await db.transaction(async (tx) => {
-    await tx.insert(users).values({
-      userId: input.userId,
-      username: input.username,
-      passwordHash,
-      role: input.role,
-      createdBy: adminUserId,
-    });
+  try {
+    // Run in a database transaction to ensure atomicity
+    await db.transaction(async (tx) => {
+      await tx.insert(users).values({
+        userId: input.userId,
+        username: input.username,
+        passwordHash,
+        role: input.role,
+        createdBy: adminUserId,
+      });
 
-    await tx.insert(faculty).values({
-      userId: input.userId,
-      fullName: input.fullName,
-      designation: input.designation,
+      await tx.insert(faculty).values({
+        userId: input.userId,
+        fullName: input.fullName,
+        designation: input.designation,
+      });
     });
-  });
+  } catch (error) {
+    const pgErr = error as { code?: string; detail?: string; constraint?: string };
+    if (pgErr && pgErr.code === '23505') {
+      const detail = pgErr.detail || '';
+      if (detail.includes('user_id') || pgErr.constraint === 'users_pkey') {
+        throw new AppError(400, 'USER_EXISTS', 'A user with this Register/Faculty ID already exists.');
+      }
+      if (detail.includes('username') || pgErr.constraint === 'users_username_unique') {
+        throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
+      }
+    }
+    throw error;
+  }
 
   return {
     userId: input.userId,
