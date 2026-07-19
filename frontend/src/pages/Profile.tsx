@@ -9,7 +9,7 @@ import { DashboardShell } from '../components/DashboardShell';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
-import { User, Shield, GraduationCap, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Shield, GraduationCap, CheckCircle2, AlertCircle, FileText, Clock, XCircle, Users, BarChart3 } from 'lucide-react';
 
 const facultyUpdateSchema = z.object({
   username: z.string().min(1, 'Username cannot be empty.').optional(),
@@ -42,6 +42,30 @@ export const Profile: React.FC = () => {
       const res = await apiFetch('/profile');
       return res.json();
     },
+  });
+
+  const isStudent = user?.role === 'Student';
+  const isMentor = user?.role === 'Mentor';
+  const isEC = user?.role === 'Event Coordinator';
+  const isHOD = user?.role === 'Head of Department';
+
+  const getMetricsPath = () => {
+    if (isStudent) return '/dashboards/student';
+    if (isMentor) return '/dashboards/mentor';
+    if (isEC) return '/dashboards/coordinator';
+    if (isHOD) return '/dashboards/hod';
+    return null;
+  };
+
+  const metricsPath = getMetricsPath();
+
+  const { data: metrics } = useQuery({
+    queryKey: ['profileMetrics', metricsPath],
+    queryFn: async () => {
+      const res = await apiFetch(metricsPath!);
+      return res.json();
+    },
+    enabled: !!metricsPath,
   });
 
   const {
@@ -157,6 +181,139 @@ export const Profile: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Statistics Section */}
+        {metrics && (
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-gray-400" />
+              <h2 className="text-sm font-bold text-gray-900">System Statistics</h2>
+            </div>
+            <div className="p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {isStudent && (
+                <>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total OD</p>
+                      <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalSubmitted ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending</p>
+                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingCount ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Approved</p>
+                      <p className="text-xl font-bold text-green-700 leading-none mt-1">{metrics.approvedCount ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                    <XCircle className="w-5 h-5 text-red-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Rejected</p>
+                      <p className="text-xl font-bold text-red-700 leading-none mt-1">{metrics.rejectedCount ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Upload Req.</p>
+                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.certificatesActionCount ?? 0}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {isMentor && (
+                <>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Total Mentees</p>
+                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.totalMentees ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending Reviews</p>
+                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingMenteeApprovals ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Mentees Overdue</p>
+                      <p className="text-xl font-bold text-red-700 leading-none mt-1">{metrics.menteesWithExpiredDeadlines ?? 0}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {isEC && (
+                <>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Applications</p>
+                      <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalApplications ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending Reviews</p>
+                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingECApprovals ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Certs to Verify</p>
+                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.pendingCertificateVerifications ?? 0}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {isHOD && (
+                <>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Applications</p>
+                      <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalApplications ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Approved Applications</p>
+                      <p className="text-xl font-bold text-green-700 leading-none mt-1">{metrics.approvedApplications ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Active Students</p>
+                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.activeStudentsCount ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending Approvals</p>
+                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingHODApprovals ?? 0}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Security Section */}
         {isStudent ? (
