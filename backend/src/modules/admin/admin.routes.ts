@@ -8,5 +8,6 @@ router.use(authenticate, requireRole(['Administrator']));
 
 router.post('/faculty', adminController.onboardFaculty);
 router.get('/faculty', adminController.listFaculty);
+router.patch('/assign-role', adminController.assignRole);
 
 export const adminRoutes = router;

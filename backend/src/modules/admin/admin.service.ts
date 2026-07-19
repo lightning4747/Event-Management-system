@@ -94,3 +94,61 @@ export const getFacultyList = async (): Promise<Array<{
 
   return list;
 };
+
+export const assignSpecialRole = async (
+  input: { userId: string; role: 'Head of Department' | 'Program Coordinator' }
+): Promise<{ userId: string; role: string; designation: string }> => {
+  const [targetUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.userId, input.userId))
+    .limit(1);
+
+  if (!targetUser) {
+    throw new AppError(404, 'NOT_FOUND', 'Faculty user not found.');
+  }
+
+  if (targetUser.role === 'Student' || targetUser.role === 'Administrator') {
+    throw new AppError(400, 'INVALID_ROLE_ASSIGNMENT', 'Can only assign HOD or PC role to faculty members.');
+  }
+
+  return db.transaction(async (tx) => {
+    // Revert the previous holder of this role to Mentor / Assistant Professor
+    const [prevHolder] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.role, input.role))
+      .limit(1);
+
+    if (prevHolder && prevHolder.userId !== input.userId) {
+      await tx
+        .update(users)
+        .set({ role: 'Mentor', updatedAt: new Date() })
+        .where(eq(users.userId, prevHolder.userId));
+
+      await tx
+        .update(faculty)
+        .set({ designation: 'Assistant Professor' })
+        .where(eq(faculty.userId, prevHolder.userId));
+    }
+
+    // Assign the new role and designation
+    const designation = input.role === 'Head of Department' ? 'Head of Department - AI&DS' : 'Program Coordinator - AI&DS';
+
+    await tx
+      .update(users)
+      .set({ role: input.role, updatedAt: new Date() })
+      .where(eq(users.userId, input.userId));
+
+    await tx
+      .update(faculty)
+      .set({ designation })
+      .where(eq(faculty.userId, input.userId));
+
+    return {
+      userId: input.userId,
+      role: input.role,
+      designation,
+    };
+  });
+};

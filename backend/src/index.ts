@@ -11,6 +11,7 @@ import { certificatesRoutes } from './modules/certificates/certificates.routes';
 import { extensionsRoutes } from './modules/extensions/extensions.routes';
 import { reportsRoutes } from './modules/reports/reports.routes';
 import { dashboardsRoutes } from './modules/dashboards/dashboards.routes';
+import { studentsRoutes } from './modules/students/students.routes';
 import { checkCertificateDeadlines } from './modules/certificates/certificates.service';
 import { errorHandler } from './middleware/error';
 
@@ -37,6 +38,7 @@ app.use('/api/certificates', certificatesRoutes);
 app.use('/api/extensions', extensionsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/dashboards', dashboardsRoutes);
+app.use('/api/students', studentsRoutes);
 
 // Centralized error handler (must be registered last)
 app.use(errorHandler);

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { createFacultySchema } from './admin.types';
+import { createFacultySchema, assignRoleSchema } from './admin.types';
 import * as adminService from './admin.service';
 import { AppError } from '../../lib/errors';
 
@@ -29,6 +29,21 @@ export const listFaculty = async (_req: Request, res: Response, next: NextFuncti
   try {
     const facultyList = await adminService.getFacultyList();
     res.status(200).json(facultyList);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const assignRole = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = assignRoleSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.errors.map(e => e.message).join(' ');
+      throw new AppError(400, 'BAD_REQUEST', errorMsg);
+    }
+
+    const updatedUser = await adminService.assignSpecialRole(parseResult.data);
+    res.status(200).json(updatedUser);
   } catch (error) {
     next(error);
   }

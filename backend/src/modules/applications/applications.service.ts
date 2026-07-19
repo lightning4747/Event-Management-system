@@ -154,6 +154,7 @@ export const getApplicationDetails = async (
   application: ApplicationDetails;
   history: ApprovalHistoryItem[];
   certificates: CertificateRequirementItem[];
+  extension?: { extensionId: string; newDeadline: string; reason: string } | null;
 }> => {
   // 1. Fetch application details
   const [app] = await db
