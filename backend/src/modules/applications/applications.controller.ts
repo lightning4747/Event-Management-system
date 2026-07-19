@@ -50,3 +50,19 @@ export const getStudentHistory = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+export const listDepartmentApplications = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const list = await applicationsService.getDepartmentApplications();
+    
+    // Serialize BigInt fields to string for JSON serialization compatibility
+    const serializedList = list.map(app => ({
+      ...app,
+      applicationId: app.applicationId.toString(),
+    }));
+
+    res.status(200).json(serializedList);
+  } catch (error) {
+    next(error);
+  }
+};

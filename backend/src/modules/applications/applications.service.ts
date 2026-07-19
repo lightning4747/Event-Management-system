@@ -63,3 +63,39 @@ export const getStudentApplications = async (
     .where(eq(odApplications.studentId, studentId))
     .orderBy(desc(odApplications.createdAt));
 };
+
+export const getDepartmentApplications = async (): Promise<Array<{
+  applicationId: bigint;
+  studentId: string;
+  studentName: string;
+  title: string;
+  location: string;
+  fromDate: string;
+  toDate: string;
+  numberOfEvents: number;
+  status: 'In Progress: Event Coordinator' | 'In Progress: Mentor' | 'In Progress: Program Coordinator' | 'In Progress: Head of Department' | 'Approved' | 'Rejected' | 'Withdrawn';
+  finalApprovedAt: Date | null;
+  withdrawnAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}>> => {
+  return db
+    .select({
+      applicationId: odApplications.applicationId,
+      studentId: odApplications.studentId,
+      studentName: students.fullName,
+      title: odApplications.title,
+      location: odApplications.location,
+      fromDate: odApplications.fromDate,
+      toDate: odApplications.toDate,
+      numberOfEvents: odApplications.numberOfEvents,
+      status: odApplications.status,
+      finalApprovedAt: odApplications.finalApprovedAt,
+      withdrawnAt: odApplications.withdrawnAt,
+      createdAt: odApplications.createdAt,
+      updatedAt: odApplications.updatedAt,
+    })
+    .from(odApplications)
+    .innerJoin(students, eq(odApplications.studentId, students.userId))
+    .orderBy(desc(odApplications.createdAt));
+};
