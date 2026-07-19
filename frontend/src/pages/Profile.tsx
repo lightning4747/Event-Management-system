@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +10,7 @@ import { DashboardShell } from '../components/DashboardShell';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
-import { User, Shield, GraduationCap, CheckCircle2, AlertCircle, FileText, Clock, XCircle, Users, BarChart3 } from 'lucide-react';
+import { User, Shield, GraduationCap, CheckCircle2, AlertCircle, FileText, Clock, XCircle, Users, BarChart3, LogOut } from 'lucide-react';
 
 const facultyUpdateSchema = z.object({
   username: z.string().min(1, 'Username cannot be empty.').optional(),
@@ -31,10 +32,16 @@ const FieldItem = ({ label, value }: { label: string; value: string }) => (
 );
 
 export const Profile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const { data: profile, isLoading, error } = useQuery({
     queryKey: ['profile'],
@@ -407,6 +414,17 @@ export const Profile: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Mobile-Friendly Sign Out Button */}
+        <div className="pt-4 border-t border-gray-200 mt-6">
+          <Button
+            onClick={handleLogout}
+            className="w-full h-10 border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-semibold text-sm flex items-center justify-center gap-2 rounded-xl transition-all active:scale-[0.99]"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
     </DashboardShell>
   );

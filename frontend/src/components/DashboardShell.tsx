@@ -64,11 +64,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
             <div className="w-px h-6 bg-gray-200 hidden sm:block" />
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium"
+              className="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Sign Out</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
