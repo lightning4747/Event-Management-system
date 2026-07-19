@@ -10,8 +10,13 @@ export interface StudentDashboardMetrics {
   certificatesActionCount: number;
 }
 
+export interface ECDashboardMetrics {
+  totalApplications: number;
+  pendingECApprovals: number;
+  pendingCertificateVerifications: number;
+}
+
 export const getStudentDashboardMetrics = async (studentId: string): Promise<StudentDashboardMetrics> => {
-  // 1. Fetch application status counts
   const statusCounts = await db
     .select({
       status: odApplications.status,
@@ -39,7 +44,6 @@ export const getStudentDashboardMetrics = async (studentId: string): Promise<Stu
     }
   }
 
-  // 2. Fetch certificates requiring action (Pending Upload or Rejected)
   const [certsCount] = await db
     .select({
       count: sql<number>`count(*)::int`,
@@ -62,5 +66,40 @@ export const getStudentDashboardMetrics = async (studentId: string): Promise<Stu
     approvedCount,
     rejectedCount,
     certificatesActionCount: certsCount ? Number(certsCount.count) : 0,
+  };
+};
+
+export const getECDashboardMetrics = async (): Promise<ECDashboardMetrics> => {
+  const statusCounts = await db
+    .select({
+      status: odApplications.status,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(odApplications)
+    .groupBy(odApplications.status);
+
+  let totalApplications = 0;
+  let pendingECApprovals = 0;
+
+  for (const item of statusCounts) {
+    const count = Number(item.count);
+    totalApplications += count;
+
+    if (item.status === 'In Progress: Event Coordinator') {
+      pendingECApprovals = count;
+    }
+  }
+
+  const [certsCount] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(certificateRequirements)
+    .where(eq(certificateRequirements.status, 'Uploaded'));
+
+  return {
+    totalApplications,
+    pendingECApprovals,
+    pendingCertificateVerifications: certsCount ? Number(certsCount.count) : 0,
   };
 };

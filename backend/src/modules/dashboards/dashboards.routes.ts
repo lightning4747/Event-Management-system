@@ -7,5 +7,6 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/student', requireRole(['Student']), dashboardsController.getStudentDashboard);
+router.get('/coordinator', requireRole(['Event Coordinator']), dashboardsController.getCoordinatorDashboard);
 
 export const dashboardsRoutes = router;
