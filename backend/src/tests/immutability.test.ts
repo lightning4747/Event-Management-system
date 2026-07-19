@@ -28,7 +28,7 @@ describe('OD Application Immutability Enforcement Test', () => {
     const appId = appResult.applicationId;
 
     // A. In Progress: Should NOT throw
-    await expect(checkApplicationImmutability(appId)).resolves.not.toThrow();
+    await checkApplicationImmutability(appId);
 
     // B. Approved: Should throw 400 APPLICATION_IMMUTABLE
     await db
