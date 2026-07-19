@@ -30,7 +30,9 @@ export const createStudent = async (
     throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
   }
 
-  const passwordHash = await hashPassword(input.password);
+  const dobParts = input.dateOfBirth.split('-');
+  const dobPassword = `${dobParts[2]}${dobParts[1]}${dobParts[0]}`;
+  const passwordHash = await hashPassword(dobPassword);
 
   try {
     // Run in a database transaction to ensure atomicity

@@ -118,6 +118,10 @@ export const updateProfile = async (
 
   // Verify current password if trying to update username or password
   if (input.username || input.password) {
+    if (user.role === 'Student' && input.password) {
+      throw new AppError(400, 'PASSWORD_CHANGE_BLOCKED', 'Students are not allowed to change their passwords.');
+    }
+
     if (!input.currentPassword) {
       throw new AppError(400, 'BAD_REQUEST', 'Current password is required to change username or password.');
     }
