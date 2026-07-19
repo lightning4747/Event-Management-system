@@ -66,3 +66,45 @@ export const listDepartmentApplications = async (_req: Request, res: Response, n
     next(error);
   }
 };
+
+export const viewApplicationDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+    if (!userId || !role) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated user details.');
+    }
+
+    const { id } = req.params;
+    let appId: bigint;
+    try {
+      appId = BigInt(id);
+    } catch {
+      throw new AppError(400, 'BAD_REQUEST', 'Invalid application ID format.');
+    }
+
+    const details = await applicationsService.getApplicationDetails(appId, userId, role);
+    
+    // Safely cast all BigInt identifiers to strings for JSON compliance
+    const serializedDetails = {
+      application: {
+        ...details.application,
+        applicationId: details.application.applicationId.toString(),
+      },
+      history: details.history.map(item => ({
+        ...item,
+        historyId: item.historyId.toString(),
+        applicationId: item.applicationId.toString(),
+      })),
+      certificates: details.certificates.map(item => ({
+        ...item,
+        requirementId: item.requirementId.toString(),
+        uploadVersion: item.uploadVersion !== null ? Number(item.uploadVersion) : null,
+      })),
+    };
+
+    res.status(200).json(serializedDetails);
+  } catch (error) {
+    next(error);
+  }
+};
