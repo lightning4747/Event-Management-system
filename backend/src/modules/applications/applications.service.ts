@@ -103,7 +103,7 @@ export const getStudentApplications = async (
     .orderBy(desc(odApplications.createdAt));
 };
 
-export const getDepartmentApplications = async (): Promise<Array<{
+export const getDepartmentApplications = async (mentorId?: string): Promise<Array<{
   applicationId: bigint;
   studentId: string;
   studentName: string;
@@ -118,7 +118,7 @@ export const getDepartmentApplications = async (): Promise<Array<{
   createdAt: Date;
   updatedAt: Date;
 }>> => {
-  return db
+  const query = db
     .select({
       applicationId: odApplications.applicationId,
       studentId: odApplications.studentId,
@@ -135,8 +135,15 @@ export const getDepartmentApplications = async (): Promise<Array<{
       updatedAt: odApplications.updatedAt,
     })
     .from(odApplications)
-    .innerJoin(students, eq(odApplications.studentId, students.userId))
-    .orderBy(desc(odApplications.createdAt));
+    .innerJoin(students, eq(odApplications.studentId, students.userId));
+
+  if (mentorId) {
+    return query
+      .where(eq(students.mentorId, mentorId))
+      .orderBy(desc(odApplications.createdAt));
+  }
+
+  return query.orderBy(desc(odApplications.createdAt));
 };
 
 export const getApplicationDetails = async (

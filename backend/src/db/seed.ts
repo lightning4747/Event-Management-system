@@ -19,8 +19,37 @@ const seed = async () => {
 
     const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
 
-    // Run the seed SQL file contents as a query batch
+    // 1. Clear existing records to avoid conflicts/duplicates and clean test state
+    logger.info('Truncating existing tables...');
+    await pool.query(`
+      TRUNCATE TABLE 
+        certificate_deadline_extensions,
+        certificates,
+        certificate_requirements,
+        application_approval_history,
+        od_applications,
+        students,
+        faculty,
+        users
+      CASCADE;
+    `);
+
+    // 2. Run the seed SQL file contents as a query batch
+    logger.info('Executing temp.sql...');
     await pool.query(sqlContent);
+
+    // 3. Provision the default Administrator account (since it is not present in temp.sql)
+    logger.info('Provisioning default Administrator user...');
+    await pool.query(`
+      INSERT INTO users (user_id, username, password_hash, role) 
+      VALUES ('ADMIN001', 'admin', '$2a$12$zn6uVfTGdOLR7gCTxSII0eMZlFZw7cmTFuJsJVar4pqOYyuRO6yyK', 'Administrator')
+      ON CONFLICT (user_id) DO NOTHING;
+    `);
+    await pool.query(`
+      INSERT INTO faculty (user_id, full_name, designation) 
+      VALUES ('ADMIN001', 'System Administrator', 'IT Admin')
+      ON CONFLICT (user_id) DO NOTHING;
+    `);
 
     logger.info('Database seeded successfully.');
   } catch (error) {

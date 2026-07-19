@@ -51,9 +51,16 @@ export const getStudentHistory = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const listDepartmentApplications = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const listDepartmentApplications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const list = await applicationsService.getDepartmentApplications();
+    const role = req.user?.role;
+    const userId = req.user?.userId;
+    if (!role || !userId) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated user details.');
+    }
+
+    const mentorId = role === 'Mentor' ? userId : undefined;
+    const list = await applicationsService.getDepartmentApplications(mentorId);
     
     // Serialize BigInt fields to string for JSON serialization compatibility
     const serializedList = list.map(app => ({
