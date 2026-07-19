@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { odApplications, certificateRequirements, certificates } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, lt, and } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
 
@@ -139,4 +139,26 @@ export const verifyCertificate = async (
     status: input.status,
     rejectionReason: input.status === 'Rejected' ? input.comments || null : null,
   };
+};
+
+export const checkCertificateDeadlines = async (): Promise<number> => {
+  const currentDateStr = new Date().toISOString().split('T')[0];
+
+  const expiredReqs = await db
+    .update(certificateRequirements)
+    .set({
+      status: 'Deadline Expired',
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(certificateRequirements.status, 'Pending Upload'),
+        lt(certificateRequirements.submissionDeadline, currentDateStr)
+      )
+    )
+    .returning({
+      requirementId: certificateRequirements.requirementId,
+    });
+
+  return expiredReqs.length;
 };

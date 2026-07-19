@@ -8,6 +8,7 @@ import { mentorRoutes } from './modules/mentor/mentor.routes';
 import { profileRoutes } from './modules/profile/profile.routes';
 import { applicationsRoutes } from './modules/applications/applications.routes';
 import { certificatesRoutes } from './modules/certificates/certificates.routes';
+import { checkCertificateDeadlines } from './modules/certificates/certificates.service';
 import { errorHandler } from './middleware/error';
 
 const app = express();
@@ -36,4 +37,19 @@ app.use(errorHandler);
 
 app.listen(port, () => {
   logger.info(`Backend server listening at http://localhost:${port}`);
+
+  // Daily automated deadline checks
+  const runDeadlineChecks = async () => {
+    try {
+      const expiredCount = await checkCertificateDeadlines();
+      logger.info(`Automated certificate deadline check finished. Expired count: ${expiredCount}`);
+    } catch (err) {
+      logger.error(err, 'Failed running certificate deadline checks');
+    }
+  };
+
+  // Run immediately on start
+  runDeadlineChecks();
+  // Run once daily (24-hour interval)
+  setInterval(runDeadlineChecks, 24 * 60 * 60 * 1000);
 });
