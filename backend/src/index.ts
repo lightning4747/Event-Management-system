@@ -5,6 +5,7 @@ import { httpLogger, logger } from './utils/logger';
 import { authRoutes } from './modules/auth/auth.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import { mentorRoutes } from './modules/mentor/mentor.routes';
+import { profileRoutes } from './modules/profile/profile.routes';
 import { errorHandler } from './middleware/error';
 
 const app = express();
@@ -24,6 +25,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mentor', mentorRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Centralized error handler (must be registered last)
 app.use(errorHandler);

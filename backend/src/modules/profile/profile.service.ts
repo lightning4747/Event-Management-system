@@ -1,0 +1,138 @@
+import { db } from '../../db';
+import { users, students, faculty } from '../../db/schema';
+import { eq, and, isNull } from 'drizzle-orm';
+import { hashPassword } from '../../utils/crypto';
+import { AppError } from '../../lib/errors';
+import { UpdateProfileInput } from './profile.types';
+
+export const getProfile = async (
+  userId: string,
+  role: string
+): Promise<any> => {
+  if (role === 'Student') {
+    const [studentProfile] = await db
+      .select({
+        userId: users.userId,
+        username: users.username,
+        role: users.role,
+        fullName: students.fullName,
+        dateOfBirth: students.dateOfBirth,
+        admissionYear: students.admissionYear,
+        section: students.section,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .innerJoin(students, eq(users.userId, students.userId))
+      .where(
+        and(
+          eq(users.userId, userId),
+          isNull(users.deletedAt)
+        )
+      )
+      .limit(1);
+
+    if (!studentProfile) {
+      throw new AppError(404, 'NOT_FOUND', 'Student profile details not found.');
+    }
+    return studentProfile;
+  }
+
+  // Otherwise check if faculty
+  const [facultyProfile] = await db
+    .select({
+      userId: users.userId,
+      username: users.username,
+      role: users.role,
+      fullName: faculty.fullName,
+      designation: faculty.designation,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .innerJoin(faculty, eq(users.userId, faculty.userId))
+    .where(
+      and(
+        eq(users.userId, userId),
+        isNull(users.deletedAt)
+      )
+    )
+    .limit(1);
+
+  if (facultyProfile) {
+    return facultyProfile;
+  }
+
+  // General user profile fallback (e.g. administrator who is not in faculty table)
+  const [userProfile] = await db
+    .select({
+      userId: users.userId,
+      username: users.username,
+      role: users.role,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(
+      and(
+        eq(users.userId, userId),
+        isNull(users.deletedAt)
+      )
+    )
+    .limit(1);
+
+  if (!userProfile) {
+    throw new AppError(404, 'NOT_FOUND', 'User profile not found.');
+  }
+
+  return userProfile;
+};
+
+export const updateProfile = async (
+  userId: string,
+  input: UpdateProfileInput
+): Promise<{ userId: string; username: string }> => {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.userId, userId),
+        isNull(users.deletedAt)
+      )
+    )
+    .limit(1);
+
+  if (!user) {
+    throw new AppError(404, 'NOT_FOUND', 'User account not found.');
+  }
+
+  const updateData: Partial<typeof users.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (input.username) {
+    // Verify username is not taken by another user
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, input.username))
+      .limit(1);
+
+    if (existingUser && existingUser.userId !== userId) {
+      throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
+    }
+    updateData.username = input.username;
+  }
+
+  if (input.password) {
+    updateData.passwordHash = await hashPassword(input.password);
+  }
+
+  await db
+    .update(users)
+    .set(updateData)
+    .where(eq(users.userId, userId));
+
+  return {
+    userId,
+    username: input.username || user.username,
+  };
+};
