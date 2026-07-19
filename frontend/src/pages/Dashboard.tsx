@@ -30,7 +30,8 @@ interface ApplicationRow {
   createdAt: string;
 }
 
-interface ApplicationDetails extends ApplicationRow {
+interface ApplicationDetails {
+  application: ApplicationRow;
   history: Array<{
     historyId: string;
     approverId: string;
@@ -407,6 +408,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const getStepStatus = (stepRole: string, currentStatus: string, history: any[] = []) => {
+    if (!currentStatus) return 'pending';
     const roleOrder = ['Event Coordinator', 'Mentor', 'Program Coordinator', 'Head of Department'];
     const currentIdx = roleOrder.indexOf(currentStatus.replace('In Progress: ', ''));
 
@@ -557,10 +559,10 @@ export const Dashboard: React.FC = () => {
     }
 
     const newRequest: ExtensionRequestMock = {
-      applicationId: appDetails.applicationId,
-      title: appDetails.title,
-      studentId: appDetails.studentId,
-      studentName: appDetails.studentName,
+      applicationId: appDetails.application.applicationId,
+      title: appDetails.application.title,
+      studentId: appDetails.application.studentId,
+      studentName: appDetails.application.studentName,
       reason: extensionReason,
       requestedDays: requestedDays,
       requestedAt: new Date().toISOString(),
@@ -569,7 +571,7 @@ export const Dashboard: React.FC = () => {
     const stored = localStorage.getItem('mcet_extension_requests');
     const list: ExtensionRequestMock[] = stored ? JSON.parse(stored) : [];
     
-    const exists = list.some(r => r.applicationId === appDetails.applicationId);
+    const exists = list.some(r => r.applicationId === appDetails.application.applicationId);
     if (exists) {
       setExtensionFormError('An extension request for this application is already pending review.');
       return;
@@ -646,12 +648,12 @@ export const Dashboard: React.FC = () => {
 
   const filteredApps = getFilteredApps();
 
-  const isUserCurrentReviewer = appDetails ? appDetails.status === getFacultyPendingStatus() : false;
-  const isPostEvent = appDetails ? new Date() >= new Date(appDetails.toDate) : false;
-  const isAppApproved = appDetails?.status === 'Approved';
+  const isUserCurrentReviewer = appDetails ? appDetails.application.status === getFacultyPendingStatus() : false;
+  const isPostEvent = appDetails ? new Date() >= new Date(appDetails.application.toDate) : false;
+  const isAppApproved = appDetails?.application.status === 'Approved';
   const showUploadSection = isAppApproved && isPostEvent;
 
-  const isExtensionPending = appDetails ? (localStorage.getItem('mcet_extension_requests') ? (JSON.parse(localStorage.getItem('mcet_extension_requests')!) as ExtensionRequestMock[]).some(r => r.applicationId === appDetails.applicationId) : false) : false;
+  const isExtensionPending = appDetails ? (localStorage.getItem('mcet_extension_requests') ? (JSON.parse(localStorage.getItem('mcet_extension_requests')!) as ExtensionRequestMock[]).some(r => r.applicationId === appDetails.application.applicationId) : false) : false;
 
   return (
     <DashboardShell>
@@ -1285,15 +1287,15 @@ export const Dashboard: React.FC = () => {
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
                   <div className="flex justify-between items-start gap-2">
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      StudentID: {appDetails.studentId}
+                      StudentID: {appDetails.application.studentId}
                     </span>
-                    <span className={`border text-[9px] font-bold px-2 py-0.5 rounded ${getStatusColor(appDetails.status)}`}>
-                      {appDetails.status}
+                    <span className={`border text-[9px] font-bold px-2 py-0.5 rounded ${getStatusColor(appDetails.application.status)}`}>
+                      {appDetails.application.status}
                     </span>
                   </div>
-                  <h4 className="text-xs font-bold text-gray-900">{appDetails.title}</h4>
+                  <h4 className="text-xs font-bold text-gray-900">{appDetails.application.title}</h4>
                   <p className="text-[10px] text-gray-500 font-medium">
-                    {appDetails.location} • {appDetails.fromDate} to {appDetails.toDate} • {appDetails.numberOfEvents} {appDetails.numberOfEvents === 1 ? 'event' : 'events'}
+                    {appDetails.application.location} • {appDetails.application.fromDate} to {appDetails.application.toDate} • {appDetails.application.numberOfEvents} {appDetails.application.numberOfEvents === 1 ? 'event' : 'events'}
                   </p>
                 </div>
 
@@ -1618,7 +1620,7 @@ export const Dashboard: React.FC = () => {
                     { role: 'Program Coordinator', label: 'Program Coordinator Review' },
                     { role: 'Head of Department', label: 'HOD Final Sign-off' },
                   ].map((step, idx) => {
-                    const stepStatus = getStepStatus(step.role, appDetails.status, appDetails.history);
+                    const stepStatus = getStepStatus(step.role, appDetails.application.status, appDetails.history);
 
                     return (
                       <div key={idx} className="flex gap-3">
