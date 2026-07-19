@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '.
 import { 
   FileText, Clock, CheckCircle, XCircle, AlertCircle, Plus, 
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList, Eye,
-  User as UserIcon, UserPlus, Calendar, Hourglass
+  User as UserIcon, UserPlus, Calendar, Hourglass, Download, Settings
 } from 'lucide-react';
 
 interface ApplicationRow {
@@ -64,6 +64,15 @@ interface ExtensionRequestMock {
   requestedAt: string;
 }
 
+interface FacultyRow {
+  userId: string;
+  username: string;
+  fullName: string;
+  role: string;
+  designation: string;
+  createdAt: string;
+}
+
 const oneDriveSchema = z
   .string()
   .url('Please enter a valid URL.')
@@ -101,6 +110,34 @@ export const Dashboard: React.FC = () => {
   const [createStudentError, setCreateStudentError] = React.useState<string | null>(null);
   const [createStudentSuccess, setCreateStudentSuccess] = React.useState<string | null>(null);
 
+  // Admin Faculty Onboarding states (Module 9)
+  const [createFacultyOpen, setCreateFacultyOpen] = React.useState(false);
+  const [facultyFormValues, setFacultyFormValues] = React.useState({
+    userId: '',
+    username: '',
+    fullName: '',
+    password: '',
+    role: 'Mentor',
+    designation: 'Assistant Professor',
+  });
+  const [createFacultyError, setCreateFacultyError] = React.useState<string | null>(null);
+  const [createFacultySuccess, setCreateFacultySuccess] = React.useState<string | null>(null);
+
+  // CSV Export Filter states (Module 8)
+  const [filterFromDate, setFilterFromDate] = React.useState('');
+  const [filterToDate, setFilterToDate] = React.useState('');
+  const [filterSection, setFilterSection] = React.useState('');
+  const [filterYear, setFilterYear] = React.useState('');
+  const [exportLoading, setExportLoading] = React.useState(false);
+
+  const tableHeaders: TableHeader[] = [
+    { label: 'Student', key: 'studentName' },
+    { label: 'Event Title', key: 'title' },
+    { label: 'Dates', key: 'fromDate' },
+    { label: 'Status', key: 'status' },
+    { label: 'Action', key: 'action' },
+  ];
+
   // Faculty decision form states
   const [decisionType, setDecisionType] = React.useState<'Approve' | 'Reject' | null>(null);
   const [decisionComments, setDecisionComments] = React.useState('');
@@ -123,6 +160,7 @@ export const Dashboard: React.FC = () => {
   const isMentor = user?.role === 'Mentor';
   const isPC = user?.role === 'Program Coordinator';
   const isHOD = user?.role === 'Head of Department';
+  const isAdmin = user?.role === 'Administrator';
 
   // 1. Fetch dashboard metrics depending on user role
   const { data: studentMetrics } = useQuery({
@@ -161,6 +199,16 @@ export const Dashboard: React.FC = () => {
     enabled: isHOD,
   });
 
+  // Admin: Fetch list of faculty (Module 9)
+  const { data: facultyList = [], isLoading: facultyListLoading } = useQuery<FacultyRow[]>({
+    queryKey: ['adminFacultyList'],
+    queryFn: async () => {
+      const res = await apiFetch('/admin/faculty');
+      return res.json();
+    },
+    enabled: isAdmin,
+  });
+
   // 2. Fetch applications lists
   const { data: studentApps = [], isLoading: studentAppsLoading } = useQuery<ApplicationRow[]>({
     queryKey: ['studentApplications'],
@@ -177,7 +225,7 @@ export const Dashboard: React.FC = () => {
       const res = await apiFetch('/applications');
       return res.json();
     },
-    enabled: !isStudent,
+    enabled: !isStudent && !isAdmin,
   });
 
   // 3. Fetch specific application details
@@ -280,7 +328,37 @@ export const Dashboard: React.FC = () => {
     },
   });
 
-  // 8. Mutation to grant deadline extension (Mentor side)
+  // 8. Mutation to onboard faculty account (Admin side - Module 9)
+  const onboardFacultyMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await apiFetch('/admin/faculty', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setCreateFacultySuccess('Faculty account created successfully.');
+      queryClient.invalidateQueries({ queryKey: ['adminFacultyList'] });
+      setFacultyFormValues({
+        userId: '',
+        username: '',
+        fullName: '',
+        password: '',
+        role: 'Mentor',
+        designation: 'Assistant Professor',
+      });
+      setTimeout(() => {
+        setCreateFacultyOpen(false);
+        setCreateFacultySuccess(null);
+      }, 1500);
+    },
+    onError: (err: any) => {
+      setCreateFacultyError(err.message || 'Failed to create faculty account.');
+    },
+  });
+
+  // 9. Mutation to grant deadline extension (Mentor side)
   const grantExtensionMutation = useMutation({
     mutationFn: async (payload: { applicationId: string; newDeadline: string; reason: string }) => {
       const res = await apiFetch('/extensions', {
@@ -290,7 +368,6 @@ export const Dashboard: React.FC = () => {
       return res.json();
     },
     onSuccess: () => {
-      // Remove mock request from localStorage upon database grant success
       if (grantAppId) {
         const stored = localStorage.getItem('mcet_extension_requests');
         if (stored) {
@@ -426,7 +503,42 @@ export const Dashboard: React.FC = () => {
     onboardStudentMutation.mutate(studentFormValues);
   };
 
-  // Submit simulated extension request to localStorage (Student side)
+  const handleFacultyOnboardSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateFacultyError(null);
+    setCreateFacultySuccess(null);
+    onboardFacultyMutation.mutate(facultyFormValues);
+  };
+
+  // Trigger download stream with token support (Module 8)
+  const handleExportCSV = async () => {
+    const params = new URLSearchParams();
+    if (filterFromDate) params.append('fromDate', filterFromDate);
+    if (filterToDate) params.append('toDate', filterToDate);
+    if (filterSection) params.append('section', filterSection);
+    if (filterYear) params.append('admissionYear', filterYear);
+
+    const path = isMentor ? `/reports/cohort?${params.toString()}` : `/reports/global?${params.toString()}`;
+    
+    try {
+      setExportLoading(true);
+      const res = await apiFetch(path);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', isMentor ? 'cohort_od_report.csv' : 'global_od_report.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err: any) {
+      alert(err.message || 'Failed to download report.');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Submit simulated extension request to localStorage
   const handleExtensionRequestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setExtensionFormError(null);
@@ -439,7 +551,6 @@ export const Dashboard: React.FC = () => {
 
     if (!appDetails) return;
 
-    // Enforce Rule 7.4 client-side: check if extension was already granted
     if (appDetails.extension) {
       setExtensionFormError('Rule Check: Subsequent extensions are blocked. An extension was already granted.');
       return;
@@ -458,7 +569,6 @@ export const Dashboard: React.FC = () => {
     const stored = localStorage.getItem('mcet_extension_requests');
     const list: ExtensionRequestMock[] = stored ? JSON.parse(stored) : [];
     
-    // Check if a request is already pending
     const exists = list.some(r => r.applicationId === appDetails.applicationId);
     if (exists) {
       setExtensionFormError('An extension request for this application is already pending review.');
@@ -501,7 +611,6 @@ export const Dashboard: React.FC = () => {
     });
   };
 
-  // Check if student has any overdue uploads (expired deadlines)
   const getHasOverdueCerts = () => {
     if (!isStudent) return false;
     return studentApps.some(app => {
@@ -513,7 +622,6 @@ export const Dashboard: React.FC = () => {
 
   const hasOverdueCerts = getHasOverdueCerts();
 
-  // 7. Client-side filters for active queues
   const getFacultyPendingStatus = () => {
     if (isEC) return 'In Progress: Event Coordinator';
     if (isMentor) return 'In Progress: Mentor';
@@ -522,14 +630,7 @@ export const Dashboard: React.FC = () => {
     return '';
   };
 
-  // Load mock requests from localStorage for active queue (Mentor side)
-  const getMockExtensionRequests = (): ExtensionRequestMock[] => {
-    if (!isMentor) return [];
-    const stored = localStorage.getItem('mcet_extension_requests');
-    return stored ? JSON.parse(stored) : [];
-  };
-
-  const mockExtensionRequests = getMockExtensionRequests();
+  const mockExtensionRequests = isMentor ? (localStorage.getItem('mcet_extension_requests') ? JSON.parse(localStorage.getItem('mcet_extension_requests')!) : []) : [];
 
   const getFilteredApps = () => {
     const targetStatus = getFacultyPendingStatus();
@@ -545,38 +646,19 @@ export const Dashboard: React.FC = () => {
 
   const filteredApps = getFilteredApps();
 
-  // Helper check to see if the logged-in user is the current reviewer
   const isUserCurrentReviewer = appDetails ? appDetails.status === getFacultyPendingStatus() : false;
-
-  // Student upload portal visibility checks
   const isPostEvent = appDetails ? new Date() >= new Date(appDetails.toDate) : false;
   const isAppApproved = appDetails?.status === 'Approved';
   const showUploadSection = isAppApproved && isPostEvent;
 
-  // Check if an extension request has already been sent/pending locally
-  const getIsExtensionRequestPending = () => {
-    if (!appDetails) return false;
-    const stored = localStorage.getItem('mcet_extension_requests');
-    if (!stored) return false;
-    const list = JSON.parse(stored) as ExtensionRequestMock[];
-    return list.some(r => r.applicationId === appDetails.applicationId);
-  };
-
-  const isExtensionPending = getIsExtensionRequestPending();
-
-  const tableHeaders: TableHeader[] = [
-    { label: 'Student', key: 'studentName' },
-    { label: 'Event Title', key: 'title' },
-    { label: 'Dates', key: 'fromDate' },
-    { label: 'Status', key: 'status' },
-    { label: 'Action', key: 'action' },
-  ];
+  const isExtensionPending = appDetails ? (localStorage.getItem('mcet_extension_requests') ? (JSON.parse(localStorage.getItem('mcet_extension_requests')!) as ExtensionRequestMock[]).some(r => r.applicationId === appDetails.applicationId) : false) : false;
 
   return (
     <DashboardShell>
       <div className="space-y-6">
+        
         {/* ========================================================
-            OVERDUE WARNING BANNER (Task 7.1)
+            OVERDUE WARNING BANNER
            ======================================================== */}
         {hasOverdueCerts && (
           <div className="bg-red-50 border border-red-200 text-red-800 text-xs p-4 rounded-lg flex items-start gap-2.5 animate-in slide-in-from-top duration-300 font-semibold shadow-sm">
@@ -591,7 +673,98 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* ========================================================
-            1. STUDENT DASHBOARD
+            1. ADMINISTRATOR CONSOLE (Module 9)
+           ======================================================== */}
+        {isAdmin && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-gray-900">Administrator Console</h2>
+                <p className="text-xs text-gray-500">Manage institutional faculty listings and onboarding authorizations</p>
+              </div>
+              <Button
+                onClick={() => setCreateFacultyOpen(true)}
+                className="w-full sm:w-auto text-xs flex items-center justify-center gap-1.5 h-9"
+              >
+                <UserPlus className="w-4 h-4" /> Provision Faculty Account
+              </Button>
+            </div>
+
+            {/* Faculty directory listing */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                <Settings className="w-4 h-4 text-gray-500" /> Faculty Accounts Registry
+              </h3>
+
+              {facultyListLoading ? (
+                <div className="py-8 text-center text-xs text-muted-foreground animate-pulse font-medium">
+                  LOADING REGISTRIES...
+                </div>
+              ) : facultyList.length === 0 ? (
+                <div className="border border-dashed border-gray-200 rounded-lg p-8 text-center text-xs text-gray-500 font-medium">
+                  No faculty accounts registered in the database.
+                </div>
+              ) : (
+                <>
+                  {/* Mobile Directory List */}
+                  <div className="grid grid-cols-1 gap-3 md:hidden">
+                    {facultyList.map((fac) => (
+                      <div
+                        key={fac.userId}
+                        className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-1.5"
+                      >
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-bold text-sm text-gray-900">{fac.fullName}</h4>
+                          <span className="text-[9px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-bold border border-gray-200">
+                            {fac.role}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 font-medium">
+                          ID: {fac.userId} • Designation: {fac.designation}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Directory Table */}
+                  <div className="hidden md:block">
+                    <Table
+                      headers={[
+                        { label: 'Faculty ID', key: 'userId' },
+                        { label: 'Full Name', key: 'fullName' },
+                        { label: 'Designation', key: 'designation' },
+                        { label: 'System Role', key: 'role' },
+                      ]}
+                      data={facultyList}
+                      renderCell={(row: FacultyRow, key) => {
+                        if (key === 'userId') {
+                          return <span className="font-bold text-gray-900">{row.userId}</span>;
+                        }
+                        if (key === 'fullName') {
+                          return <span className="font-medium text-gray-800">{row.fullName}</span>;
+                        }
+                        if (key === 'designation') {
+                          return <span className="text-gray-500">{row.designation}</span>;
+                        }
+                        if (key === 'role') {
+                          return (
+                            <span className="border text-[10px] font-semibold px-2.5 py-0.5 rounded bg-gray-50 text-gray-700 border-gray-200">
+                              {row.role}
+                            </span>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            2. STUDENT DASHBOARD
            ======================================================== */}
         {isStudent && (
           <div className="space-y-6">
@@ -739,9 +912,9 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* ========================================================
-            2. FACULTY APPROVAL & VERIFICATION CONSOLE
+            3. FACULTY APPROVAL & VERIFICATION CONSOLE
            ======================================================== */}
-        {!isStudent && (
+        {!isStudent && !isAdmin && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -844,6 +1017,73 @@ export const Dashboard: React.FC = () => {
               </div>
             )}
 
+            {/* ========================================================
+                CSV EXPORT FILTER PANEL (Module 8 - Tasks 8.1 & 8.2)
+               ======================================================== */}
+            <div className="bg-white border border-gray-200 p-4 rounded-lg space-y-3.5">
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Download className="w-4 h-4 text-gray-600" /> Export On-Duty Data Report
+              </h3>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="repFrom" className="text-[10px] text-gray-400 uppercase font-bold">From Date</Label>
+                  <Input
+                    id="repFrom"
+                    type="date"
+                    value={filterFromDate}
+                    onChange={(e) => setFilterFromDate(e.target.value)}
+                    className="text-xs h-8"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="repTo" className="text-[10px] text-gray-400 uppercase font-bold">To Date</Label>
+                  <Input
+                    id="repTo"
+                    type="date"
+                    value={filterToDate}
+                    onChange={(e) => setFilterToDate(e.target.value)}
+                    className="text-xs h-8"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="repSection" className="text-[10px] text-gray-400 uppercase font-bold">Section</Label>
+                  <Select
+                    id="repSection"
+                    value={filterSection}
+                    onChange={(e) => setFilterSection(e.target.value)}
+                    className="text-xs h-8"
+                  >
+                    <option value="">All Sections</option>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                    <option value="C">Section C</option>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="repYear" className="text-[10px] text-gray-400 uppercase font-bold">Admission Year</Label>
+                  <Input
+                    id="repYear"
+                    type="number"
+                    placeholder="e.g. 2024"
+                    value={filterYear}
+                    onChange={(e) => setFilterYear(e.target.value)}
+                    className="text-xs h-8"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <Button
+                  onClick={handleExportCSV}
+                  disabled={exportLoading}
+                  className="text-xs h-8 gap-1"
+                >
+                  {exportLoading ? 'Generating Export...' : 'Download CSV Report'}
+                </Button>
+              </div>
+            </div>
+
             {/* Filter Navigation Tabs */}
             <div className="border-b border-gray-200 flex gap-2">
               <button
@@ -895,14 +1135,14 @@ export const Dashboard: React.FC = () => {
             {/* Active Queue lists */}
             <div className="space-y-4">
               {activeTab === 'extensions' && isMentor ? (
-                /* ============ EXTENSION REVIEW CONSOLE (Task 7.3) ============ */
+                /* ============ EXTENSION REVIEW CONSOLE ============ */
                 mockExtensionRequests.length === 0 ? (
                   <div className="border border-dashed border-gray-200 rounded-lg p-8 text-center text-xs text-gray-500 font-medium">
                     No pending deadline extension requests from cohort students.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {mockExtensionRequests.map((req) => (
+                    {mockExtensionRequests.map((req: any) => (
                       <div
                         key={req.applicationId}
                         className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-between gap-3"
@@ -923,7 +1163,6 @@ export const Dashboard: React.FC = () => {
                             size="sm"
                             className="flex-1 text-[11px] h-8 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
                             onClick={() => {
-                              // Rejection: simply delete request from mock list
                               const stored = localStorage.getItem('mcet_extension_requests');
                               if (stored) {
                                 const list = JSON.parse(stored) as ExtensionRequestMock[];
@@ -1032,7 +1271,7 @@ export const Dashboard: React.FC = () => {
         )}
 
         {/* ========================================================
-            3. WORKFLOW DRAWER / DIALOG (UNIFIED REVIEW CONSOLE)
+            4. WORKFLOW DRAWER / DIALOG (UNIFIED REVIEW CONSOLE)
            ======================================================== */}
         <Dialog open={!!selectedAppId} onOpenChange={(open) => !open && setSelectedAppId(null)}>
           <DialogContent className="max-w-md bg-white border border-gray-200 max-h-[85vh] overflow-y-auto">
@@ -1058,7 +1297,7 @@ export const Dashboard: React.FC = () => {
                   </p>
                 </div>
 
-                {/* ============ EXTENSION STATUS AND RULE GAUGES (Task 7.4) ============ */}
+                {/* Extension alert banner */}
                 {appDetails.extension && (
                   <div className="bg-blue-50 border border-blue-200 text-blue-800 text-[11px] p-3 rounded-lg flex items-start gap-2 font-medium">
                     <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
@@ -1072,13 +1311,12 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
 
-                {/* ============ STUDENT UPLOAD CONSOLE & EXTENSION CTA (Task 7.2) ============ */}
+                {/* Student upload console */}
                 {isStudent && showUploadSection && appDetails.certificates && appDetails.certificates.length > 0 && (
                   <div className="space-y-3 pt-3 border-t border-gray-200 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center gap-2">
                       <h5 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Post-Event Certificate Submission</h5>
                       
-                      {/* Extension request CTA button */}
                       {!appDetails.extension ? (
                         <Button
                           variant="outline"
@@ -1179,7 +1417,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
 
-                {/* ============ DECISIONS CONSOLE ============ */}
+                {/* Faculty review decisions console */}
                 {!isStudent && isUserCurrentReviewer && (
                   <div className="border border-amber-200 bg-amber-50/30 rounded-lg p-3 space-y-3.5">
                     <h5 className="text-[10px] text-amber-800 font-bold uppercase tracking-wider flex items-center gap-1">
@@ -1250,7 +1488,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
 
-                {/* ============ CERTIFICATES VERIFICATION CONSOLE ============ */}
+                {/* Certificate verification console */}
                 {!isStudent && isEC && appDetails.certificates && appDetails.certificates.length > 0 && (
                   <div className="space-y-3 pt-3 border-t border-gray-200">
                     <h5 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Post-Event Certificate verification</h5>
@@ -1270,7 +1508,6 @@ export const Dashboard: React.FC = () => {
                               </span>
                             </div>
 
-                            {/* OneDrive verification link */}
                             {cert.fileUrl ? (
                               <div className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold bg-blue-50/30 p-2 border border-blue-100 rounded">
                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -1287,7 +1524,6 @@ export const Dashboard: React.FC = () => {
                               <p className="text-[11px] text-gray-400 italic">No certificate URL submitted yet.</p>
                             )}
 
-                            {/* EC verify panel */}
                             {isUploaded && (
                               <div className="space-y-3 pt-2 border-t border-gray-200/50">
                                 <div className="flex gap-2">
@@ -1360,7 +1596,6 @@ export const Dashboard: React.FC = () => {
                               </div>
                             )}
 
-                            {/* Rejected comments feedback view */}
                             {isRejected && cert.rejectionReason && (
                               <div className="bg-red-50 border border-red-200 text-red-800 text-[10px] p-2 rounded">
                                 <p className="font-bold">Rejection comments:</p>
@@ -1374,7 +1609,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
 
-                {/* Workflow approvals progress timeline */}
+                {/* Progress timeline */}
                 <div className="space-y-4 pt-3 border-t border-gray-200">
                   <h5 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">Workflow Approvals Timeline</h5>
                   {[
@@ -1421,7 +1656,7 @@ export const Dashboard: React.FC = () => {
                   })}
                 </div>
 
-                {/* Audit Comments history */}
+                {/* History list */}
                 {appDetails.history.length > 0 && (
                   <div className="space-y-2 pt-4 border-t border-gray-100">
                     <h5 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Review Comments History</h5>
@@ -1458,7 +1693,7 @@ export const Dashboard: React.FC = () => {
         </Dialog>
 
         {/* ========================================================
-            4. COHORT STUDENT ONBOARDING DIALOG
+            5. COHORT STUDENT ONBOARDING DIALOG
            ======================================================== */}
         <Dialog open={createStudentOpen} onOpenChange={(open) => !open && setCreateStudentOpen(false)}>
           <DialogContent className="max-w-md bg-white border border-gray-200">
@@ -1581,7 +1816,130 @@ export const Dashboard: React.FC = () => {
         </Dialog>
 
         {/* ========================================================
-            5. STUDENT REQUEST EXTENSION DIALOG (Task 7.2)
+            6. ADMINISTRATOR: FACULTY ONBOARDING DIALOG (Module 9 - Task 9.1)
+           ======================================================== */}
+        <Dialog open={createFacultyOpen} onOpenChange={(open) => !open && setCreateFacultyOpen(false)}>
+          <DialogContent className="max-w-md bg-white border border-gray-200">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-gray-900">Provision Faculty Account</DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleFacultyOnboardSubmit} className="space-y-4 pt-2">
+              {createFacultySuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-700 text-xs p-3 rounded-lg text-center font-semibold animate-in fade-in duration-150">
+                  {createFacultySuccess}
+                </div>
+              )}
+
+              {createFacultyError && (
+                <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg text-center font-medium animate-in fade-in duration-150">
+                  {createFacultyError}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="fUserId">Faculty ID</Label>
+                <Input
+                  id="fUserId"
+                  placeholder="e.g. FAC009"
+                  required
+                  value={facultyFormValues.userId}
+                  onChange={(e) => setFacultyFormValues(prev => ({ ...prev, userId: e.target.value }))}
+                  disabled={onboardFacultyMutation.isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fFullName">Full Name</Label>
+                <Input
+                  id="fFullName"
+                  placeholder="e.g. Dr. ARUN PRASAD"
+                  required
+                  value={facultyFormValues.fullName}
+                  onChange={(e) => setFacultyFormValues(prev => ({ ...prev, fullName: e.target.value }))}
+                  disabled={onboardFacultyMutation.isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fUsername">Login Username</Label>
+                <Input
+                  id="fUsername"
+                  placeholder="e.g. arun_p"
+                  required
+                  value={facultyFormValues.username}
+                  onChange={(e) => setFacultyFormValues(prev => ({ ...prev, username: e.target.value }))}
+                  disabled={onboardFacultyMutation.isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fPassword">Account Password</Label>
+                <Input
+                  id="fPassword"
+                  type="password"
+                  required
+                  placeholder="Minimum 6 characters"
+                  value={facultyFormValues.password}
+                  onChange={(e) => setFacultyFormValues(prev => ({ ...prev, password: e.target.value }))}
+                  disabled={onboardFacultyMutation.isPending}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fDesignation">Designation</Label>
+                  <Input
+                    id="fDesignation"
+                    placeholder="e.g. Assistant Professor"
+                    required
+                    value={facultyFormValues.designation}
+                    onChange={(e) => setFacultyFormValues(prev => ({ ...prev, designation: e.target.value }))}
+                    disabled={onboardFacultyMutation.isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fRole">System Role</Label>
+                  <Select
+                    id="fRole"
+                    value={facultyFormValues.role}
+                    onChange={(e) => setFacultyFormValues(prev => ({ ...prev, role: e.target.value }))}
+                    disabled={onboardFacultyMutation.isPending}
+                  >
+                    <option value="Mentor">Mentor</option>
+                    <option value="Event Coordinator">Event Coordinator</option>
+                    <option value="Program Coordinator">Program Coordinator</option>
+                    <option value="Head of Department">Head of Department</option>
+                    <option value="Administrator">Administrator</option>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 text-xs h-9"
+                  onClick={() => setCreateFacultyOpen(false)}
+                  disabled={onboardFacultyMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 text-xs h-9"
+                  disabled={onboardFacultyMutation.isPending}
+                >
+                  {onboardFacultyMutation.isPending ? 'Provisioning...' : 'Provision Account'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================
+            7. STUDENT REQUEST EXTENSION DIALOG
            ======================================================== */}
         <Dialog open={requestExtensionOpen} onOpenChange={(open) => !open && setRequestExtensionOpen(false)}>
           <DialogContent className="max-w-sm bg-white border border-gray-200">
@@ -1650,7 +2008,7 @@ export const Dashboard: React.FC = () => {
         </Dialog>
 
         {/* ========================================================
-            6. MENTOR GRANT EXTENSION DIALOG (Task 7.3)
+            8. MENTOR GRANT EXTENSION DIALOG
            ======================================================== */}
         <Dialog open={grantExtensionOpen} onOpenChange={(open) => !open && setGrantExtensionOpen(false)}>
           <DialogContent className="max-w-sm bg-white border border-gray-200">
