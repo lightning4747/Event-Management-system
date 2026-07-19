@@ -149,10 +149,18 @@ export const updateProfile = async (
     updateData.passwordHash = await hashPassword(input.password);
   }
 
-  await db
-    .update(users)
-    .set(updateData)
-    .where(eq(users.userId, userId));
+  try {
+    await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.userId, userId));
+  } catch (error) {
+    const pgErr = error as { code?: string; detail?: string; constraint?: string };
+    if (pgErr && pgErr.code === '23505') {
+      throw new AppError(400, 'USERNAME_TAKEN', 'This username is already taken.');
+    }
+    throw error;
+  }
 
   return {
     userId,
