@@ -9,6 +9,7 @@ import { profileRoutes } from './modules/profile/profile.routes';
 import { applicationsRoutes } from './modules/applications/applications.routes';
 import { certificatesRoutes } from './modules/certificates/certificates.routes';
 import { extensionsRoutes } from './modules/extensions/extensions.routes';
+import { reportsRoutes } from './modules/reports/reports.routes';
 import { checkCertificateDeadlines } from './modules/certificates/certificates.service';
 import { errorHandler } from './middleware/error';
 
@@ -33,6 +34,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/applications', applicationsRoutes);
 app.use('/api/certificates', certificatesRoutes);
 app.use('/api/extensions', extensionsRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Centralized error handler (must be registered last)
 app.use(errorHandler);
