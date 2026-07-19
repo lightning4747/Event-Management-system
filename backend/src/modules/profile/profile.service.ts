@@ -5,10 +5,22 @@ import { hashPassword } from '../../utils/crypto';
 import { AppError } from '../../lib/errors';
 import { UpdateProfileInput } from './profile.types';
 
+export interface UserProfileResponse {
+  userId: string;
+  username: string;
+  role: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  admissionYear?: number;
+  section?: string;
+  designation?: string;
+  createdAt: Date;
+}
+
 export const getProfile = async (
   userId: string,
   role: string
-): Promise<any> => {
+): Promise<UserProfileResponse> => {
   if (role === 'Student') {
     const [studentProfile] = await db
       .select({

@@ -8,6 +8,9 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
+  // Silence unused variable warning while keeping Express's 4-parameter error handler signature intact
+  void _next;
+
   if (err instanceof AppError) {
     logger.warn({
       code: err.code,
