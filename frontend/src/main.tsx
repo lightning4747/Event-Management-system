@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Profile } from './pages/Profile';
 import { NewApplication } from './pages/NewApplication';
+import { StudentsDirectory } from './pages/StudentsDirectory';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -50,6 +51,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedRoute>
                   <NewApplication />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/students"
+              element={
+                <ProtectedRoute>
+                  <StudentsDirectory />
                 </ProtectedRoute>
               }
             />
