@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
@@ -12,7 +12,7 @@ import { Label } from '../components/ui/Label';
 import { Select } from '../components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../components/ui/Dialog';
 import {
-  FileText, Clock, CheckCircle, XCircle, AlertCircle, Plus,
+  FileText, Clock, CheckCircle, XCircle, AlertCircle, Plus, PlusCircle,
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList,
   User as UserIcon, UserPlus, Calendar, Hourglass, Download, Settings,
   AlertTriangle, Users
@@ -181,6 +181,7 @@ const SectionTitle: React.FC<{ children: React.ReactNode; subtitle?: string }> =
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // ── UI State ──
   const [selectedAppId, setSelectedAppId] = React.useState<string | null>(null);
@@ -378,6 +379,26 @@ export const Dashboard: React.FC = () => {
       setTimeout(() => { setCreateFacultyOpen(false); setCreateFacultySuccess(null); }, 1500);
     },
     onError: (err: any) => setCreateFacultyError(err.message || 'Failed to create faculty account.'),
+  });
+
+  const assignRoleMutation = useMutation({
+    mutationFn: async (payload: { userId: string; role: 'Head of Department' | 'Program Coordinator' }) => {
+      const res = await apiFetch('/admin/assign-role', {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.error?.message || errorBody.message || 'Failed to assign role.');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['adminFacultyList'] });
+    },
+    onError: (err: any) => {
+      alert(err.message || 'Failed to assign role.');
+    },
   });
 
   const grantExtensionMutation = useMutation({
@@ -649,9 +670,31 @@ export const Dashboard: React.FC = () => {
                         <p className="text-sm font-bold text-gray-900">{fac.fullName}</p>
                         <p className="text-xs text-gray-500">{fac.designation} · ID: {fac.userId}</p>
                       </div>
-                      <span className="text-[11px] font-bold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
-                        {fac.role}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {fac.role !== 'Administrator' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Head of Department' })}
+                              disabled={fac.role === 'Head of Department' || assignRoleMutation.isPending}
+                              className="text-[10px] h-7 px-2"
+                            >
+                              {fac.role === 'Head of Department' ? 'HOD' : 'Assign HOD'}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Program Coordinator' })}
+                              disabled={fac.role === 'Program Coordinator' || assignRoleMutation.isPending}
+                              className="text-[10px] h-7 px-2"
+                            >
+                              {fac.role === 'Program Coordinator' ? 'PC' : 'Assign PC'}
+                            </Button>
+                          </>
+                        )}
+                        <span className="text-[11px] font-bold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
+                          {fac.role}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -669,23 +712,39 @@ export const Dashboard: React.FC = () => {
               <SectionTitle subtitle="Track and manage your event On-Duty approvals">
                 Student Dashboard
               </SectionTitle>
-              <Link to="/applications/new">
-                <Button className="flex items-center gap-2 h-9 text-sm bg-blue-600 hover:bg-blue-700 text-white">
-                  <Plus className="w-4 h-4" /> New Request
-                </Button>
-              </Link>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={<FileText className="w-5 h-5" />} label="Total OD" value={studentMetrics?.totalSubmitted ?? 0} color="bg-gray-100 text-gray-600" />
-              <StatCard icon={<Clock className="w-5 h-5" />} label="Pending" value={studentMetrics?.pendingCount ?? 0} color="bg-amber-100 text-amber-600" />
-              <StatCard icon={<CheckCircle className="w-5 h-5" />} label="Approved" value={studentMetrics?.approvedCount ?? 0} color="bg-green-100 text-green-600" />
-              <StatCard icon={<XCircle className="w-5 h-5" />} label="Rejected" value={studentMetrics?.rejectedCount ?? 0} color="bg-red-100 text-red-600" />
+            {/* Action Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Link
+                to="/applications/new"
+                className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-4 cursor-pointer"
+              >
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                  <PlusCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">Create New OD Application</h3>
+                  <p className="text-[11px] text-gray-500 mt-1 leading-normal">Submit a new request for academic event On-Duty approval and verification steps.</p>
+                </div>
+              </Link>
+
+              <div
+                onClick={() => document.getElementById('applications-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-4 cursor-pointer"
+              >
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">View Application History</h3>
+                  <p className="text-[11px] text-gray-500 mt-1 leading-normal">Track ongoing requests, check approval stages, and upload event certificates.</p>
+                </div>
+              </div>
             </div>
 
             {/* Applications */}
-            <div className="space-y-3">
+            <div id="applications-section" className="space-y-3 pt-2">
               <h3 className="text-sm font-bold text-gray-900">Your Applications</h3>
               {studentAppsLoading ? <LoadingState /> : studentApps.length === 0 ? (
                 <EmptyState message='No On-Duty requests yet. Click "New Request" to submit one.' />
@@ -719,37 +778,93 @@ export const Dashboard: React.FC = () => {
               )}
             </div>
 
-            {/* Metrics */}
-            {isEC && ecMetrics && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <StatCard icon={<FileText className="w-5 h-5" />} label="Total Applications" value={ecMetrics.totalApplications} color="bg-gray-100 text-gray-600" />
-                <StatCard icon={<Clock className="w-5 h-5" />} label="Pending EC Review" value={ecMetrics.pendingECApprovals} color="bg-amber-100 text-amber-600" />
-                <StatCard icon={<ClipboardList className="w-5 h-5" />} label="Certs to Verify" value={ecMetrics.pendingCertificateVerifications} color="bg-blue-100 text-blue-600" />
+            {/* Primary Action Tasks */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              <div
+                onClick={() => setActiveTab('pending')}
+                className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                  activeTab === 'pending'
+                    ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-700'
+                }`}
+              >
+                <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-xs font-bold text-gray-900 leading-none">Pending Reviews</h3>
+                  <p className="text-[10px] text-gray-400 mt-1 leading-tight">Review and decide on active OD requests.</p>
+                </div>
               </div>
-            )}
 
-            {isMentor && mentorMetrics && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <StatCard
-                  icon={<Users className="w-5 h-5" />}
-                  label="Total Mentees"
-                  value={mentorMetrics.totalMentees}
-                  color="bg-blue-100 text-blue-600"
-                  onClick={() => setMenteeRosterOpen(true)}
-                />
-                <StatCard icon={<Clock className="w-5 h-5" />} label="Pending Approvals" value={mentorMetrics.pendingMenteeApprovals} color="bg-amber-100 text-amber-600" />
-                <StatCard icon={<AlertCircle className="w-5 h-5" />} label="Mentees Overdue" value={mentorMetrics.menteesWithExpiredDeadlines} color="bg-red-100 text-red-600" />
-              </div>
-            )}
+              {isEC && (
+                <div
+                  onClick={() => setActiveTab('certificates')}
+                  className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                    activeTab === 'certificates'
+                      ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                      : 'bg-white border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-xs font-bold text-gray-900 leading-none">Verify Certificates</h3>
+                    <p className="text-[10px] text-gray-400 mt-1 leading-tight">Check and verify student credentials.</p>
+                  </div>
+                </div>
+              )}
 
-            {isHOD && hodMetrics && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard icon={<FileText className="w-5 h-5" />} label="Total Requests" value={hodMetrics.totalApplications} color="bg-gray-100 text-gray-600" />
-                <StatCard icon={<CheckCircle className="w-5 h-5" />} label="Approved" value={hodMetrics.approvedApplications} color="bg-green-100 text-green-600" />
-                <StatCard icon={<UserIcon className="w-5 h-5" />} label="Active Students" value={hodMetrics.activeStudentsCount} color="bg-blue-100 text-blue-600" />
-                <StatCard icon={<Clock className="w-5 h-5" />} label="HOD Queue" value={hodMetrics.pendingHODApprovals} color="bg-amber-100 text-amber-600" />
+              {isMentor && (
+                <div
+                  onClick={() => setActiveTab('extensions')}
+                  className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                    activeTab === 'extensions'
+                      ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                      : 'bg-white border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-xs font-bold text-gray-900 leading-none">Extension Requests</h3>
+                    <p className="text-[10px] text-gray-400 mt-1 leading-tight">Grant deadline extensions for mentees.</p>
+                  </div>
+                </div>
+              )}
+
+              <div
+                onClick={() => setActiveTab('all')}
+                className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                  activeTab === 'all'
+                    ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-700'
+                }`}
+              >
+                <div className="w-10 h-10 bg-gray-50 text-gray-600 rounded-xl flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-5 h-5" />
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-xs font-bold text-gray-900 leading-none">Application History</h3>
+                  <p className="text-[10px] text-gray-400 mt-1 leading-tight">View all resolved department OD records.</p>
+                </div>
               </div>
-            )}
+
+              <div
+                onClick={() => navigate('/students')}
+                className="bg-white border border-gray-200 rounded-2xl p-4 hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between cursor-pointer text-gray-700 text-left"
+              >
+                <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-xs font-bold text-gray-900 leading-none">Students Directory</h3>
+                  <p className="text-[10px] text-gray-400 mt-1 leading-tight">Search profiles and participation logs.</p>
+                </div>
+              </div>
+            </div>
 
             {/* CSV Export Panel */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -1341,8 +1456,6 @@ export const Dashboard: React.FC = () => {
                   <Select value={facultyFormValues.role} onChange={(e) => setFacultyFormValues((prev) => ({ ...prev, role: e.target.value }))} disabled={onboardFacultyMutation.isPending} className="h-10">
                     <option value="Mentor">Mentor</option>
                     <option value="Event Coordinator">Event Coordinator</option>
-                    <option value="Program Coordinator">Program Coordinator</option>
-                    <option value="Head of Department">Head of Department</option>
                     <option value="Administrator">Administrator</option>
                   </Select>
                 </div>
