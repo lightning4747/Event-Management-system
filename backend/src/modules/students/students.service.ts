@@ -13,7 +13,7 @@ const getAdmissionYearFromStudentYear = (studentYear: number): number => {
   return academicBaseYear - (studentYear - 1);
 };
 
-export const getAllStudents = async (year?: number, section?: string) => {
+export const getAllStudents = async (year?: number, section?: string, mentorId?: string) => {
   const conditions = [isNull(users.deletedAt)];
 
   if (year !== undefined) {
@@ -23,6 +23,10 @@ export const getAllStudents = async (year?: number, section?: string) => {
 
   if (section !== undefined) {
     conditions.push(eq(students.section, section));
+  }
+
+  if (mentorId !== undefined) {
+    conditions.push(eq(students.mentorId, mentorId));
   }
 
   return db
@@ -38,7 +42,7 @@ export const getAllStudents = async (year?: number, section?: string) => {
     .orderBy(students.userId);
 };
 
-export const getStudentCompleteRecord = async (studentId: string) => {
+export const getStudentCompleteRecord = async (studentId: string, role?: string, requesterUserId?: string) => {
   const [student] = await db
     .select({
       userId: students.userId,
@@ -49,11 +53,21 @@ export const getStudentCompleteRecord = async (studentId: string) => {
       mentorId: students.mentorId,
     })
     .from(students)
-    .where(eq(students.userId, studentId))
+    .innerJoin(users, eq(students.userId, users.userId))
+    .where(
+      and(
+        eq(students.userId, studentId),
+        isNull(users.deletedAt)
+      )
+    )
     .limit(1);
 
   if (!student) {
     throw new AppError(404, 'NOT_FOUND', 'Student record not found.');
+  }
+
+  if (role === 'Mentor' && requesterUserId && student.mentorId !== requesterUserId) {
+    throw new AppError(403, 'FORBIDDEN', 'Access Denied: You can only view details of your cohort mentees.');
   }
 
   const applications = await db
