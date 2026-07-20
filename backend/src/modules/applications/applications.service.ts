@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { odApplications, students, applicationApprovalHistory, certificateRequirements, certificates, certificateDeadlineExtensions } from '../../db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, or, and, inArray, sql } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { CreateApplicationInput } from './applications.types';
 
@@ -103,7 +103,19 @@ export const getStudentApplications = async (
     .orderBy(desc(odApplications.createdAt));
 };
 
-export const getDepartmentApplications = async (mentorId?: string): Promise<Array<{
+const hasApprovedPreviousStage = (approverRole: string) => {
+  return sql`EXISTS (
+    SELECT 1 FROM application_approval_history 
+    WHERE application_approval_history.application_id = ${odApplications.applicationId}
+      AND application_approval_history.approver_role = ${approverRole}
+      AND application_approval_history.decision = 'Approve'
+  )`;
+};
+
+export const getDepartmentApplications = async (
+  role: string,
+  userId: string
+): Promise<Array<{
   applicationId: bigint;
   studentId: string;
   studentName: string;
@@ -137,13 +149,63 @@ export const getDepartmentApplications = async (mentorId?: string): Promise<Arra
     .from(odApplications)
     .innerJoin(students, eq(odApplications.studentId, students.userId));
 
-  if (mentorId) {
+  if (role === 'Administrator') {
+    return query.orderBy(desc(odApplications.createdAt));
+  }
+
+  if (role === 'Event Coordinator') {
+    return query.orderBy(desc(odApplications.createdAt));
+  }
+
+  if (role === 'Mentor') {
     return query
-      .where(eq(students.mentorId, mentorId))
+      .where(
+        and(
+          eq(students.mentorId, userId),
+          or(
+            inArray(odApplications.status, [
+              'In Progress: Mentor',
+              'In Progress: Program Coordinator',
+              'In Progress: Head of Department',
+              'Approved'
+            ]),
+            hasApprovedPreviousStage('Event Coordinator')
+          )
+        )
+      )
       .orderBy(desc(odApplications.createdAt));
   }
 
-  return query.orderBy(desc(odApplications.createdAt));
+  if (role === 'Program Coordinator') {
+    return query
+      .where(
+        or(
+          inArray(odApplications.status, [
+            'In Progress: Program Coordinator',
+            'In Progress: Head of Department',
+            'Approved'
+          ]),
+          hasApprovedPreviousStage('Mentor')
+        )
+      )
+      .orderBy(desc(odApplications.createdAt));
+  }
+
+  if (role === 'Head of Department') {
+    return query
+      .where(
+        or(
+          inArray(odApplications.status, [
+            'In Progress: Head of Department',
+            'Approved'
+          ]),
+          hasApprovedPreviousStage('Program Coordinator')
+        )
+      )
+      .orderBy(desc(odApplications.createdAt));
+  }
+
+  return [];
 };
 
 export const getApplicationDetails = async (
@@ -183,16 +245,7 @@ export const getApplicationDetails = async (
     throw new AppError(404, 'NOT_FOUND', 'On-Duty application not found.');
   }
 
-  // 2. Enforce authorization filters
-  if (role === 'Student' && app.studentId !== userId) {
-    throw new AppError(403, 'FORBIDDEN', 'Access Denied: You do not own this application.');
-  }
-
-  if (role === 'Mentor' && app.mentorId !== userId) {
-    throw new AppError(403, 'FORBIDDEN', 'Access Denied: The student is not in your cohort.');
-  }
-
-  // 3. Fetch approval history
+  // 2. Fetch approval history first to enforce stage validation checks
   const history = await db
     .select({
       historyId: applicationApprovalHistory.historyId,
@@ -206,6 +259,41 @@ export const getApplicationDetails = async (
     .from(applicationApprovalHistory)
     .where(eq(applicationApprovalHistory.applicationId, applicationId))
     .orderBy(applicationApprovalHistory.decidedAt);
+
+  // 3. Enforce authorization filters
+  if (role === 'Student' && app.studentId !== userId) {
+    throw new AppError(403, 'FORBIDDEN', 'Access Denied: You do not own this application.');
+  }
+
+  if (role === 'Mentor') {
+    if (app.mentorId !== userId) {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: The student is not in your cohort.');
+    }
+    const isVisible =
+      ['In Progress: Mentor', 'In Progress: Program Coordinator', 'In Progress: Head of Department', 'Approved'].includes(app.status) ||
+      history.some((h) => h.approverRole === 'Event Coordinator' && h.decision === 'Approve');
+    if (!isVisible) {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: This application has not reached your stage yet.');
+    }
+  }
+
+  if (role === 'Program Coordinator') {
+    const isVisible =
+      ['In Progress: Program Coordinator', 'In Progress: Head of Department', 'Approved'].includes(app.status) ||
+      history.some((h) => h.approverRole === 'Mentor' && h.decision === 'Approve');
+    if (!isVisible) {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: This application has not reached your stage yet.');
+    }
+  }
+
+  if (role === 'Head of Department') {
+    const isVisible =
+      ['In Progress: Head of Department', 'Approved'].includes(app.status) ||
+      history.some((h) => h.approverRole === 'Program Coordinator' && h.decision === 'Approve');
+    if (!isVisible) {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: This application has not reached your stage yet.');
+    }
+  }
 
   // 4. Fetch certificate requirements and matching uploads
   const certs = await db

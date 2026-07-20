@@ -59,8 +59,7 @@ export const listDepartmentApplications = async (req: Request, res: Response, ne
       throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated user details.');
     }
 
-    const mentorId = role === 'Mentor' ? userId : undefined;
-    const list = await applicationsService.getDepartmentApplications(mentorId);
+    const list = await applicationsService.getDepartmentApplications(role, userId);
     
     // Serialize BigInt fields to string for JSON serialization compatibility
     const serializedList = list.map(app => ({
