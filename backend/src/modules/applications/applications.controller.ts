@@ -37,7 +37,10 @@ export const getStudentHistory = async (req: Request, res: Response, next: NextF
       throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated student details.');
     }
 
-    const history = await applicationsService.getStudentApplications(studentId);
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const offset = req.query.offset ? Number(req.query.offset) : undefined;
+
+    const history = await applicationsService.getStudentApplications(studentId, limit, offset);
     
     // Serialize BigInt fields to string for JSON serialization compatibility
     const serializedHistory = history.map(app => ({
@@ -59,7 +62,10 @@ export const listDepartmentApplications = async (req: Request, res: Response, ne
       throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated user details.');
     }
 
-    const list = await applicationsService.getDepartmentApplications(role, userId);
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    const offset = req.query.offset ? Number(req.query.offset) : undefined;
+
+    const list = await applicationsService.getDepartmentApplications(role, userId, limit, offset);
     
     // Serialize BigInt fields to string for JSON serialization compatibility
     const serializedList = list.map(app => ({

@@ -15,6 +15,7 @@
     "sourceType": "module"
   },
   "rules": {
-    "security/detect-object-injection": "off"
+    "security/detect-object-injection": "off",
+    "eqeqeq": ["error", "always"]
   }
 }

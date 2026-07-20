@@ -4,11 +4,9 @@ import { eq, desc, or, and, inArray, sql } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { CreateApplicationInput } from './applications.types';
 
-export interface ApplicationDetails {
+export interface ApplicationRow {
   applicationId: bigint;
   studentId: string;
-  studentName: string;
-  mentorId: string;
   title: string;
   location: string;
   fromDate: string;
@@ -19,6 +17,11 @@ export interface ApplicationDetails {
   withdrawnAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ApplicationDetails extends ApplicationRow {
+  studentName: string;
+  mentorId: string;
 }
 
 export interface ApprovalHistoryItem {
@@ -81,26 +84,17 @@ export const createApplication = async (
 };
 
 export const getStudentApplications = async (
-  studentId: string
-): Promise<Array<{
-  applicationId: bigint;
-  studentId: string;
-  title: string;
-  location: string;
-  fromDate: string;
-  toDate: string;
-  numberOfEvents: number;
-  status: 'In Progress: Event Coordinator' | 'In Progress: Mentor' | 'In Progress: Program Coordinator' | 'In Progress: Head of Department' | 'Approved' | 'Rejected' | 'Withdrawn';
-  finalApprovedAt: Date | null;
-  withdrawnAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}>> => {
+  studentId: string,
+  limit?: number,
+  offset?: number
+): Promise<Array<ApplicationRow>> => {
   return db
     .select()
     .from(odApplications)
     .where(eq(odApplications.studentId, studentId))
-    .orderBy(desc(odApplications.createdAt));
+    .orderBy(desc(odApplications.createdAt))
+    .limit(limit ?? 100)
+    .offset(offset ?? 0);
 };
 
 const hasApprovedPreviousStage = (approverRole: string) => {
@@ -114,27 +108,16 @@ const hasApprovedPreviousStage = (approverRole: string) => {
 
 export const getDepartmentApplications = async (
   role: string,
-  userId: string
-): Promise<Array<{
-  applicationId: bigint;
-  studentId: string;
-  studentName: string;
-  title: string;
-  location: string;
-  fromDate: string;
-  toDate: string;
-  numberOfEvents: number;
-  status: 'In Progress: Event Coordinator' | 'In Progress: Mentor' | 'In Progress: Program Coordinator' | 'In Progress: Head of Department' | 'Approved' | 'Rejected' | 'Withdrawn';
-  finalApprovedAt: Date | null;
-  withdrawnAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}>> => {
+  userId: string,
+  limit?: number,
+  offset?: number
+): Promise<Array<ApplicationDetails>> => {
   const query = db
     .select({
       applicationId: odApplications.applicationId,
       studentId: odApplications.studentId,
       studentName: students.fullName,
+      mentorId: students.mentorId,
       title: odApplications.title,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
@@ -147,7 +130,9 @@ export const getDepartmentApplications = async (
       updatedAt: odApplications.updatedAt,
     })
     .from(odApplications)
-    .innerJoin(students, eq(odApplications.studentId, students.userId));
+    .innerJoin(students, eq(odApplications.studentId, students.userId))
+    .limit(limit ?? 100)
+    .offset(offset ?? 0);
 
   if (role === 'Administrator') {
     return query.orderBy(desc(odApplications.createdAt));
@@ -343,7 +328,7 @@ export const checkApplicationImmutability = async (applicationId: bigint): Promi
     throw new AppError(404, 'NOT_FOUND', 'On-Duty application not found.');
   }
 
-  if (app.status === 'Approved' || app.status === 'Rejected' || app.status == 'Withdrawn') {
+  if (app.status === 'Approved' || app.status === 'Rejected' || app.status === 'Withdrawn') {
     throw new AppError(400, 'APPLICATION_IMMUTABLE', 'This On-Duty application has already been decided and is immutable.');
   }
 };
