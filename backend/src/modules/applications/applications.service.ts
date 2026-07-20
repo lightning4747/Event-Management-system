@@ -54,7 +54,13 @@ export const createApplication = async (
   const [student] = await db
     .select()
     .from(students)
-    .where(eq(students.userId, studentId))
+    .innerJoin(users, eq(students.userId, users.userId))
+    .where(
+      and(
+        eq(students.userId, studentId),
+        isNull(users.deletedAt)
+      )
+    )
     .limit(1);
 
   if (!student) {

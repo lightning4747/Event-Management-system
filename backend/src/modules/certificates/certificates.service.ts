@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { odApplications, certificateRequirements, certificates } from '../../db/schema';
-import { eq, lt, and } from 'drizzle-orm';
+import { odApplications, certificateRequirements, certificates, users } from '../../db/schema';
+import { eq, lt, and, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
 
@@ -27,7 +27,13 @@ export const uploadCertificate = async (
     })
     .from(certificateRequirements)
     .innerJoin(odApplications, eq(certificateRequirements.applicationId, odApplications.applicationId))
-    .where(eq(certificateRequirements.requirementId, reqId))
+    .innerJoin(users, eq(odApplications.studentId, users.userId))
+    .where(
+      and(
+        eq(certificateRequirements.requirementId, reqId),
+        isNull(users.deletedAt)
+      )
+    )
     .limit(1);
 
   if (!req) {
@@ -110,35 +116,50 @@ export const verifyCertificate = async (
   requirementId: bigint,
   input: VerifyCertificateInput
 ): Promise<{ requirementId: bigint; status: 'Verified' | 'Rejected'; rejectionReason: string | null }> => {
-  const [req] = await db
-    .select()
-    .from(certificateRequirements)
-    .where(eq(certificateRequirements.requirementId, requirementId))
-    .limit(1);
+  const result = await db.transaction(async (tx) => {
+    const [req] = await tx
+      .select({
+        requirementId: certificateRequirements.requirementId,
+        status: certificateRequirements.status,
+      })
+      .from(certificateRequirements)
+      .innerJoin(odApplications, eq(certificateRequirements.applicationId, odApplications.applicationId))
+      .innerJoin(users, eq(odApplications.studentId, users.userId))
+      .where(
+        and(
+          eq(certificateRequirements.requirementId, requirementId),
+          isNull(users.deletedAt)
+        )
+      )
+      .for('update', { of: certificateRequirements })
+      .limit(1);
 
-  if (!req) {
-    throw new AppError(404, 'NOT_FOUND', 'Certificate requirement not found.');
-  }
+    if (!req) {
+      throw new AppError(404, 'NOT_FOUND', 'Certificate requirement not found.');
+    }
 
-  // Verification can only be done if status is Uploaded
-  if (req.status !== 'Uploaded') {
-    throw new AppError(400, 'INVALID_STATUS', 'No active certificate upload is available to verify for this requirement.');
-  }
+    // Verification can only be done if status is Uploaded
+    if (req.status !== 'Uploaded') {
+      throw new AppError(400, 'INVALID_STATUS', 'No active certificate upload is available to verify for this requirement.');
+    }
 
-  await db
-    .update(certificateRequirements)
-    .set({
+    await tx
+      .update(certificateRequirements)
+      .set({
+        status: input.status,
+        rejectionReason: input.status === 'Rejected' ? input.comments || null : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(certificateRequirements.requirementId, requirementId));
+
+    return {
+      requirementId,
       status: input.status,
       rejectionReason: input.status === 'Rejected' ? input.comments || null : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(certificateRequirements.requirementId, requirementId));
+    };
+  });
 
-  return {
-    requirementId,
-    status: input.status,
-    rejectionReason: input.status === 'Rejected' ? input.comments || null : null,
-  };
+  return result;
 };
 
 export const checkCertificateDeadlines = async (): Promise<number> => {

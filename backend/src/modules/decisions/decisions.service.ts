@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { odApplications, students, applicationApprovalHistory, certificateRequirements } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { odApplications, students, users, applicationApprovalHistory, certificateRequirements } from '../../db/schema';
+import { eq, and, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { MakeDecisionInput } from './decisions.types';
 
@@ -28,7 +28,13 @@ export const makeApprovalDecision = async (
       })
       .from(odApplications)
       .innerJoin(students, eq(odApplications.studentId, students.userId))
-      .where(eq(odApplications.applicationId, applicationId))
+      .innerJoin(users, eq(odApplications.studentId, users.userId))
+      .where(
+        and(
+          eq(odApplications.applicationId, applicationId),
+          isNull(users.deletedAt)
+        )
+      )
       .for('update', { of: odApplications })
       .limit(1);
 

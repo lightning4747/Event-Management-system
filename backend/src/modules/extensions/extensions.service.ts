@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { odApplications, students, certificateRequirements, certificateDeadlineExtensions } from '../../db/schema';
-import { eq, and, or } from 'drizzle-orm';
+import { odApplications, students, users, certificateRequirements, certificateDeadlineExtensions } from '../../db/schema';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { CreateExtensionInput } from './extensions.types';
 
@@ -25,7 +25,13 @@ export const createDeadlineExtension = async (
     })
     .from(odApplications)
     .innerJoin(students, eq(odApplications.studentId, students.userId))
-    .where(eq(odApplications.applicationId, appId))
+    .innerJoin(users, eq(odApplications.studentId, users.userId))
+    .where(
+      and(
+        eq(odApplications.applicationId, appId),
+        isNull(users.deletedAt)
+      )
+    )
     .limit(1);
 
   if (!app) {

@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { users, faculty } from '../../db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, isNull, and } from 'drizzle-orm';
 import { hashPassword } from '../../utils/crypto';
 import { AppError } from '../../lib/errors';
 import { CreateFacultyInput } from './admin.types';
@@ -93,7 +93,12 @@ export const assignSpecialRole = async (
   const [targetUser] = await db
     .select()
     .from(users)
-    .where(eq(users.userId, input.userId))
+    .where(
+      and(
+        eq(users.userId, input.userId),
+        isNull(users.deletedAt)
+      )
+    )
     .limit(1);
 
   if (!targetUser) {
@@ -109,7 +114,12 @@ export const assignSpecialRole = async (
     const [prevHolder] = await tx
       .select()
       .from(users)
-      .where(eq(users.role, input.role))
+      .where(
+        and(
+          eq(users.role, input.role),
+          isNull(users.deletedAt)
+        )
+      )
       .limit(1);
 
     if (prevHolder && prevHolder.userId !== input.userId) {
