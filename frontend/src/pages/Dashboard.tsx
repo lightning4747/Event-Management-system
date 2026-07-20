@@ -854,52 +854,54 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* CSV Export Panel */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
-                <Download className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-bold text-gray-900">Export OD Data Report</h3>
-              </div>
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-500">From Date</Label>
-                    <Input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="h-9 text-sm" />
+            {isEC && (
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
+                  <Download className="w-4 h-4 text-gray-400" />
+                  <h3 className="text-sm font-bold text-gray-900">Export OD Data Report</h3>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-500">From Date</Label>
+                      <Input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-500">To Date</Label>
+                      <Input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-500">Section</Label>
+                      <Select value={filterSection} onChange={(e) => setFilterSection(e.target.value)} className="h-9 text-sm">
+                        <option value="">All Sections</option>
+                        <option value="A">Section A</option>
+                        <option value="B">Section B</option>
+                        <option value="C">Section C</option>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-500">Admission Year</Label>
+                      <Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 text-sm">
+                        <option value="">All Years</option>
+                        {yearOptions.map((y) => (
+                          <option key={y} value={String(y)}>{y}</option>
+                        ))}
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-500">To Date</Label>
-                    <Input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-500">Section</Label>
-                    <Select value={filterSection} onChange={(e) => setFilterSection(e.target.value)} className="h-9 text-sm">
-                      <option value="">All Sections</option>
-                      <option value="A">Section A</option>
-                      <option value="B">Section B</option>
-                      <option value="C">Section C</option>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-500">Admission Year</Label>
-                    <Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 text-sm">
-                      <option value="">All Years</option>
-                      {yearOptions.map((y) => (
-                        <option key={y} value={String(y)}>{y}</option>
-                      ))}
-                    </Select>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleExportCSV}
+                      disabled={exportLoading}
+                      className="flex items-center gap-2 text-sm h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Download className="w-4 h-4" />
+                      {exportLoading ? 'Generating...' : 'Download CSV'}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button
-                    onClick={handleExportCSV}
-                    disabled={exportLoading}
-                    className="flex items-center gap-2 text-sm h-9 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Download className="w-4 h-4" />
-                    {exportLoading ? 'Generating...' : 'Download CSV'}
-                  </Button>
-                </div>
               </div>
-            </div>
+            )}
 
             {/* Queue Tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">

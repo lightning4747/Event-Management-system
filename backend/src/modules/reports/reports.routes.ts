@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/global', requireRole(['Event Coordinator', 'Program Coordinator', 'Head of Department']), reportsController.downloadGlobalReport);
-router.get('/cohort', requireRole(['Mentor']), reportsController.downloadCohortReport);
+router.get('/global', requireRole(['Event Coordinator']), reportsController.downloadGlobalReport);
+router.get('/cohort', requireRole(['Event Coordinator']), reportsController.downloadCohortReport);
 
 export const reportsRoutes = router;
