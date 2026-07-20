@@ -88,8 +88,8 @@ const formatDate = (dateStr: string) => {
 
 export const StudentsDirectory: React.FC = () => {
   // Directory Filters
-  const [selectedYear, setSelectedYear] = React.useState<string>('Third Year');
-  const [selectedSection, setSelectedSection] = React.useState<string>('All');
+  const [selectedYear, setSelectedYear] = React.useState<number | null>(null);
+  const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState<string>('');
 
@@ -108,11 +108,12 @@ export const StudentsDirectory: React.FC = () => {
 
   // ── Queries ──
   const { data: studentsList = [], isLoading: listLoading } = useQuery<StudentRow[]>({
-    queryKey: ['studentsDirectoryList'],
+    queryKey: ['studentsDirectoryList', selectedYear, selectedSection],
     queryFn: async () => {
-      const res = await apiFetch('/students');
+      const res = await apiFetch(`/students?year=${selectedYear}&section=${selectedSection}`);
       return res.json();
     },
+    enabled: selectedYear !== null && selectedSection !== null,
   });
 
   const { data: studentDetails, isLoading: detailsLoading } = useQuery<StudentDetails>({
@@ -130,14 +131,9 @@ export const StudentsDirectory: React.FC = () => {
     setDetailsTab('applications');
   };
 
-  // Filter and sort students based on year category, section tab, and search query
+  // Filter and sort students based on search query
   const filteredStudents = React.useMemo(() => {
     const filtered = studentsList.filter((std) => {
-      const yearCategory = getAcademicYearName(std.admissionYear);
-      if (yearCategory !== selectedYear) return false;
-      
-      if (selectedSection !== 'All' && std.section !== selectedSection) return false;
-      
       if (debouncedSearchQuery.trim() !== '') {
         const query = debouncedSearchQuery.toLowerCase();
         return (
@@ -145,24 +141,12 @@ export const StudentsDirectory: React.FC = () => {
           std.userId.toLowerCase().includes(query)
         );
       }
-      
       return true;
     });
 
     // Sort based on roll number (userId)
     return [...filtered].sort((a, b) => a.userId.localeCompare(b.userId));
-  }, [studentsList, selectedYear, selectedSection, debouncedSearchQuery]);
-
-  // Calculate unique sections for the currently selected Year Category
-  const sectionsForYear = React.useMemo(() => {
-    const set = new Set<string>();
-    studentsList.forEach((std) => {
-      if (getAcademicYearName(std.admissionYear) === selectedYear) {
-        set.add(std.section);
-      }
-    });
-    return Array.from(set).sort();
-  }, [studentsList, selectedYear]);
+  }, [studentsList, debouncedSearchQuery]);
 
   // Derived counts for selected student
   const approvedApps = studentDetails?.applications.filter(a => a.status === 'Approved') || [];
@@ -182,110 +166,121 @@ export const StudentsDirectory: React.FC = () => {
           <div className={`${selectedStudentId ? 'lg:col-span-5' : 'lg:col-span-12'} space-y-4`}>
             {/* Academic Year Tabs */}
             <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm flex">
-              {['Second Year', 'Third Year', 'Fourth Year'].map((year) => (
+              {[
+                { label: 'Second Year', value: 2 },
+                { label: 'Third Year', value: 3 },
+                { label: 'Fourth Year', value: 4 }
+              ].map((item) => (
                 <button
-                  key={year}
+                  key={item.value}
                   onClick={() => {
-                    setSelectedYear(year);
-                    setSelectedSection('All');
+                    setSelectedYear(item.value);
+                    setSelectedSection('A'); // Automatically default to Section A
+                    setSelectedStudentId(null);
                   }}
-                  className={`flex-1 text-xs font-bold py-2.5 rounded-lg transition-all ${
-                    selectedYear === year
-                      ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-200/50'
-                      : 'text-gray-500 hover:text-gray-900 border border-transparent'
+                  className={`flex-1 text-xs font-bold py-2.5 rounded-lg transition-all border border-transparent ${
+                    selectedYear === item.value
+                      ? 'bg-blue-50 text-blue-700 shadow-sm border-blue-200/50'
+                      : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
-                  {year}
+                  {item.label}
                 </button>
               ))}
             </div>
 
-            {/* Section Pills & Search Bar */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3.5">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  onClick={() => setSelectedSection('All')}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${
-                    selectedSection === 'All'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  All Sections
-                </button>
-                {sectionsForYear.map((sec) => (
-                  <button
-                    key={sec}
-                    onClick={() => setSelectedSection(sec)}
-                    className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${
-                      selectedSection === sec
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    Sec {sec}
-                  </button>
-                ))}
+            {selectedYear === null ? (
+              <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center border-dashed">
+                <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-gray-900">Select Academic Year</p>
+                <p className="text-xs text-gray-500 mt-1">Choose a B.E./B.Tech year above to browse student records.</p>
               </div>
-
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search by name or register number..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-10 text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Students List */}
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-4 h-4 text-gray-400" /> Students List
-                </h3>
-                <span className="text-[11px] text-gray-400 font-bold bg-gray-50 border border-gray-100 rounded-full px-2.5 py-0.5">
-                  {filteredStudents.length} Students
-                </span>
-              </div>
-
-              {listLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : filteredStudents.length === 0 ? (
-                <div className="text-center py-16 border-dashed border-2 border-gray-100 rounded-b-2xl m-4">
-                  <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500 font-medium">No students match selection filters.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100 max-h-[50vh] lg:max-h-[65vh] overflow-y-auto">
-                  {filteredStudents.map((std) => (
-                    <div
-                      key={std.userId}
-                      onClick={() => handleStudentSelect(std.userId)}
-                      className={`px-5 py-3.5 flex items-center gap-3.5 cursor-pointer transition-all ${
-                        selectedStudentId === std.userId
-                          ? 'bg-blue-50/50 hover:bg-blue-50'
-                          : 'hover:bg-gray-50/60'
-                      }`}
-                    >
-                      <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
-                        {std.fullName.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-gray-900 truncate">{std.fullName}</p>
-                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{std.userId}</p>
-                      </div>
-                      <span className="text-[10px] font-bold px-2.5 py-1 bg-white border border-gray-200 text-gray-600 rounded-full shrink-0">
-                        Sec {std.section}
-                      </span>
+            ) : (
+              <>
+                {/* Section Toggles & Search Bar */}
+                <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Section</p>
+                    <div className="flex gap-1.5">
+                      {['A', 'B'].map((sec) => (
+                        <button
+                          key={sec}
+                          onClick={() => {
+                            setSelectedSection(sec);
+                            setSelectedStudentId(null);
+                          }}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${
+                            selectedSection === sec
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          Section {sec}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by name or register number..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 h-10 text-xs"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Students List */}
+                <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-400" /> Students List
+                    </h3>
+                    <span className="text-[11px] text-gray-400 font-bold bg-gray-50 border border-gray-100 rounded-full px-2.5 py-0.5">
+                      {filteredStudents.length} Students
+                    </span>
+                  </div>
+
+                  {listLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : filteredStudents.length === 0 ? (
+                    <div className="text-center py-16">
+                      <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500 font-medium">No students match selection filters.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100 max-h-[50vh] lg:max-h-[65vh] overflow-y-auto">
+                      {filteredStudents.map((std) => (
+                        <div
+                          key={std.userId}
+                          onClick={() => handleStudentSelect(std.userId)}
+                          className={`px-5 py-3.5 flex items-center gap-3.5 cursor-pointer transition-all ${
+                            selectedStudentId === std.userId
+                              ? 'bg-blue-50/50 hover:bg-blue-50'
+                              : 'hover:bg-gray-50/60'
+                          }`}
+                        >
+                          <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                            {std.fullName.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-900 truncate">{std.fullName}</p>
+                            <p className="text-[10px] text-gray-400 font-mono mt-0.5">{std.userId}</p>
+                          </div>
+                          <span className="text-[10px] font-bold px-2.5 py-1 bg-white border border-gray-200 text-gray-600 rounded-full shrink-0">
+                            Sec {std.section}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* ── Right Pane: Selected Student Detailed Profile ── */}

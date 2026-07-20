@@ -1,9 +1,30 @@
 import { db } from '../../db';
 import { students, users, odApplications, certificateRequirements, certificates } from '../../db/schema';
-import { eq, desc, isNull } from 'drizzle-orm';
+import { eq, desc, isNull, and } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 
-export const getAllStudents = async () => {
+const getAdmissionYearFromStudentYear = (studentYear: number): number => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0 is Jan, 5 is June
+  
+  // Academic year starts in June
+  const academicBaseYear = currentMonth >= 5 ? currentYear : currentYear - 1;
+  return academicBaseYear - (studentYear - 1);
+};
+
+export const getAllStudents = async (year?: number, section?: string) => {
+  const conditions = [isNull(users.deletedAt)];
+
+  if (year !== undefined) {
+    const admissionYear = getAdmissionYearFromStudentYear(year);
+    conditions.push(eq(students.admissionYear, admissionYear));
+  }
+
+  if (section !== undefined) {
+    conditions.push(eq(students.section, section));
+  }
+
   return db
     .select({
       userId: students.userId,
@@ -13,7 +34,7 @@ export const getAllStudents = async () => {
     })
     .from(students)
     .innerJoin(users, eq(students.userId, users.userId))
-    .where(isNull(users.deletedAt))
+    .where(and(...conditions))
     .orderBy(students.userId);
 };
 
