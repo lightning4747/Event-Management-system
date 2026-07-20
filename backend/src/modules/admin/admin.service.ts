@@ -82,13 +82,14 @@ export const getFacultyList = async (): Promise<Array<{
     })
     .from(users)
     .innerJoin(faculty, eq(users.userId, faculty.userId))
-    .where(isNull(users.deletedAt));
+    .where(isNull(users.deletedAt))
+    .orderBy(faculty.fullName);
 
   return list;
 };
 
 export const assignSpecialRole = async (
-  input: { userId: string; role: 'Head of Department' | 'Program Coordinator' }
+  input: { userId: string; role: 'Head of Department' | 'Program Coordinator' | 'Event Coordinator' | 'Mentor' }
 ): Promise<{ userId: string; role: string; designation: string }> => {
   const [targetUser] = await db
     .select()
@@ -106,37 +107,47 @@ export const assignSpecialRole = async (
   }
 
   if (targetUser.role === 'Student' || targetUser.role === 'Administrator') {
-    throw new AppError(400, 'INVALID_ROLE_ASSIGNMENT', 'Can only assign HOD or PC role to faculty members.');
+    throw new AppError(400, 'INVALID_ROLE_ASSIGNMENT', 'Can only assign faculty roles to faculty members.');
   }
 
   return db.transaction(async (tx) => {
-    // Revert the previous holder of this role to Mentor / Assistant Professor
-    const [prevHolder] = await tx
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.role, input.role),
-          isNull(users.deletedAt)
+    // If assigning a unique special role (HOD, PC, EC), demote the previous holder to Mentor
+    if (input.role !== 'Mentor') {
+      const [prevHolder] = await tx
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.role, input.role),
+            isNull(users.deletedAt)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (prevHolder && prevHolder.userId !== input.userId) {
-      await tx
-        .update(users)
-        .set({ role: 'Mentor', updatedAt: new Date() })
-        .where(eq(users.userId, prevHolder.userId));
+      if (prevHolder && prevHolder.userId !== input.userId) {
+        await tx
+          .update(users)
+          .set({ role: 'Mentor', updatedAt: new Date() })
+          .where(eq(users.userId, prevHolder.userId));
 
-      await tx
-        .update(faculty)
-        .set({ designation: 'Assistant Professor' })
-        .where(eq(faculty.userId, prevHolder.userId));
+        await tx
+          .update(faculty)
+          .set({ designation: 'Assistant Professor' })
+          .where(eq(faculty.userId, prevHolder.userId));
+      }
+    }
+
+    // Determine the designation
+    let designation = 'Assistant Professor';
+    if (input.role === 'Head of Department') {
+      designation = 'Head of Department - AI&DS';
+    } else if (input.role === 'Program Coordinator') {
+      designation = 'Program Coordinator - AI&DS';
+    } else if (input.role === 'Event Coordinator') {
+      designation = 'Event Coordinator - AI&DS';
     }
 
     // Assign the new role and designation
-    const designation = input.role === 'Head of Department' ? 'Head of Department - AI&DS' : 'Program Coordinator - AI&DS';
-
     await tx
       .update(users)
       .set({ role: input.role, updatedAt: new Date() })

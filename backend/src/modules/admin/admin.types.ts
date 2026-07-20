@@ -12,7 +12,7 @@ export type CreateFacultyInput = z.infer<typeof createFacultySchema>;
 
 export const assignRoleSchema = z.object({
   userId: z.string().min(1, 'User ID is required.'),
-  role: z.enum(['Head of Department', 'Program Coordinator']),
+  role: z.enum(['Head of Department', 'Program Coordinator', 'Event Coordinator', 'Mentor']),
 });
 
 export type AssignRoleInput = z.infer<typeof assignRoleSchema>;

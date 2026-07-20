@@ -382,7 +382,7 @@ export const Dashboard: React.FC = () => {
   });
 
   const assignRoleMutation = useMutation({
-    mutationFn: async (payload: { userId: string; role: 'Head of Department' | 'Program Coordinator' }) => {
+    mutationFn: async (payload: { userId: string; role: 'Head of Department' | 'Program Coordinator' | 'Event Coordinator' | 'Mentor' }) => {
       const res = await apiFetch('/admin/assign-role', {
         method: 'PATCH',
         body: JSON.stringify(payload),
@@ -661,36 +661,56 @@ export const Dashboard: React.FC = () => {
                 <EmptyState message="No faculty accounts registered yet." />
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {facultyList.map((fac) => (
-                    <div key={fac.userId} className="px-5 py-4 flex items-center gap-4 hover:bg-gray-50">
-                      <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center font-bold text-xs text-gray-600">
-                        {fac.fullName.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-900">{fac.fullName}</p>
-                        <p className="text-xs text-gray-500">{fac.designation} · ID: {fac.userId}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {fac.role !== 'Administrator' && (
-                          <>
-                            <Button
-                              variant="outline"
-                              onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Head of Department' })}
-                              disabled={fac.role === 'Head of Department' || assignRoleMutation.isPending}
-                              className="text-[10px] h-7 px-2"
-                            >
-                              {fac.role === 'Head of Department' ? 'HOD' : 'Assign HOD'}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Program Coordinator' })}
-                              disabled={fac.role === 'Program Coordinator' || assignRoleMutation.isPending}
-                              className="text-[10px] h-7 px-2"
-                            >
-                              {fac.role === 'Program Coordinator' ? 'PC' : 'Assign PC'}
-                            </Button>
-                          </>
-                        )}
+                  {[...facultyList]
+                    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+                    .map((fac) => (
+                      <div key={fac.userId} className="px-5 py-4 flex items-center gap-4 hover:bg-gray-50">
+                        <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center font-bold text-xs text-gray-600">
+                          {fac.fullName.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-900">{fac.fullName}</p>
+                          <p className="text-xs text-gray-500">{fac.designation} · ID: {fac.userId}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {fac.role !== 'Administrator' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Head of Department' })}
+                                disabled={fac.role === 'Head of Department' || assignRoleMutation.isPending}
+                                className="text-[10px] h-7 px-2"
+                              >
+                                {fac.role === 'Head of Department' ? 'HOD' : 'Assign HOD'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Program Coordinator' })}
+                                disabled={fac.role === 'Program Coordinator' || assignRoleMutation.isPending}
+                                className="text-[10px] h-7 px-2"
+                              >
+                                {fac.role === 'Program Coordinator' ? 'PC' : 'Assign PC'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Event Coordinator' })}
+                                disabled={fac.role === 'Event Coordinator' || assignRoleMutation.isPending}
+                                className="text-[10px] h-7 px-2"
+                              >
+                                {fac.role === 'Event Coordinator' ? 'EC' : 'Assign EC'}
+                              </Button>
+                              {(fac.role === 'Head of Department' || fac.role === 'Program Coordinator' || fac.role === 'Event Coordinator') && (
+                                <Button
+                                  variant="outline"
+                                  onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Mentor' })}
+                                  disabled={assignRoleMutation.isPending}
+                                  className="text-[10px] h-7 px-2 border-red-200 text-red-600 hover:bg-red-50"
+                                >
+                                  Revert
+                                </Button>
+                              )}
+                            </>
+                          )}
                         <span className="text-[11px] font-bold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
                           {fac.role}
                         </span>
