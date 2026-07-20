@@ -4,7 +4,7 @@ const isTestEnv = process.env.NODE_ENV === 'test';
 
 // Global API rate limiter: Applied to all API routes to prevent resource exhaustion/DDoS
 export const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 2 * 60 * 1000, // 2 minutes
   max: 100, // Limit each IP to 100 requests per window
   standardHeaders: true, // Return rate limit info in standard headers
   legacyHeaders: false, // Disable legacy headers (X-RateLimit-*)
@@ -19,8 +19,8 @@ export const globalLimiter = rateLimit({
 
 // Stricter login/auth limiter to prevent brute-force credential cracking
 export const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per window
+  windowMs: 3 * 60 * 1000, // 3 minutes
+  max: 500, // Limit each IP to 5 login attempts per window
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => isTestEnv,

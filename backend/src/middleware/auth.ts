@@ -15,8 +15,8 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction) =
     const decoded = verifyToken(token);
     req.user = decoded;
     next();
-  } catch (error) {
-    next(error);
+  } catch {
+    next(new AppError(401, 'INVALID_TOKEN', 'Token is invalid or expired.'));
   }
 };
 
