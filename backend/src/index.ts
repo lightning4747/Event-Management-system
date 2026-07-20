@@ -14,6 +14,7 @@ import { dashboardsRoutes } from './modules/dashboards/dashboards.routes';
 import { studentsRoutes } from './modules/students/students.routes';
 import { checkCertificateDeadlines } from './modules/certificates/certificates.service';
 import { errorHandler } from './middleware/error';
+import { globalLimiter } from './middleware/rateLimiter';
 
 const app = express();
 const port = process.env.PORT || 8082;
@@ -27,6 +28,9 @@ app.use(httpLogger);
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'healthy', timestamp: new Date() });
 });
+
+// Apply global rate limiting to all api endpoints (skipping health check above)
+app.use('/api', globalLimiter);
 
 // App Routes
 app.use('/api/auth', authRoutes);
