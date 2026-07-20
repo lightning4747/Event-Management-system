@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { odApplications, students, applicationApprovalHistory, certificateRequirements } from '../../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { MakeDecisionInput } from './decisions.types';
 
@@ -59,36 +59,6 @@ export const makeApprovalDecision = async (
     } else if (currentStatus === 'In Progress: Program Coordinator') {
       if (role !== 'Program Coordinator') {
         throw new AppError(403, 'FORBIDDEN', 'Only Program Coordinators can review applications at this stage.');
-      }
-
-      // Verify EC approval exists in history (using tx context)
-      const [ecApproval] = await tx
-        .select()
-        .from(applicationApprovalHistory)
-        .where(
-          and(
-            eq(applicationApprovalHistory.applicationId, applicationId),
-            eq(applicationApprovalHistory.approverRole, 'Event Coordinator'),
-            eq(applicationApprovalHistory.decision, 'Approve')
-          )
-        )
-        .limit(1);
-
-      // Verify Mentor approval exists in history (using tx context)
-      const [mentorApproval] = await tx
-        .select()
-        .from(applicationApprovalHistory)
-        .where(
-          and(
-            eq(applicationApprovalHistory.applicationId, applicationId),
-            eq(applicationApprovalHistory.approverRole, 'Mentor'),
-            eq(applicationApprovalHistory.decision, 'Approve')
-          )
-        )
-        .limit(1);
-
-      if (!ecApproval || !mentorApproval) {
-        throw new AppError(400, 'INVALID_STAGE_HISTORY', 'Missing required previous review approvals in audit history.');
       }
     } else if (currentStatus === 'In Progress: Head of Department') {
       if (role !== 'Head of Department') {

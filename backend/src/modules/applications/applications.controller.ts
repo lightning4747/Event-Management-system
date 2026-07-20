@@ -121,3 +121,26 @@ export const viewApplicationDetails = async (req: Request, res: Response, next: 
     next(error);
   }
 };
+
+export const withdrawApplication = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const studentId = req.user?.userId;
+    const role = req.user?.role;
+    if (!studentId || role !== 'Student') {
+      throw new AppError(403, 'FORBIDDEN', 'Only students can withdraw their own applications.');
+    }
+
+    const { id } = req.params;
+    let appId: bigint;
+    try {
+      appId = BigInt(id);
+    } catch {
+      throw new AppError(400, 'BAD_REQUEST', 'Invalid application ID format.');
+    }
+
+    const result = await applicationsService.withdrawApplication(appId, studentId);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};

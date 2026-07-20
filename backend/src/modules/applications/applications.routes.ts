@@ -10,5 +10,6 @@ router.get('/my', authenticate, requireRole(['Student']), applicationsController
 router.get('/', authenticate, requireRole(['Mentor', 'Event Coordinator', 'Program Coordinator', 'Head of Department']), applicationsController.listDepartmentApplications);
 router.get('/:id', authenticate, requireRole(['Student', 'Mentor', 'Event Coordinator', 'Program Coordinator', 'Head of Department']), applicationsController.viewApplicationDetails);
 router.post('/:id/decide', authenticate, handleDecision);
+router.post('/:id/withdraw', authenticate, requireRole(['Student']), applicationsController.withdrawApplication);
 
 export const applicationsRoutes = router;

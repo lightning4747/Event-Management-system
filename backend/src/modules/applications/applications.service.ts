@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { odApplications, students, applicationApprovalHistory, certificateRequirements, certificates, certificateDeadlineExtensions } from '../../db/schema';
-import { eq, desc, or, and, inArray, sql } from 'drizzle-orm';
+import { odApplications, students, users, applicationApprovalHistory, certificateRequirements, certificates, certificateDeadlineExtensions } from '../../db/schema';
+import { eq, desc, or, and, inArray, sql, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { CreateApplicationInput } from './applications.types';
 
@@ -131,15 +131,16 @@ export const getDepartmentApplications = async (
     })
     .from(odApplications)
     .innerJoin(students, eq(odApplications.studentId, students.userId))
+    .innerJoin(users, eq(odApplications.studentId, users.userId))
     .limit(limit ?? 100)
     .offset(offset ?? 0);
 
   if (role === 'Administrator') {
-    return query.orderBy(desc(odApplications.createdAt));
+    return query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
   }
 
   if (role === 'Event Coordinator') {
-    return query.orderBy(desc(odApplications.createdAt));
+    return query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
   }
 
   if (role === 'Mentor') {
@@ -147,6 +148,7 @@ export const getDepartmentApplications = async (
       .where(
         and(
           eq(students.mentorId, userId),
+          isNull(users.deletedAt),
           or(
             inArray(odApplications.status, [
               'In Progress: Mentor',
@@ -164,13 +166,16 @@ export const getDepartmentApplications = async (
   if (role === 'Program Coordinator') {
     return query
       .where(
-        or(
-          inArray(odApplications.status, [
-            'In Progress: Program Coordinator',
-            'In Progress: Head of Department',
-            'Approved'
-          ]),
-          hasApprovedPreviousStage('Mentor')
+        and(
+          isNull(users.deletedAt),
+          or(
+            inArray(odApplications.status, [
+              'In Progress: Program Coordinator',
+              'In Progress: Head of Department',
+              'Approved'
+            ]),
+            hasApprovedPreviousStage('Mentor')
+          )
         )
       )
       .orderBy(desc(odApplications.createdAt));
@@ -179,12 +184,15 @@ export const getDepartmentApplications = async (
   if (role === 'Head of Department') {
     return query
       .where(
-        or(
-          inArray(odApplications.status, [
-            'In Progress: Head of Department',
-            'Approved'
-          ]),
-          hasApprovedPreviousStage('Program Coordinator')
+        and(
+          isNull(users.deletedAt),
+          or(
+            inArray(odApplications.status, [
+              'In Progress: Head of Department',
+              'Approved'
+            ]),
+            hasApprovedPreviousStage('Program Coordinator')
+          )
         )
       )
       .orderBy(desc(odApplications.createdAt));
@@ -332,3 +340,53 @@ export const checkApplicationImmutability = async (applicationId: bigint): Promi
     throw new AppError(400, 'APPLICATION_IMMUTABLE', 'This On-Duty application has already been decided and is immutable.');
   }
 };
+
+export const withdrawApplication = async (
+  applicationId: bigint,
+  userId: string
+): Promise<{ newStatus: string }> => {
+  const result = await db.transaction(async (tx) => {
+    const [app] = await tx
+      .select({
+        status: odApplications.status,
+        studentId: odApplications.studentId,
+      })
+      .from(odApplications)
+      .innerJoin(students, eq(odApplications.studentId, students.userId))
+      .innerJoin(users, eq(odApplications.studentId, users.userId))
+      .where(
+        and(
+          eq(odApplications.applicationId, applicationId),
+          isNull(users.deletedAt)
+        )
+      )
+      .for('update', { of: odApplications })
+      .limit(1);
+
+    if (!app) {
+      throw new AppError(404, 'NOT_FOUND', 'On-Duty application not found.');
+    }
+
+    if (app.studentId !== userId) {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: You do not own this application.');
+    }
+
+    if (app.status === 'Approved' || app.status === 'Rejected' || app.status === 'Withdrawn') {
+      throw new AppError(400, 'APPLICATION_IMMUTABLE', 'This application is already decided and cannot be withdrawn.');
+    }
+
+    await tx
+      .update(odApplications)
+      .set({
+        status: 'Withdrawn',
+        withdrawnAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(odApplications.applicationId, applicationId));
+
+    return { newStatus: 'Withdrawn' };
+  });
+
+  return result;
+};
+
