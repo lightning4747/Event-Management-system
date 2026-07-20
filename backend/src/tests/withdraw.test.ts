@@ -3,7 +3,7 @@ import { clearDatabase, seedTestUsers } from './setup';
 import { createApplication, withdrawApplication } from '../modules/applications/applications.service';
 import { makeApprovalDecision } from '../modules/decisions/decisions.service';
 import { db } from '../db';
-import { odApplications } from '../db/schema';
+import { odApplications, applicationApprovalHistory } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 describe('OD Application Withdrawal Integration Tests', () => {
@@ -12,7 +12,7 @@ describe('OD Application Withdrawal Integration Tests', () => {
     await seedTestUsers();
   });
 
-  it('should successfully allow a student to withdraw their own pending application', async () => {
+  it('should successfully allow a student to withdraw their own pending application and record history log', async () => {
     const appInput = {
       title: 'Vibrant Gujarat Hackathon',
       location: 'Gujarat',
@@ -38,6 +38,18 @@ describe('OD Application Withdrawal Integration Tests', () => {
 
     expect(updatedApp.status).toBe('Withdrawn');
     expect(updatedApp.withdrawnAt).not.toBeNull();
+
+    // 4. Verify history log
+    const [historyRecord] = await db
+      .select()
+      .from(applicationApprovalHistory)
+      .where(eq(applicationApprovalHistory.applicationId, appId))
+      .limit(1);
+
+    expect(historyRecord).toBeDefined();
+    expect(historyRecord.decision).toBe('Withdraw');
+    expect(historyRecord.approverId).toBe('STUDENT_01');
+    expect(historyRecord.approverRole).toBe('Student');
   });
 
   it('should block withdrawal if the application is already approved/rejected (immutable)', async () => {

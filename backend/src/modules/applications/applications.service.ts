@@ -29,7 +29,7 @@ export interface ApprovalHistoryItem {
   applicationId: bigint;
   approverId: string;
   approverRole: 'Student' | 'Event Coordinator' | 'Mentor' | 'Program Coordinator' | 'Head of Department' | 'Administrator';
-  decision: 'Approve' | 'Reject';
+  decision: 'Approve' | 'Reject' | 'Withdraw';
   comments: string | null;
   decidedAt: Date;
 }
@@ -389,6 +389,15 @@ export const withdrawApplication = async (
         updatedAt: new Date(),
       })
       .where(eq(odApplications.applicationId, applicationId));
+
+    // Insert approval log record
+    await tx.insert(applicationApprovalHistory).values({
+      applicationId,
+      approverId: userId,
+      approverRole: 'Student',
+      decision: 'Withdraw',
+      comments: 'Withdrawn by student',
+    });
 
     return { newStatus: 'Withdrawn' };
   });

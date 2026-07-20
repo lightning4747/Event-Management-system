@@ -283,6 +283,24 @@ export const Dashboard: React.FC = () => {
 
   // ─── Mutations ────────────────────────────────────────────────────────────────
 
+  const withdrawMutation = useMutation({
+    mutationFn: async (applicationId: string) => {
+      const res = await apiFetch(`/applications/${applicationId}/withdraw`, {
+        method: 'POST',
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applicationDetails', selectedAppId] });
+      queryClient.invalidateQueries({ queryKey: ['studentApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['studentMetrics'] });
+      setSelectedAppId(null);
+    },
+    onError: (err: any) => {
+      alert(err.message || 'Failed to withdraw application.');
+    },
+  });
+
   const uploadCertMutation = useMutation({
     mutationFn: async (payload: { requirementId: string; fileUrl: string }) => {
       const res = await apiFetch('/certificates', { method: 'POST', body: JSON.stringify(payload) });
@@ -1310,9 +1328,13 @@ export const Dashboard: React.FC = () => {
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[11px] font-bold text-gray-700">{hist.approverRole}</span>
                             <span className={`text-[11px] font-bold ${
-                              hist.decision === 'Approve' ? 'text-green-600' : 'text-red-600'
+                              hist.decision === 'Approve' ? 'text-green-600'
+                              : hist.decision === 'Withdraw' ? 'text-gray-500'
+                              : 'text-red-600'
                             }`}>
-                              {hist.decision === 'Approve' ? 'Approved' : 'Rejected'}
+                              {hist.decision === 'Approve' ? 'Approved'
+                                : hist.decision === 'Withdraw' ? 'Withdrawn'
+                                : 'Rejected'}
                             </span>
                           </div>
                           <p className="text-xs text-gray-700">{hist.comments}</p>
@@ -1322,7 +1344,25 @@ export const Dashboard: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex justify-end pt-1">
+                <div className="flex justify-end items-center gap-2 pt-1">
+                  {isStudent &&
+                    appDetails.application.status !== 'Approved' &&
+                    appDetails.application.status !== 'Rejected' &&
+                    appDetails.application.status !== 'Withdrawn' && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={withdrawMutation.isPending}
+                        onClick={() => {
+                          if (confirm('Are you sure you want to withdraw this application?')) {
+                            withdrawMutation.mutate(appDetails.application.applicationId);
+                          }
+                        }}
+                        className="text-xs h-9 px-4 bg-red-600 hover:bg-red-700 text-white mr-auto rounded-lg font-bold"
+                      >
+                        {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw Request'}
+                      </Button>
+                    )}
                   <DialogClose asChild>
                     <Button variant="outline" size="sm" className="text-sm h-9 px-5">
                       Close

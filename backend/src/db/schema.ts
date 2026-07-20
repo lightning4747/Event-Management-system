@@ -23,7 +23,8 @@ export const statusEnum = pgEnum('application_status', [
 
 export const decisionEnum = pgEnum('decision', [
   'Approve',
-  'Reject'
+  'Reject',
+  'Withdraw'
 ]);
 
 export const certStatusEnum = pgEnum('cert_status', [
