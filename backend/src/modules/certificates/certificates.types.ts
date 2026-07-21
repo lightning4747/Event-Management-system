@@ -2,10 +2,7 @@ import { z } from 'zod';
 
 export const uploadCertificateSchema = z.object({
   requirementId: z.string().min(1, 'Requirement ID is required.'),
-  fileUrl: z
-    .string()
-    .url('File URL must be a valid URL.')
-    .regex(/(onedrive\.live\.com|sharepoint\.com)/, 'File URL must be a valid Microsoft OneDrive or SharePoint link.'),
+  fileUrl: z.string().optional(),
 });
 
 export type UploadCertificateInput = z.infer<typeof uploadCertificateSchema>;

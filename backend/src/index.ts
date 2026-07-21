@@ -16,6 +16,8 @@ import { checkCertificateDeadlines } from './modules/certificates/certificates.s
 import { errorHandler } from './middleware/error';
 import { globalLimiter } from './middleware/rateLimiter';
 
+import path from 'path';
+
 const app = express();
 const port = process.env.PORT || 8082;
 
@@ -23,6 +25,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(httpLogger);
 
 app.get('/api/health', (_req, res) => {

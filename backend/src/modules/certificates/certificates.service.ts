@@ -1,12 +1,28 @@
 import { db } from '../../db';
-import { odApplications, certificateRequirements, certificates, users } from '../../db/schema';
+import { odApplications, certificateRequirements, certificates, users, students } from '../../db/schema';
 import { eq, lt, and, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
+import { storageService } from '../../services/storage/storage.service';
+
+const getAcademicYearName = (admissionYear: number): string => {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const academicStartYear = currentMonth >= 5 ? currentYear : currentYear - 1;
+  const diff = academicStartYear - admissionYear;
+  switch (diff) {
+    case 0: return 'First Year';
+    case 1: return 'Second Year';
+    case 2: return 'Third Year';
+    case 3: return 'Fourth Year';
+    default: return `${diff + 1}th Year`;
+  }
+};
 
 export const uploadCertificate = async (
   userId: string,
-  input: UploadCertificateInput
+  input: UploadCertificateInput,
+  file?: Express.Multer.File
 ): Promise<{ certificateId: bigint; requirementId: bigint; fileUrl: string; uploadVersion: number }> => {
   let reqId: bigint;
   try {
@@ -15,7 +31,7 @@ export const uploadCertificate = async (
     throw new AppError(400, 'BAD_REQUEST', 'Invalid requirement ID format.');
   }
 
-  // 1. Fetch certificate requirement detail joined with OD application
+  // 1. Fetch certificate requirement detail joined with OD application & student
   const [req] = await db
     .select({
       requirementId: certificateRequirements.requirementId,
@@ -24,9 +40,13 @@ export const uploadCertificate = async (
       submissionDeadline: certificateRequirements.submissionDeadline,
       studentId: odApplications.studentId,
       toDate: odApplications.toDate,
+      title: odApplications.title,
+      admissionYear: students.admissionYear,
+      section: students.section,
     })
     .from(certificateRequirements)
     .innerJoin(odApplications, eq(certificateRequirements.applicationId, odApplications.applicationId))
+    .innerJoin(students, eq(odApplications.studentId, students.userId))
     .innerJoin(users, eq(odApplications.studentId, users.userId))
     .where(
       and(
@@ -61,7 +81,39 @@ export const uploadCertificate = async (
     throw new AppError(400, 'DEADLINE_EXPIRED', 'The submission deadline has expired. Contact your mentor for an extension.');
   }
 
-  // 6. Perform upload inserts in transaction (supports re-upload while preserving history)
+  // 6. Upload file buffer to StorageProvider (OneDrive / Local fallback)
+  let fileUrl = input.fileUrl || '';
+  let driveItemId: string | undefined;
+  let fileName: string | undefined;
+
+  if (file) {
+    const existingCerts = await db
+      .select()
+      .from(certificates)
+      .where(eq(certificates.requirementId, reqId));
+
+    const uploadVersion = existingCerts.length + 1;
+    const yearFolder = getAcademicYearName(req.admissionYear);
+    const folderPath = `Certificates/${yearFolder}/${req.section}`;
+    const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
+    fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
+
+    const storageResult = await storageService.uploadFile({
+      fileName,
+      folderPath,
+      mimeType: file.mimetype || 'application/pdf',
+      buffer: file.buffer,
+    });
+
+    fileUrl = storageResult.fileUrl;
+    driveItemId = storageResult.fileId;
+  }
+
+  if (!fileUrl) {
+    throw new AppError(400, 'BAD_REQUEST', 'Please provide a PDF file to upload.');
+  }
+
+  // 7. Perform upload inserts in transaction (supports re-upload while preserving history)
   const result = await db.transaction(async (tx) => {
     // Check previous upload count
     const existingCerts = await tx
@@ -82,7 +134,9 @@ export const uploadCertificate = async (
       .insert(certificates)
       .values({
         requirementId: reqId,
-        fileUrl: input.fileUrl,
+        driveItemId: driveItemId || null,
+        fileName: fileName || null,
+        fileUrl,
         uploadVersion,
         isCurrent: true,
       })

@@ -170,6 +170,7 @@ export const Dashboard: React.FC = () => {
   const [verifyError, setVerifyError] = React.useState<Record<string, string | null>>({});
 
   // ── Certificate upload (student) ──
+  const [certFiles, setCertFiles] = React.useState<Record<string, File>>({});
   const [certUrls, setCertUrls] = React.useState<Record<string, string>>({});
   const [certErrors, setCertErrors] = React.useState<Record<string, string | null>>({});
 
@@ -299,9 +300,17 @@ export const Dashboard: React.FC = () => {
   });
 
   const uploadCertMutation = useMutation({
-    mutationFn: async (payload: { requirementId: string; fileUrl: string }) => {
-      const res = await apiFetch('/certificates', { method: 'POST', body: JSON.stringify(payload) });
-      return res.json();
+    mutationFn: async (payload: { requirementId: string; file?: File; fileUrl?: string }) => {
+      if (payload.file) {
+        const formData = new FormData();
+        formData.append('requirementId', payload.requirementId);
+        formData.append('file', payload.file);
+        const res = await apiFetch('/certificates', { method: 'POST', body: formData });
+        return res.json();
+      } else {
+        const res = await apiFetch('/certificates', { method: 'POST', body: JSON.stringify(payload) });
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applicationDetails', selectedAppId] });
@@ -426,15 +435,34 @@ export const Dashboard: React.FC = () => {
   // ─── Handlers ─────────────────────────────────────────────────────────────────
 
   const handleCertSubmit = async (reqId: string) => {
+    const selectedFile = certFiles[reqId];
     const url = certUrls[reqId] || '';
-    const validation = oneDriveSchema.safeParse(url);
-    if (!validation.success) {
-      setCertErrors((prev) => ({ ...prev, [reqId]: validation.error.errors[0].message }));
+
+    if (!selectedFile && !url) {
+      setCertErrors((prev) => ({ ...prev, [reqId]: 'Please choose a PDF file to upload.' }));
       return;
     }
+
+    if (selectedFile) {
+      if (selectedFile.type !== 'application/pdf' && !selectedFile.name.toLowerCase().endsWith('.pdf')) {
+        setCertErrors((prev) => ({ ...prev, [reqId]: 'Only PDF files are accepted.' }));
+        return;
+      }
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        setCertErrors((prev) => ({ ...prev, [reqId]: 'File size must be 10MB or less.' }));
+        return;
+      }
+    } else {
+      const validation = oneDriveSchema.safeParse(url);
+      if (!validation.success) {
+        setCertErrors((prev) => ({ ...prev, [reqId]: validation.error.errors[0].message }));
+        return;
+      }
+    }
+
     setCertErrors((prev) => ({ ...prev, [reqId]: null }));
     try {
-      await uploadCertMutation.mutateAsync({ requirementId: reqId, fileUrl: url });
+      await uploadCertMutation.mutateAsync({ requirementId: reqId, file: selectedFile, fileUrl: url });
       setCertUrls((prev) => ({ ...prev, [reqId]: '' }));
     } catch (err: any) {
       setCertErrors((prev) => ({ ...prev, [reqId]: err.message || 'Submission failed.' }));
@@ -1110,25 +1138,36 @@ export const Dashboard: React.FC = () => {
                             </div>
                           )}
                           {!isUploaded ? (
-                            <div className="space-y-2">
-                              <Label className="text-xs text-gray-600">OneDrive / SharePoint link</Label>
-                              <div className="flex gap-2">
+                            <div className="space-y-2.5">
+                              <Label className="text-xs font-semibold text-gray-700">Upload Participation Certificate (PDF)</Label>
+                              <div className="flex flex-col sm:flex-row gap-2">
                                 <Input
-                                  placeholder="https://onedrive.live.com/..."
-                                  value={certUrls[cert.requirementId] || ''}
-                                  onChange={(e) => setCertUrls((prev) => ({ ...prev, [cert.requirementId]: e.target.value }))}
+                                  type="file"
+                                  accept="application/pdf"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setCertFiles((prev) => ({ ...prev, [cert.requirementId]: file }));
+                                      setCertErrors((prev) => ({ ...prev, [cert.requirementId]: null }));
+                                    }
+                                  }}
                                   disabled={uploadCertMutation.isPending}
-                                  className="flex-1 h-9 text-sm"
+                                  className="flex-1 text-xs h-9 py-1 file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-0.5 file:text-xs file:font-semibold"
                                 />
                                 <Button
                                   size="sm"
                                   onClick={() => handleCertSubmit(cert.requirementId)}
-                                  disabled={uploadCertMutation.isPending || !certUrls[cert.requirementId]}
-                                  className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
+                                  disabled={uploadCertMutation.isPending || (!certFiles[cert.requirementId] && !certUrls[cert.requirementId])}
+                                  className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-xs shrink-0"
                                 >
-                                  Submit
+                                  {uploadCertMutation.isPending ? 'Uploading...' : 'Upload & Submit'}
                                 </Button>
                               </div>
+                              {certFiles[cert.requirementId] && (
+                                <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                                  Selected: {certFiles[cert.requirementId].name} ({Math.round(certFiles[cert.requirementId].size / 1024)} KB)
+                                </p>
+                              )}
                               {certErrors[cert.requirementId] && (
                                 <p className="text-xs text-red-600 font-medium">{certErrors[cert.requirementId]}</p>
                               )}

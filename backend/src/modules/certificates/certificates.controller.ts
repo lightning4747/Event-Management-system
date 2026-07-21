@@ -16,7 +16,7 @@ export const handleUpload = async (req: Request, res: Response, next: NextFuncti
       throw new AppError(400, 'BAD_REQUEST', errorMsg);
     }
 
-    const cert = await certificatesService.uploadCertificate(studentId, parseResult.data);
+    const cert = await certificatesService.uploadCertificate(studentId, parseResult.data, req.file);
     
     // Explicitly cast BigInt fields to strings to prevent JSON serialization errors
     const serializedData = {

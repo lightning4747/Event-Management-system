@@ -129,6 +129,8 @@ export const certificateRequirements = pgTable('certificate_requirements', {
 export const certificates = pgTable('certificates', {
   certificateId: bigserial('certificate_id', { mode: 'bigint' }).primaryKey(),
   requirementId: bigint('requirement_id', { mode: 'bigint' }).references(() => certificateRequirements.requirementId).notNull(),
+  driveItemId: text('drive_item_id'),
+  fileName: varchar('file_name', { length: 255 }),
   fileUrl: text('file_url').notNull(),
   uploadVersion: smallint('upload_version').notNull(),
   isCurrent: boolean('is_current').default(true).notNull(),
