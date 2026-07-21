@@ -66,19 +66,16 @@ const getAcademicYearName = (admissionYear: number): string => {
 };
 
 const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Approved':
-    case 'Verified':
-      return 'bg-green-50 text-green-700 border-green-200';
-    case 'Rejected':
-      return 'bg-red-50 text-red-700 border-red-200';
-    case 'Withdrawn':
-      return 'bg-gray-100 text-gray-600 border-gray-200';
-    case 'Submitted':
-      return 'bg-blue-50 text-blue-700 border-blue-200';
-    default:
-      return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (status === 'Approved' || status === 'Completed' || status === 'Verified') {
+    return 'bg-primary/10 text-primary border-primary/20';
   }
+  if (status === 'Rejected' || status === 'Withdrawn') {
+    return 'bg-destructive/10 text-destructive border-destructive/20';
+  }
+  if (status === 'Submitted' || status.startsWith('In Progress')) {
+    return 'bg-primary/10 text-primary border-primary/20';
+  }
+  return 'bg-muted text-muted-foreground border-border';
 };
 
 const formatDate = (dateStr: string) => {
@@ -180,7 +177,7 @@ export const StudentsDirectory: React.FC = () => {
                   }}
                   className={`flex-1 text-xs font-bold py-2.5 rounded-lg transition-all border border-transparent ${
                     selectedYear === item.value
-                      ? 'bg-blue-50 text-blue-700 shadow-sm border-blue-200/50'
+                      ? 'bg-primary/10 text-primary shadow-sm border-primary/20'
                       : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
@@ -211,7 +208,7 @@ export const StudentsDirectory: React.FC = () => {
                           }}
                           className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-all border ${
                             selectedSection === sec
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              ? 'bg-primary/10 text-primary border-primary/20'
                               : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                           }`}
                         >
@@ -245,7 +242,7 @@ export const StudentsDirectory: React.FC = () => {
 
                   {listLoading ? (
                     <div className="flex items-center justify-center py-16">
-                      <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     </div>
                   ) : filteredStudents.length === 0 ? (
                     <div className="text-center py-16">
@@ -260,11 +257,11 @@ export const StudentsDirectory: React.FC = () => {
                           onClick={() => handleStudentSelect(std.userId)}
                           className={`px-5 py-3.5 flex items-center gap-3.5 cursor-pointer transition-all ${
                             selectedStudentId === std.userId
-                              ? 'bg-blue-50/50 hover:bg-blue-50'
+                              ? 'bg-primary/5 hover:bg-primary/5'
                               : 'hover:bg-gray-50/60'
                           }`}
                         >
-                          <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-muted text-muted-foreground font-bold text-xs flex items-center justify-center shrink-0">
                             {std.fullName.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -288,7 +285,7 @@ export const StudentsDirectory: React.FC = () => {
             <div className="lg:col-span-7 space-y-5 animate-in fade-in duration-200">
               {detailsLoading ? (
                 <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-24 flex flex-col items-center justify-center gap-3">
-                  <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   <p className="text-xs text-gray-500 font-medium">Retrieving student records...</p>
                 </div>
               ) : !studentDetails ? (
@@ -301,7 +298,7 @@ export const StudentsDirectory: React.FC = () => {
                   <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-lg font-bold shadow-md shadow-blue-100">
+                        <div className="w-14 h-14 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center text-lg font-bold shadow-md shadow-sm">
                           {studentDetails.student.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <div>
@@ -338,7 +335,7 @@ export const StudentsDirectory: React.FC = () => {
                   {/* Summary Metric Counters */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-green-50 text-green-700 flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                         <CheckCircle className="w-4.5 h-4.5" />
                       </div>
                       <div>
@@ -347,7 +344,7 @@ export const StudentsDirectory: React.FC = () => {
                       </div>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                         <Clock className="w-4.5 h-4.5" />
                       </div>
                       <div>
@@ -356,7 +353,7 @@ export const StudentsDirectory: React.FC = () => {
                       </div>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0">
                         <FileText className="w-4.5 h-4.5" />
                       </div>
                       <div>
@@ -381,7 +378,7 @@ export const StudentsDirectory: React.FC = () => {
                             onClick={() => setDetailsTab(tab.id as any)}
                             className={`flex-1 text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
                               detailsTab === tab.id
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200/50'
+                                ? 'bg-primary/10 text-primary border-primary/20'
                                 : 'text-gray-500 hover:text-gray-900'
                             }`}
                           >
@@ -431,7 +428,7 @@ export const StudentsDirectory: React.FC = () => {
                                     {formatDate(app.fromDate)} → {formatDate(app.toDate)} · {app.numberOfEvents} {app.numberOfEvents === 1 ? 'day' : 'days'}
                                   </p>
                                 </div>
-                                <span className="text-[9px] font-bold px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full">
+                                <span className="text-[9px] font-bold px-2.5 py-1 bg-muted border border-border text-muted-foreground rounded-full">
                                   {app.status}
                                 </span>
                               </div>
@@ -463,7 +460,7 @@ export const StudentsDirectory: React.FC = () => {
                                     href={cert.fileUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline pt-1"
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80 hover:underline pt-1"
                                   >
                                     <ExternalLink className="w-3 h-3" /> View OneDrive Certificate
                                   </a>

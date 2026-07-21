@@ -48,12 +48,7 @@ export const MenteeRosterDialog: React.FC<MenteeRosterDialogProps> = ({ open, on
       .toUpperCase();
 
   const avatarColors = [
-    'bg-blue-100 text-blue-700',
-    'bg-emerald-100 text-emerald-700',
-    'bg-purple-100 text-purple-700',
-    'bg-orange-100 text-orange-700',
-    'bg-pink-100 text-pink-700',
-    'bg-teal-100 text-teal-700',
+    'bg-muted text-foreground',
   ];
 
   return (
@@ -61,7 +56,7 @@ export const MenteeRosterDialog: React.FC<MenteeRosterDialogProps> = ({ open, on
       <DialogContent className="max-w-2xl bg-white max-h-[85vh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-900">
-            <Users className="w-5 h-5 text-blue-600" />
+            <Users className="w-5 h-5 text-primary" />
             My Mentees ({mentees.length})
           </DialogTitle>
         </DialogHeader>
@@ -81,7 +76,7 @@ export const MenteeRosterDialog: React.FC<MenteeRosterDialogProps> = ({ open, on
         <div className="flex-1 overflow-y-auto py-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
@@ -95,7 +90,7 @@ export const MenteeRosterDialog: React.FC<MenteeRosterDialogProps> = ({ open, on
               {filtered.map((mentee, idx) => (
                 <div
                   key={mentee.userId}
-                  className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2.5 hover:border-blue-200 hover:bg-blue-50/30 transition-colors"
+                  className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2.5 hover:border-border hover:bg-muted/30 transition-colors"
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${avatarColors[idx % avatarColors.length]}`}>
                     {getInitials(mentee.fullName)}

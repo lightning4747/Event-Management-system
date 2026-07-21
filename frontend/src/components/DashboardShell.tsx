@@ -34,19 +34,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
   };
 
   const roleBadgeColor = () => {
-    switch (user?.role) {
-      case 'Student': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'Mentor': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'Event Coordinator': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'Program Coordinator': return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'Head of Department': return 'bg-red-50 text-red-700 border-red-200';
-      case 'Administrator': return 'bg-gray-100 text-gray-700 border-gray-300';
-      default: return 'bg-gray-100 text-gray-600 border-gray-200';
-    }
+    return 'bg-muted text-muted-foreground border border-border';
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col font-sans pb-16 md:pb-0">
+    <div className="min-h-screen bg-background flex flex-col font-sans pb-16 md:pb-0">
       {/* Top Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -96,11 +88,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
                 to={link.path}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-600 hover:bg-muted hover:text-gray-900'
                 }`}
               >
-                <IconComponent className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                <IconComponent className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                 {link.label}
               </Link>
             );
@@ -134,7 +126,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
                 key={link.path}
                 to={link.path}
                 className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
-                  isActive ? 'text-blue-600' : 'text-gray-400'
+                  isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
                 <IconComponent className="w-5 h-5" />

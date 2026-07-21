@@ -130,7 +130,7 @@ export const Profile: React.FC = () => {
       <DashboardShell>
         <div className="flex items-center justify-center py-16">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-gray-500 font-medium">Loading profile...</p>
           </div>
         </div>
@@ -168,7 +168,7 @@ export const Profile: React.FC = () => {
             <FieldItem label={isStudent ? 'Register Number' : 'Faculty ID'} value={profile.userId} />
             <div className="space-y-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">System Role</p>
-              <span className="inline-block text-xs font-bold px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
+              <span className="inline-block text-xs font-bold px-3 py-1 bg-muted text-muted-foreground border border-border rounded-full">
                 {profile.role}
               </span>
             </div>
@@ -205,57 +205,57 @@ export const Profile: React.FC = () => {
                       <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalSubmitted ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-amber-600" />
+                  <div className="bg-muted/50 border border-border rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending</p>
-                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingCount ?? 0}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending</p>
+                      <p className="text-xl font-bold text-muted-foreground leading-none mt-1">{metrics.pendingCount ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
                     <div>
-                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Approved</p>
-                      <p className="text-xl font-bold text-green-700 leading-none mt-1">{metrics.approvedCount ?? 0}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Approved</p>
+                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.approvedCount ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-                    <XCircle className="w-5 h-5 text-red-600" />
+                  <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 flex items-center gap-3">
+                    <XCircle className="w-5 h-5 text-destructive" />
                     <div>
-                      <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Rejected</p>
-                      <p className="text-xl font-bold text-red-700 leading-none mt-1">{metrics.rejectedCount ?? 0}</p>
+                      <p className="text-[10px] font-bold text-destructive uppercase tracking-wider">Rejected</p>
+                      <p className="text-xl font-bold text-destructive leading-none mt-1">{metrics.rejectedCount ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                    <GraduationCap className="w-5 h-5 text-primary" />
                     <div>
-                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Upload Req.</p>
-                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.certificatesActionCount ?? 0}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Upload Req.</p>
+                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.certificatesActionCount ?? 0}</p>
                     </div>
                   </div>
                 </>
               )}
               {isMentor && (
                 <>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                    <Users className="w-5 h-5 text-blue-600" />
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                    <Users className="w-5 h-5 text-primary" />
                     <div>
-                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Total Mentees</p>
-                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.totalMentees ?? 0}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Total Mentees</p>
+                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.totalMentees ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-amber-600" />
+                  <div className="bg-muted/50 border border-border rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending Reviews</p>
-                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingMenteeApprovals ?? 0}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Reviews</p>
+                      <p className="text-xl font-bold text-muted-foreground leading-none mt-1">{metrics.pendingMenteeApprovals ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
+                  <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-destructive" />
                     <div>
-                      <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Mentees Overdue</p>
-                      <p className="text-xl font-bold text-red-700 leading-none mt-1">{metrics.menteesWithExpiredDeadlines ?? 0}</p>
+                      <p className="text-[10px] font-bold text-destructive uppercase tracking-wider">Mentees Overdue</p>
+                      <p className="text-xl font-bold text-destructive leading-none mt-1">{metrics.menteesWithExpiredDeadlines ?? 0}</p>
                     </div>
                   </div>
                 </>
@@ -269,18 +269,18 @@ export const Profile: React.FC = () => {
                       <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalApplications ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-amber-600" />
+                  <div className="bg-muted/50 border border-border rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending Reviews</p>
-                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingECApprovals ?? 0}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Reviews</p>
+                      <p className="text-xl font-bold text-muted-foreground leading-none mt-1">{metrics.pendingECApprovals ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                    <GraduationCap className="w-5 h-5 text-primary" />
                     <div>
-                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Certs to Verify</p>
-                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.pendingCertificateVerifications ?? 0}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Certs to Verify</p>
+                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.pendingCertificateVerifications ?? 0}</p>
                     </div>
                   </div>
                 </>
@@ -294,25 +294,25 @@ export const Profile: React.FC = () => {
                       <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalApplications ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
                     <div>
-                      <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Approved Applications</p>
-                      <p className="text-xl font-bold text-green-700 leading-none mt-1">{metrics.approvedApplications ?? 0}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Approved Applications</p>
+                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.approvedApplications ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                    <Users className="w-5 h-5 text-blue-600" />
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                    <Users className="w-5 h-5 text-primary" />
                     <div>
-                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Active Students</p>
-                      <p className="text-xl font-bold text-blue-700 leading-none mt-1">{metrics.activeStudentsCount ?? 0}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Active Students</p>
+                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.activeStudentsCount ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-amber-600" />
+                  <div className="bg-muted/50 border border-border rounded-xl p-4 flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending Approvals</p>
-                      <p className="text-xl font-bold text-amber-700 leading-none mt-1">{metrics.pendingHODApprovals ?? 0}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Approvals</p>
+                      <p className="text-xl font-bold text-muted-foreground leading-none mt-1">{metrics.pendingHODApprovals ?? 0}</p>
                     </div>
                   </div>
                 </>
@@ -323,11 +323,11 @@ export const Profile: React.FC = () => {
 
         {/* Security Section */}
         {isStudent ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-3">
-            <GraduationCap className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="bg-muted border border-border rounded-2xl p-5 flex items-start gap-3">
+            <GraduationCap className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-blue-800">Student credentials are managed by faculty</p>
-              <p className="text-xs text-blue-700 mt-1">
+              <p className="text-sm font-semibold text-foreground">Student credentials are managed by faculty</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 If you need to reset or update your login credentials, please contact your assigned cohort Mentor.
               </p>
             </div>
@@ -341,8 +341,8 @@ export const Profile: React.FC = () => {
 
             <div className="p-6 space-y-5">
               {successMsg && (
-                <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 text-green-800 text-sm p-3.5 rounded-xl font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                <div className="flex items-center gap-2.5 bg-muted border border-border text-foreground text-sm p-3.5 rounded-xl font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-muted-foreground shrink-0" />
                   {successMsg}
                 </div>
               )}
@@ -406,7 +406,7 @@ export const Profile: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={updateMutation.isPending}
-                  className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm"
+                  className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm"
                 >
                   {updateMutation.isPending ? 'Saving Changes...' : 'Update Credentials'}
                 </Button>

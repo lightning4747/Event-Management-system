@@ -87,19 +87,16 @@ const oneDriveSchema = z
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Approved':
-    case 'Verified':
-      return 'bg-green-50 text-green-700 border-green-200';
-    case 'Rejected':
-      return 'bg-red-50 text-red-700 border-red-200';
-    case 'Withdrawn':
-      return 'bg-gray-100 text-gray-600 border-gray-200';
-    case 'Submitted':
-      return 'bg-blue-50 text-blue-700 border-blue-200';
-    default:
-      return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (status === 'Approved' || status === 'Completed' || status === 'Verified') {
+    return 'bg-primary/10 text-primary border-primary/20';
   }
+  if (status === 'Rejected' || status === 'Withdrawn') {
+    return 'bg-destructive/10 text-destructive border-destructive/20';
+  }
+  if (status === 'Submitted' || status.startsWith('In Progress')) {
+    return 'bg-primary/10 text-primary border-primary/20';
+  }
+  return 'bg-muted text-muted-foreground border-border';
 };
 
 const getStepStatus = (stepRole: string, currentStatus: string, history: any[] = []) => {
@@ -125,9 +122,9 @@ const getDeadlineInfo = (toDateStr: string) => {
   deadline.setHours(23, 59, 59, 999);
   now.setHours(0, 0, 0, 0);
   const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return { isOverdue: true, text: 'Overdue', badgeColor: 'bg-red-50 text-red-700 border-red-200' };
+  if (diffDays < 0) return { isOverdue: true, text: 'Overdue', badgeColor: 'bg-destructive/10 text-destructive border-destructive/20' };
   if (diffDays === 0) return { isOverdue: false, text: 'Due Today', badgeColor: 'bg-amber-50 text-amber-700 border-amber-200' };
-  return { isOverdue: false, text: `${diffDays}d left`, badgeColor: 'bg-blue-50 text-blue-700 border-blue-200' };
+  return { isOverdue: false, text: `${diffDays}d left`, badgeColor: 'bg-primary/10 text-primary border-primary/20' };
 };
 
 const formatDate = (dateStr: string) => {
@@ -582,7 +579,7 @@ export const Dashboard: React.FC = () => {
   const AppCard = ({ app, onClick }: { app: ApplicationRow; onClick: () => void }) => (
     <div
       onClick={onClick}
-      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:border-blue-300 hover:shadow-md transition-all active:scale-[0.99]"
+      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-[0.99]"
     >
       <div className="flex-1 min-w-0">
         {!isStudent && (
@@ -611,7 +608,7 @@ export const Dashboard: React.FC = () => {
 
   const LoadingState = () => (
     <div className="flex items-center justify-center py-12">
-      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -645,7 +642,7 @@ export const Dashboard: React.FC = () => {
               </SectionTitle>
               <Button
                 onClick={() => setCreateFacultyOpen(true)}
-                className="flex items-center gap-2 h-9 text-sm bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex items-center gap-2 h-9 text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <UserPlus className="w-4 h-4" /> Provision Faculty
               </Button>
@@ -738,9 +735,9 @@ export const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 gap-4">
               <Link
                 to="/applications/new"
-                className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition-all flex items-start gap-4 cursor-pointer"
+                className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-primary/30 hover:shadow-md transition-all flex items-start gap-4 cursor-pointer"
               >
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 bg-muted text-muted-foreground rounded-xl flex items-center justify-center shrink-0">
                   <PlusCircle className="w-6 h-6" />
                 </div>
                 <div>
@@ -778,7 +775,7 @@ export const Dashboard: React.FC = () => {
               {isMentor && (
                 <Button
                   onClick={() => setCreateStudentOpen(true)}
-                  className="flex items-center gap-2 h-9 text-sm bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex items-center gap-2 h-9 text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   <UserPlus className="w-4 h-4" /> Add Student
                 </Button>
@@ -789,13 +786,13 @@ export const Dashboard: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
               <div
                 onClick={() => setActiveTab('pending')}
-                className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-primary/30 hover:shadow-sm ${
                   activeTab === 'pending'
-                    ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                    ? 'bg-primary/5 border-primary/20 text-primary shadow-sm'
                     : 'bg-white border-gray-200 text-gray-700'
                 }`}
               >
-                <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-muted text-muted-foreground rounded-xl flex items-center justify-center shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div className="mt-4">
@@ -807,13 +804,13 @@ export const Dashboard: React.FC = () => {
               {isEC && (
                 <div
                   onClick={() => setActiveTab('certificates')}
-                  className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                  className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-primary/30 hover:shadow-sm ${
                     activeTab === 'certificates'
-                      ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                      ? 'bg-primary/5 border-primary/20 text-primary shadow-sm'
                       : 'bg-white border-gray-200 text-gray-700'
                   }`}
                 >
-                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 bg-muted text-muted-foreground rounded-xl flex items-center justify-center shrink-0">
                     <FileText className="w-5 h-5" />
                   </div>
                   <div className="mt-4">
@@ -826,13 +823,13 @@ export const Dashboard: React.FC = () => {
               {isMentor && (
                 <div
                   onClick={() => setActiveTab('extensions')}
-                  className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                  className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-primary/30 hover:shadow-sm ${
                     activeTab === 'extensions'
-                      ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                      ? 'bg-primary/5 border-primary/20 text-primary shadow-sm'
                       : 'bg-white border-gray-200 text-gray-700'
                   }`}
                 >
-                  <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 bg-muted text-muted-foreground rounded-xl flex items-center justify-center shrink-0">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div className="mt-4">
@@ -844,9 +841,9 @@ export const Dashboard: React.FC = () => {
 
               <div
                 onClick={() => setActiveTab('all')}
-                className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm ${
+                className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-primary/30 hover:shadow-sm ${
                   activeTab === 'all'
-                    ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm'
+                    ? 'bg-primary/5 border-primary/20 text-primary shadow-sm'
                     : 'bg-white border-gray-200 text-gray-700'
                 }`}
               >
@@ -861,9 +858,9 @@ export const Dashboard: React.FC = () => {
 
               <div
                 onClick={() => navigate('/students')}
-                className="bg-white border border-gray-200 rounded-2xl p-4 hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between cursor-pointer text-gray-700 text-left"
+                className="bg-white border border-gray-200 rounded-2xl p-4 hover:border-primary/30 hover:shadow-sm transition-all flex flex-col justify-between cursor-pointer text-gray-700 text-left"
               >
-                <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-muted text-muted-foreground rounded-xl flex items-center justify-center shrink-0">
                   <Users className="w-5 h-5" />
                 </div>
                 <div className="mt-4">
@@ -913,7 +910,7 @@ export const Dashboard: React.FC = () => {
                     <Button
                       onClick={handleExportCSV}
                       disabled={exportLoading}
-                      className="flex items-center gap-2 text-sm h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                      className="flex items-center gap-2 text-sm h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                       <Download className="w-4 h-4" />
                       {exportLoading ? 'Generating...' : 'Download CSV'}
@@ -938,7 +935,7 @@ export const Dashboard: React.FC = () => {
                     onClick={() => setActiveTab(tab as any)}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                       activeTab === tab
-                        ? 'bg-white text-blue-700 shadow-sm'
+                        ? 'bg-white text-primary shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -984,7 +981,7 @@ export const Dashboard: React.FC = () => {
                         </Button>
                         <Button
                           size="sm"
-                          className="flex-1 text-xs h-8 bg-green-600 hover:bg-green-700 text-white"
+                          className="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                           onClick={() => {
                             setGrantAppId(req.applicationId);
                             setGrantReason(`Granted ${req.requestedDays} day extension: ${req.reason}`);
@@ -1058,14 +1055,14 @@ export const Dashboard: React.FC = () => {
 
                 {/* ── Extension Banner ── */}
                 {appDetails.extension && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-start gap-2.5">
-                    <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="bg-muted border border-border rounded-xl p-3.5 flex items-start gap-2.5">
+                    <Calendar className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-blue-800">Deadline Extension Active</p>
-                      <p className="text-xs text-blue-700 mt-0.5">
+                      <p className="text-xs font-bold text-foreground">Deadline Extension Active</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         New deadline: <strong>{formatDate(appDetails.extension.newDeadline)}</strong>
                       </p>
-                      <p className="text-[11px] text-blue-600 mt-0.5">Reason: {appDetails.extension.reason}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Reason: {appDetails.extension.reason}</p>
                     </div>
                   </div>
                 )}
@@ -1081,7 +1078,7 @@ export const Dashboard: React.FC = () => {
                           size="sm"
                           disabled={isExtensionPending}
                           onClick={() => setRequestExtensionOpen(true)}
-                          className="text-xs h-8 px-3 border-amber-300 text-amber-700 hover:bg-amber-50"
+                          className="text-xs h-8 px-3 border-border text-muted-foreground hover:bg-muted"
                         >
                           <Hourglass className="w-3.5 h-3.5 mr-1.5" />
                           {isExtensionPending ? 'Extension Pending' : 'Request Extension'}
@@ -1127,7 +1124,7 @@ export const Dashboard: React.FC = () => {
                                   size="sm"
                                   onClick={() => handleCertSubmit(cert.requirementId)}
                                   disabled={uploadCertMutation.isPending || !certUrls[cert.requirementId]}
-                                  className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                                  className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
                                 >
                                   Submit
                                 </Button>
@@ -1141,7 +1138,7 @@ export const Dashboard: React.FC = () => {
                               href={cert.fileUrl || '#'}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold hover:underline"
+                              className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-semibold hover:underline"
                             >
                               <ExternalLink className="w-3.5 h-3.5" /> View Submitted Document
                             </a>
@@ -1154,10 +1151,10 @@ export const Dashboard: React.FC = () => {
 
                 {/* ── Faculty: Decision Panel ── */}
                 {!isStudent && isUserCurrentReviewer && (
-                  <div className="border border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
+                  <div className="border border-border bg-muted rounded-xl p-4 space-y-3">
                     <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-amber-600" />
-                      <h5 className="text-xs font-bold text-amber-800 uppercase tracking-wider">Action Required</h5>
+                      <Shield className="w-4 h-4 text-muted-foreground" />
+                      <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">Action Required</h5>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
@@ -1165,8 +1162,8 @@ export const Dashboard: React.FC = () => {
                         onClick={() => { setDecisionType('Approve'); setDecisionError(null); setDecisionComments(''); }}
                         className={`py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-2 transition-all ${
                           decisionType === 'Approve'
-                            ? 'bg-green-600 border-green-600 text-white shadow-md'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50'
+                            ? 'bg-primary border-primary text-primary-foreground shadow-md'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-primary/30 hover:bg-primary/5 text-primary'
                         }`}
                       >
                         <Check className="w-4 h-4" /> Approve
@@ -1194,7 +1191,7 @@ export const Dashboard: React.FC = () => {
                           placeholder="Explain why this request is being rejected..."
                           value={decisionComments}
                           onChange={(e) => setDecisionComments(e.target.value)}
-                          className="flex w-full rounded-xl border border-input bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 resize-none"
+                          className="flex w-full rounded-xl border border-input bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
                         />
                       </div>
                     )}
@@ -1213,7 +1210,7 @@ export const Dashboard: React.FC = () => {
                         disabled={decideMutation.isPending}
                         className={`w-full h-10 text-sm font-bold ${
                           decisionType === 'Approve'
-                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
                             : 'bg-red-600 hover:bg-red-700 text-white'
                         }`}
                       >
@@ -1239,7 +1236,7 @@ export const Dashboard: React.FC = () => {
                           </div>
                           {cert.fileUrl && (
                             <a href={cert.fileUrl} target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold hover:underline">
+                              className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-semibold hover:underline">
                               <ExternalLink className="w-3.5 h-3.5" /> Open Student's Document
                             </a>
                           )}
@@ -1251,8 +1248,8 @@ export const Dashboard: React.FC = () => {
                                   onClick={() => { setVerifyType((prev) => ({ ...prev, [cert.requirementId]: 'Verified' })); setVerifyError((prev) => ({ ...prev, [cert.requirementId]: null })); }}
                                   className={`py-2 rounded-xl text-xs font-bold border-2 transition-all ${
                                     verifyType[cert.requirementId] === 'Verified'
-                                      ? 'bg-green-600 border-green-600 text-white'
-                                      : 'bg-white border-gray-200 text-gray-700 hover:border-green-300'
+                                      ? 'bg-primary border-primary text-primary-foreground'
+                                      : 'bg-white border-gray-200 text-gray-700 hover:border-primary/30'
                                   }`}
                                 >Verify</button>
                                 <button
@@ -1315,9 +1312,9 @@ export const Dashboard: React.FC = () => {
                       return (
                         <div key={idx} className="flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                            stepStatus === 'completed' ? 'bg-green-100 text-green-700'
-                            : stepStatus === 'rejected' ? 'bg-red-100 text-red-700'
-                            : stepStatus === 'active' ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400 ring-offset-1'
+                            stepStatus === 'completed' ? 'bg-primary/10 text-primary'
+                            : stepStatus === 'rejected' ? 'bg-destructive/10 text-destructive'
+                            : stepStatus === 'active' ? 'bg-primary/10 text-primary ring-2 ring-primary/30 ring-offset-1'
                             : 'bg-gray-100 text-gray-400'
                           }`}>
                             {stepStatus === 'completed' ? '✓' : stepStatus === 'rejected' ? '✗' : idx + 1}
@@ -1350,9 +1347,9 @@ export const Dashboard: React.FC = () => {
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[11px] font-bold text-gray-700">{hist.approverRole}</span>
                             <span className={`text-[11px] font-bold ${
-                              hist.decision === 'Approve' ? 'text-green-600'
+                              hist.decision === 'Approve' ? 'text-primary'
                               : hist.decision === 'Withdraw' ? 'text-gray-500'
-                              : 'text-red-600'
+                              : 'text-destructive'
                             }`}>
                               {hist.decision === 'Approve' ? 'Approved'
                                 : hist.decision === 'Withdraw' ? 'Withdrawn'
@@ -1394,7 +1391,7 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
               <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             )}
           </DialogContent>
@@ -1411,7 +1408,7 @@ export const Dashboard: React.FC = () => {
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); setCreateStudentError(null); setCreateStudentSuccess(null); onboardStudentMutation.mutate(studentFormValues); }} className="space-y-4 pt-2">
               {createStudentSuccess && (
-                <div className="bg-green-50 border border-green-200 text-green-800 text-sm p-3 rounded-xl font-medium">{createStudentSuccess}</div>
+                <div className="bg-muted border border-border text-foreground text-sm p-3 rounded-xl font-medium">{createStudentSuccess}</div>
               )}
               {createStudentError && (
                 <div className="bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-xl font-medium">{createStudentError}</div>
@@ -1439,7 +1436,7 @@ export const Dashboard: React.FC = () => {
               </div>
               <div className="flex gap-3 pt-1">
                 <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setCreateStudentOpen(false)} disabled={onboardStudentMutation.isPending}>Cancel</Button>
-                <Button type="submit" className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white" disabled={onboardStudentMutation.isPending}>
+                <Button type="submit" className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={onboardStudentMutation.isPending}>
                   {onboardStudentMutation.isPending ? 'Creating...' : 'Create Account'}
                 </Button>
               </div>
@@ -1454,7 +1451,7 @@ export const Dashboard: React.FC = () => {
               <DialogTitle className="text-base font-bold text-gray-900">Provision Faculty Account</DialogTitle>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); setCreateFacultyError(null); setCreateFacultySuccess(null); onboardFacultyMutation.mutate(facultyFormValues); }} className="space-y-4 pt-2">
-              {createFacultySuccess && <div className="bg-green-50 border border-green-200 text-green-800 text-sm p-3 rounded-xl font-medium">{createFacultySuccess}</div>}
+              {createFacultySuccess && <div className="bg-muted border border-border text-foreground text-sm p-3 rounded-xl font-medium">{createFacultySuccess}</div>}
               {createFacultyError && <div className="bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-xl font-medium">{createFacultyError}</div>}
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold text-gray-700">Faculty ID</Label>
@@ -1485,7 +1482,7 @@ export const Dashboard: React.FC = () => {
               </div>
               <div className="flex gap-3 pt-1">
                 <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setCreateFacultyOpen(false)} disabled={onboardFacultyMutation.isPending}>Cancel</Button>
-                <Button type="submit" className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white" disabled={onboardFacultyMutation.isPending}>
+                <Button type="submit" className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={onboardFacultyMutation.isPending}>
                   {onboardFacultyMutation.isPending ? 'Provisioning...' : 'Provision Account'}
                 </Button>
               </div>
@@ -1500,7 +1497,7 @@ export const Dashboard: React.FC = () => {
               <DialogTitle className="text-base font-bold text-gray-900">Request Deadline Extension</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleExtensionRequestSubmit} className="space-y-4 pt-2">
-              {extensionFormSuccess && <div className="bg-green-50 border border-green-200 text-green-800 text-sm p-3 rounded-xl font-medium">{extensionFormSuccess}</div>}
+              {extensionFormSuccess && <div className="bg-muted border border-border text-foreground text-sm p-3 rounded-xl font-medium">{extensionFormSuccess}</div>}
               {extensionFormError && <div className="bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-xl font-medium">{extensionFormError}</div>}
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold text-gray-700">Days Requested</Label>
@@ -1516,12 +1513,12 @@ export const Dashboard: React.FC = () => {
                   placeholder="Explain why you need more time..."
                   value={extensionReason}
                   onChange={(e) => setExtensionReason(e.target.value)}
-                  className="flex w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 resize-none"
+                  className="flex w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
                 />
               </div>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setRequestExtensionOpen(false)}>Cancel</Button>
-                <Button type="submit" className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white">Submit Request</Button>
+                <Button type="submit" className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground">Submit Request</Button>
               </div>
             </form>
           </DialogContent>
@@ -1547,12 +1544,12 @@ export const Dashboard: React.FC = () => {
                   value={grantReason}
                   onChange={(e) => setGrantReason(e.target.value)}
                   disabled={grantExtensionMutation.isPending}
-                  className="flex w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 resize-none"
+                  className="flex w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
                 />
               </div>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setGrantExtensionOpen(false)} disabled={grantExtensionMutation.isPending}>Cancel</Button>
-                <Button type="submit" className="flex-1 h-10 bg-green-600 hover:bg-green-700 text-white" disabled={grantExtensionMutation.isPending}>
+                <Button type="submit" className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={grantExtensionMutation.isPending}>
                   {grantExtensionMutation.isPending ? 'Saving...' : 'Grant Extension'}
                 </Button>
               </div>

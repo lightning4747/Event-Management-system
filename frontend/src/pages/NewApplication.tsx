@@ -73,8 +73,8 @@ export const NewApplication: React.FC = () => {
 
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
-              <FileText className="w-5 h-5 text-blue-600" />
+            <div className="w-9 h-9 bg-muted rounded-xl flex items-center justify-center">
+              <FileText className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">New On-Duty Request</h1>
@@ -161,7 +161,7 @@ export const NewApplication: React.FC = () => {
                 </Link>
                 <Button
                   type="submit"
-                  className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                  className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                   disabled={submitMutation.isPending}
                 >
                   {submitMutation.isPending ? 'Submitting...' : 'Submit Request'}
