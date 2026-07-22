@@ -9,6 +9,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 
+import { Eye, EyeOff } from 'lucide-react';
+
 const loginFormSchema = z.object({
   userId: z.string().min(1, 'Register Number or Faculty ID is required.').trim(),
   password: z.string().min(1, 'Password is required.'),
@@ -21,6 +23,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const {
     register,
@@ -90,13 +93,28 @@ export const Login: React.FC = () => {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              {...register('password')}
-              disabled={isSubmitting}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                {...register('password')}
+                disabled={isSubmitting}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
             {errors.password && (
               <p className="text-xs text-destructive font-medium">{errors.password.message}</p>
             )}
