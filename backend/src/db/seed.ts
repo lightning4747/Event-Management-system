@@ -9,36 +9,21 @@ const __dirname = path.dirname(__filename);
 
 const seed = async () => {
   try {
-    logger.info('Starting database seeding...');
+    logger.info('Starting database seeding from spec/temp.sql...');
 
     const sqlFilePath = path.resolve(__dirname, '../../../spec/temp.sql');
-    
+
     if (!fs.existsSync(sqlFilePath)) {
       throw new Error(`Seed SQL file not found at: ${sqlFilePath}`);
     }
 
     const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
 
-    // 1. Clear existing records to avoid conflicts/duplicates and clean test state
-    logger.info('Truncating existing tables...');
-    await pool.query(`
-      TRUNCATE TABLE 
-        certificate_deadline_extensions,
-        certificates,
-        certificate_requirements,
-        application_approval_history,
-        od_applications,
-        students,
-        faculty,
-        users
-      CASCADE;
-    `);
-
-    // 2. Run the seed SQL file contents as a query batch
+    // 1. Run the seed SQL file contents as a query batch
     logger.info('Executing temp.sql...');
     await pool.query(sqlContent);
 
-    // 3. Provision the default Administrator account (since it is not present in temp.sql)
+    // 2. Provision the default Administrator account (since it is not present in temp.sql)
     logger.info('Provisioning default Administrator user...');
     await pool.query(`
       INSERT INTO users (user_id, username, password_hash, role) 
