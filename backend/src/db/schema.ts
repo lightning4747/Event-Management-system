@@ -144,14 +144,26 @@ export const certificates = pgTable('certificates', {
   uniqueCurrentCertPerReqIdx: uniqueIndex('cert_one_current_per_req_idx').on(table.requirementId).where(sql`${table.isCurrent} = true`)
 }));
 
+export const extensionStatusEnum = pgEnum('extension_status', [
+  'Pending',
+  'Approved',
+  'Rejected'
+]);
+
 // CERTIFICATE_DEADLINE_EXTENSIONS Table
 export const certificateDeadlineExtensions = pgTable('certificate_deadline_extensions', {
   extensionId: bigserial('extension_id', { mode: 'bigint' }).primaryKey(),
   applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull().unique(),
-  extendedBy: varchar('extended_by', { length: 255 }).references(() => faculty.userId).notNull(),
+  studentId: varchar('student_id', { length: 255 }).references(() => students.userId).notNull(),
+  requestedDays: smallint('requested_days').notNull(),
   newDeadline: date('new_deadline', { mode: 'string' }).notNull(),
   reason: text('reason').notNull(),
-  extendedAt: timestamp('extended_at', { withTimezone: true }).defaultNow().notNull()
+  status: extensionStatusEnum('status').default('Pending').notNull(),
+  rejectionReason: text('rejection_reason'),
+  extendedBy: varchar('extended_by', { length: 255 }).references(() => faculty.userId),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).defaultNow().notNull(),
+  decidedAt: timestamp('decided_at', { withTimezone: true })
 }, (table) => ({
+  studentIdIdx: index('cert_extensions_student_id_idx').on(table.studentId),
   extendedByIdx: index('cert_extensions_extended_by_idx').on(table.extendedBy)
 }));

@@ -29,8 +29,9 @@ export const errorHandler = (
   }
 
   // Translate known PostgreSQL constraints into 4xx AppErrors
-  if (err && typeof err === 'object' && 'code' in err) {
-    const pgErr = err as { code: unknown; constraint?: unknown; detail?: unknown; message?: string };
+  const targetErr = (err as any)?.cause || err;
+  if (targetErr && typeof targetErr === 'object' && 'code' in targetErr) {
+    const pgErr = targetErr as { code: unknown; constraint?: unknown; detail?: unknown; message?: string };
     if (typeof pgErr.code === 'string' && pgErr.code.length === 5) {
       let statusCode = 400;
       let code = 'BAD_REQUEST';

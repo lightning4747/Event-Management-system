@@ -8,6 +8,34 @@
       "when": 1784403325278,
       "tag": "0000_whole_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784500000000,
+      "tag": "0001_add_withdraw_decision",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784600000000,
+      "tag": "0002_add_onedrive_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784700000000,
+      "tag": "0003_update_extensions_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784800000000,
+      "tag": "0004_backfill_extension_student_ids",
+      "breakpoints": true
     }
   ]
 }

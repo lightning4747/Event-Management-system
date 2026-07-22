@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { clearDatabase, seedTestUsers } from './setup';
 import { createApplication } from '../modules/applications/applications.service';
-import { createDeadlineExtension } from '../modules/extensions/extensions.service';
+import { requestDeadlineExtension, decideDeadlineExtension } from '../modules/extensions/extensions.service';
 import { db } from '../db';
 import { odApplications } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 
-describe('OD Application Deadline Extension Guard Test', () => {
+describe('OD Application Deadline Extension Pipeline Test', () => {
   beforeEach(async () => {
     await clearDatabase();
     await seedTestUsers();
   });
 
-  it('should allow a single extension but reject subsequent extension requests with a 400 error', async () => {
+  it('should allow student to request an extension, mentor to approve it, and prevent duplicate requests', async () => {
     // 1. Submit application
     const appResult = await createApplication(
       {
@@ -34,28 +34,36 @@ describe('OD Application Deadline Extension Guard Test', () => {
       .set({ status: 'Approved' })
       .where(eq(odApplications.applicationId, appId));
 
-    // 2. Grant first extension: Should succeed
-    const firstExtensionInput = {
+    // 2. Student requests extension (3 days)
+    const requestInput = {
       applicationId: appId.toString(),
-      newDeadline: '2026-10-25',
+      requestedDays: 3,
       reason: 'Physical certificates delay from the university board',
     };
 
-    const firstResult = await createDeadlineExtension('MENTOR_01', firstExtensionInput);
+    const firstResult = await requestDeadlineExtension('STUDENT_01', requestInput);
     expect(firstResult.extensionId).toBeDefined();
-    expect(firstResult.newDeadline).toBe('2026-10-25');
+    expect(firstResult.requestedDays).toBe(3);
 
-    // 3. Grant second extension: Should fail with 400
-    const secondExtensionInput = {
-      applicationId: appId.toString(),
-      newDeadline: '2026-10-30',
-      reason: 'Further delay on the board seal',
-    };
-
+    // 3. Second request from student while pending: Should fail with 400
     await expect(
-      createDeadlineExtension('MENTOR_01', secondExtensionInput)
+      requestDeadlineExtension('STUDENT_01', requestInput)
     ).rejects.toThrowError(
-      new AppError(400, 'EXTENSION_ALREADY_GRANTED', 'An extension has already been granted for this application.')
+      new AppError(400, 'EXTENSION_EXISTS', 'An extension request is already pending mentor review.')
+    );
+
+    // 4. Mentor approves extension
+    const decisionResult = await decideDeadlineExtension('MENTOR_01', firstResult.extensionId, {
+      decision: 'Approve',
+    });
+    expect(decisionResult.status).toBe('Approved');
+    expect(decisionResult.newDeadline).toBeDefined();
+
+    // 5. Subsequent request after approval: Should fail with 400
+    await expect(
+      requestDeadlineExtension('STUDENT_01', requestInput)
+    ).rejects.toThrowError(
+      new AppError(400, 'EXTENSION_EXISTS', 'An extension has already been granted for this application.')
     );
   });
 });

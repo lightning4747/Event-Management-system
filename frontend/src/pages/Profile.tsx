@@ -166,12 +166,7 @@ export const Profile: React.FC = () => {
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
             <FieldItem label="Full Name" value={profile.fullName} />
             <FieldItem label={isStudent ? 'Register Number' : 'Faculty ID'} value={profile.userId} />
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">System Role</p>
-              <span className="inline-block text-xs font-bold px-3 py-1 bg-muted text-muted-foreground border border-border rounded-full">
-                {profile.role}
-              </span>
-            </div>
+            <FieldItem label="System Role" value={profile.role} />
 
             {isStudent ? (
               <>
@@ -212,11 +207,11 @@ export const Profile: React.FC = () => {
                       <p className="text-xl font-bold text-muted-foreground leading-none mt-1">{metrics.pendingCount ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     <div>
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Approved</p>
-                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.approvedCount ?? 0}</p>
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approved</p>
+                      <p className="text-xl font-bold text-emerald-600 leading-none mt-1">{metrics.approvedCount ?? 0}</p>
                     </div>
                   </div>
                   <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 flex items-center gap-3">
@@ -294,11 +289,11 @@ export const Profile: React.FC = () => {
                       <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalApplications ?? 0}</p>
                     </div>
                   </div>
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     <div>
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Approved Applications</p>
-                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.approvedApplications ?? 0}</p>
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approved Applications</p>
+                      <p className="text-xl font-bold text-emerald-600 leading-none mt-1">{metrics.approvedApplications ?? 0}</p>
                     </div>
                   </div>
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
@@ -322,17 +317,7 @@ export const Profile: React.FC = () => {
         )}
 
         {/* Security Section */}
-        {isStudent ? (
-          <div className="bg-muted border border-border rounded-2xl p-5 flex items-start gap-3">
-            <GraduationCap className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Student credentials are managed by faculty</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                If you need to reset or update your login credentials, please contact your assigned cohort Mentor.
-              </p>
-            </div>
-          </div>
-        ) : (
+        {!isStudent && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
               <Shield className="w-4 h-4 text-gray-400" />

@@ -4,6 +4,8 @@ import { authenticate, requireRole } from '../../middleware/auth';
 
 const router = Router();
 
-router.post('/', authenticate, requireRole(['Mentor']), extensionsController.handleCreateExtension);
+router.post('/request', authenticate, requireRole(['Student']), extensionsController.handleRequestExtension);
+router.get('/pending', authenticate, requireRole(['Mentor']), extensionsController.handleGetPendingExtensions);
+router.post('/:id/decide', authenticate, requireRole(['Mentor']), extensionsController.handleDecideExtension);
 
 export const extensionsRoutes = router;

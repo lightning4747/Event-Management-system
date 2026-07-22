@@ -315,7 +315,10 @@ export const getApplicationDetails = async (
     .select({
       extensionId: certificateDeadlineExtensions.extensionId,
       newDeadline: certificateDeadlineExtensions.newDeadline,
+      requestedDays: certificateDeadlineExtensions.requestedDays,
       reason: certificateDeadlineExtensions.reason,
+      status: certificateDeadlineExtensions.status,
+      rejectionReason: certificateDeadlineExtensions.rejectionReason,
     })
     .from(certificateDeadlineExtensions)
     .where(eq(certificateDeadlineExtensions.applicationId, applicationId))

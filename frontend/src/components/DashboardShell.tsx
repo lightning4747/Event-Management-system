@@ -33,9 +33,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
     navigate('/login');
   };
 
-  const roleBadgeColor = () => {
-    return 'bg-muted text-muted-foreground border border-border';
-  };
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans pb-16 md:pb-0">
@@ -53,11 +51,9 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
           </Link>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex flex-col items-end gap-0.5">
+            <div className="hidden sm:flex flex-col items-end">
               <p className="text-xs font-bold text-gray-900">{user?.userId}</p>
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${roleBadgeColor()}`}>
-                {user?.role}
-              </span>
+              <p className="text-[10px] font-medium text-gray-500">{user?.role}</p>
             </div>
             <div className="w-px h-6 bg-gray-200 hidden sm:block" />
             <button

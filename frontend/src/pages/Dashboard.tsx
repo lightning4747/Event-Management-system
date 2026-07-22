@@ -54,19 +54,14 @@ interface ApplicationDetails {
   extension?: {
     extensionId: string;
     newDeadline: string;
+    requestedDays?: number;
     reason: string;
+    status?: 'Pending' | 'Approved' | 'Rejected';
+    rejectionReason?: string | null;
   } | null;
 }
 
-interface ExtensionRequestMock {
-  applicationId: string;
-  title: string;
-  studentId: string;
-  studentName: string;
-  reason: string;
-  requestedDays: number;
-  requestedAt: string;
-}
+
 
 interface FacultyRow {
   userId: string;
@@ -88,13 +83,13 @@ const oneDriveSchema = z
 
 const getStatusColor = (status: string) => {
   if (status === 'Approved' || status === 'Completed' || status === 'Verified') {
-    return 'bg-primary/10 text-primary border-primary/20';
+    return 'bg-gray-50 text-emerald-600 border-gray-200';
   }
   if (status === 'Rejected' || status === 'Withdrawn') {
     return 'bg-destructive/10 text-destructive border-destructive/20';
   }
   if (status === 'Submitted' || status.startsWith('In Progress')) {
-    return 'bg-primary/10 text-primary border-primary/20';
+    return 'bg-blue-50 text-blue-700 border-blue-200';
   }
   return 'bg-muted text-muted-foreground border-border';
 };
@@ -181,12 +176,10 @@ export const Dashboard: React.FC = () => {
   const [extensionFormError, setExtensionFormError] = React.useState<string | null>(null);
   const [extensionFormSuccess, setExtensionFormSuccess] = React.useState<string | null>(null);
 
-  // ── Extension grant (mentor) ──
-  const [grantExtensionOpen, setGrantExtensionOpen] = React.useState(false);
-  const [grantAppId, setGrantAppId] = React.useState<string | null>(null);
-  const [grantNewDeadline, setGrantNewDeadline] = React.useState('');
-  const [grantReason, setGrantReason] = React.useState('');
-  const [grantError, setGrantError] = React.useState<string | null>(null);
+  // ── Extension decide modal (mentor) ──
+  const [mentorDecideExtId, setMentorDecideExtId] = React.useState<string | null>(null);
+  const [mentorRejectComments, setMentorRejectComments] = React.useState('');
+  const [mentorDecideError, setMentorDecideError] = React.useState<string | null>(null);
 
   // ── Student onboard (mentor) ──
   const [createStudentOpen, setCreateStudentOpen] = React.useState(false);
@@ -407,30 +400,7 @@ export const Dashboard: React.FC = () => {
     },
   });
 
-  const grantExtensionMutation = useMutation({
-    mutationFn: async (payload: { applicationId: string; newDeadline: string; reason: string }) => {
-      const res = await apiFetch('/extensions', { method: 'POST', body: JSON.stringify(payload) });
-      return res.json();
-    },
-    onSuccess: () => {
-      if (grantAppId) {
-        const stored = localStorage.getItem('mcet_extension_requests');
-        if (stored) {
-          const filtered = (JSON.parse(stored) as ExtensionRequestMock[]).filter((r) => r.applicationId !== grantAppId);
-          localStorage.setItem('mcet_extension_requests', JSON.stringify(filtered));
-        }
-      }
-      queryClient.invalidateQueries({ queryKey: ['applicationDetails', selectedAppId || grantAppId] });
-      queryClient.invalidateQueries({ queryKey: ['departmentApplications'] });
-      queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
-      setGrantExtensionOpen(false);
-      setGrantAppId(null);
-      setGrantReason('');
-      setGrantNewDeadline('');
-      setSelectedAppId(null);
-    },
-    onError: (err: any) => setGrantError(err.message || 'Failed to grant extension.'),
-  });
+
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -525,6 +495,57 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const requestExtensionMutation = useMutation({
+    mutationFn: async (payload: { applicationId: string; requestedDays: number; reason: string }) => {
+      const res = await apiFetch('/extensions/request', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setExtensionFormSuccess('Extension request submitted to your Mentor!');
+      setExtensionReason('');
+      queryClient.invalidateQueries({ queryKey: ['applicationDetails', selectedAppId] });
+      queryClient.invalidateQueries({ queryKey: ['studentApplications'] });
+      setTimeout(() => { setRequestExtensionOpen(false); setExtensionFormSuccess(null); }, 1500);
+    },
+    onError: (err: any) => {
+      setExtensionFormError(err.message || 'Failed to submit extension request.');
+    },
+  });
+
+  const { data: pendingExtensions = [] } = useQuery({
+    queryKey: ['pendingExtensions'],
+    queryFn: async () => {
+      const res = await apiFetch('/extensions/pending');
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!isMentor,
+  });
+
+  const decideExtensionMutation = useMutation({
+    mutationFn: async (payload: { extensionId: string; decision: 'Approve' | 'Reject'; comments?: string }) => {
+      const res = await apiFetch(`/extensions/${payload.extensionId}/decide`, {
+        method: 'POST',
+        body: JSON.stringify({ decision: payload.decision, comments: payload.comments }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingExtensions'] });
+      queryClient.invalidateQueries({ queryKey: ['departmentApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
+      setMentorDecideExtId(null);
+      setMentorRejectComments('');
+      setMentorDecideError(null);
+    },
+    onError: (err: any) => {
+      setMentorDecideError(err.message || 'Failed to process extension decision.');
+    },
+  });
+
   const handleExtensionRequestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setExtensionFormError(null);
@@ -534,40 +555,14 @@ export const Dashboard: React.FC = () => {
       return;
     }
     if (!appDetails) return;
-    if (appDetails.extension) {
-      setExtensionFormError('An extension was already granted for this application.');
-      return;
-    }
-    const stored = localStorage.getItem('mcet_extension_requests');
-    const list: ExtensionRequestMock[] = stored ? JSON.parse(stored) : [];
-    if (list.some((r) => r.applicationId === appDetails.application.applicationId)) {
-      setExtensionFormError('An extension request is already pending review.');
-      return;
-    }
-    list.push({
+    requestExtensionMutation.mutate({
       applicationId: appDetails.application.applicationId,
-      title: appDetails.application.title,
-      studentId: appDetails.application.studentId,
-      studentName: appDetails.application.studentName,
-      reason: extensionReason,
       requestedDays,
-      requestedAt: new Date().toISOString(),
+      reason: extensionReason,
     });
-    localStorage.setItem('mcet_extension_requests', JSON.stringify(list));
-    setExtensionFormSuccess('Extension request submitted to your Mentor!');
-    setExtensionReason('');
-    setTimeout(() => { setRequestExtensionOpen(false); setExtensionFormSuccess(null); }, 1500);
   };
 
-  const handleGrantExtensionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setGrantError(null);
-    if (!grantAppId) return;
-    if (grantReason.trim().length < 10) { setGrantError('Reason must be at least 10 characters.'); return; }
-    const today = new Date().toISOString().split('T')[0];
-    if (grantNewDeadline <= today) { setGrantError('The new deadline must be a future date.'); return; }
-    grantExtensionMutation.mutate({ applicationId: grantAppId, newDeadline: grantNewDeadline, reason: grantReason });
-  };
+
 
   // ─── Derived state ────────────────────────────────────────────────────────────
 
@@ -586,19 +581,10 @@ export const Dashboard: React.FC = () => {
   };
 
   const filteredApps = getFilteredApps();
-  const mockExtensionRequests = isMentor
-    ? JSON.parse(localStorage.getItem('mcet_extension_requests') || '[]')
-    : [];
-
   const isUserCurrentReviewer = appDetails ? appDetails.application.status === getFacultyPendingStatus() : false;
   const isPostEvent = appDetails ? new Date() >= new Date(appDetails.application.toDate) : false;
   const isAppApproved = appDetails?.application.status === 'Approved';
   const showUploadSection = isAppApproved && isPostEvent;
-  const isExtensionPending = appDetails
-    ? (JSON.parse(localStorage.getItem('mcet_extension_requests') || '[]') as ExtensionRequestMock[]).some(
-        (r) => r.applicationId === appDetails.application.applicationId
-      )
-    : false;
   const hasOverdueCerts = isStudent &&
     studentApps.some((app) => app.status === 'Approved' && getDeadlineInfo(app.toDate).isOverdue);
 
@@ -954,7 +940,7 @@ export const Dashboard: React.FC = () => {
                 const labels: Record<string, string> = {
                   pending: 'Pending Review',
                   certificates: 'Certificate Queue',
-                  extensions: `Extensions (${mockExtensionRequests.length})`,
+                  extensions: `Extensions (${Array.isArray(pendingExtensions) ? pendingExtensions.length : 0})`,
                   all: 'All Applications',
                 };
                 return (
@@ -975,48 +961,45 @@ export const Dashboard: React.FC = () => {
 
             {/* Queue Content */}
             {activeTab === 'extensions' && isMentor ? (
-              mockExtensionRequests.length === 0 ? (
+              pendingExtensions.length === 0 ? (
                 <EmptyState message="No pending extension requests from your cohort." />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {mockExtensionRequests.map((req: any) => (
-                    <div key={req.applicationId} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
+                  {pendingExtensions.map((req: any) => (
+                    <div key={req.extensionId} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
                       <div>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                           {req.studentName} · {req.studentId}
                         </p>
                         <h4 className="text-sm font-bold text-gray-900 mt-0.5">{req.title}</h4>
                         <div className="mt-2 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
-                          <p className="text-xs font-bold text-amber-800">Requested: {req.requestedDays} days</p>
-                          <p className="text-xs text-amber-700 mt-0.5">{req.reason}</p>
+                          <p className="text-xs font-bold text-amber-800">Requested Extension: +{req.requestedDays} days</p>
+                          <p className="text-xs text-amber-700 mt-0.5">New Target Deadline: <strong>{formatDate(req.newDeadline)}</strong></p>
+                          <p className="text-[11px] text-amber-800 mt-1 italic">"{req.reason}"</p>
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 text-xs h-8 border-red-200 text-red-600 hover:bg-red-50"
+                          className="flex-1 text-xs h-8 border-red-200 text-red-600 hover:bg-red-50 font-semibold"
                           onClick={() => {
-                            const stored = localStorage.getItem('mcet_extension_requests');
-                            if (stored) {
-                              const filtered = (JSON.parse(stored) as ExtensionRequestMock[]).filter((r) => r.applicationId !== req.applicationId);
-                              localStorage.setItem('mcet_extension_requests', JSON.stringify(filtered));
-                              queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
-                            }
+                            setMentorDecideExtId(req.extensionId);
+                            setMentorRejectComments('');
+                            setMentorDecideError(null);
                           }}
                         >
-                          Deny
+                          Reject Request
                         </Button>
                         <Button
                           size="sm"
-                          className="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
+                          className="flex-1 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                          disabled={decideExtensionMutation.isPending}
                           onClick={() => {
-                            setGrantAppId(req.applicationId);
-                            setGrantReason(`Granted ${req.requestedDays} day extension: ${req.reason}`);
-                            setGrantExtensionOpen(true);
+                            decideExtensionMutation.mutate({ extensionId: req.extensionId, decision: 'Approve' });
                           }}
                         >
-                          Grant Extension
+                          Approve (+{req.requestedDays}d)
                         </Button>
                       </div>
                     </div>
@@ -1083,16 +1066,43 @@ export const Dashboard: React.FC = () => {
 
                 {/* ── Extension Banner ── */}
                 {appDetails.extension && (
-                  <div className="bg-muted border border-border rounded-xl p-3.5 flex items-start gap-2.5">
-                    <Calendar className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-foreground">Deadline Extension Active</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        New deadline: <strong>{formatDate(appDetails.extension.newDeadline)}</strong>
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">Reason: {appDetails.extension.reason}</p>
-                    </div>
-                  </div>
+                  <>
+                    {appDetails.extension.status === 'Pending' && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-2.5">
+                        <Hourglass className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-amber-900">Extension Request Pending Mentor Review</p>
+                          <p className="text-xs text-amber-800 mt-0.5">
+                            Requested extension: +{appDetails.extension.requestedDays || 7} days (Target deadline: <strong>{formatDate(appDetails.extension.newDeadline)}</strong>)
+                          </p>
+                          <p className="text-[11px] text-amber-700 mt-0.5 italic">Reason: "{appDetails.extension.reason}"</p>
+                        </div>
+                      </div>
+                    )}
+                    {appDetails.extension.status === 'Approved' && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 flex items-start gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-emerald-600">Deadline Extension Granted</p>
+                          <p className="text-xs text-gray-700 mt-0.5">
+                            New submission deadline: <strong className="text-emerald-600">{formatDate(appDetails.extension.newDeadline)}</strong>
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-0.5 italic">Reason: "{appDetails.extension.reason}"</p>
+                        </div>
+                      </div>
+                    )}
+                    {appDetails.extension.status === 'Rejected' && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-2.5">
+                        <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-red-900">Extension Request Rejected</p>
+                          <p className="text-xs text-red-800 mt-0.5">
+                            Reason: <strong>{appDetails.extension.rejectionReason || 'Extension request rejected by mentor.'}</strong>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* ── Student: Certificate Upload ── */}
@@ -1104,12 +1114,11 @@ export const Dashboard: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={isExtensionPending}
                           onClick={() => setRequestExtensionOpen(true)}
-                          className="text-xs h-8 px-3 border-border text-muted-foreground hover:bg-muted"
+                          className="text-xs h-8 px-3 border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold"
                         >
                           <Hourglass className="w-3.5 h-3.5 mr-1.5" />
-                          {isExtensionPending ? 'Extension Pending' : 'Request Extension'}
+                          Request Extension
                         </Button>
                       )}
                     </div>
@@ -1201,8 +1210,8 @@ export const Dashboard: React.FC = () => {
                         onClick={() => { setDecisionType('Approve'); setDecisionError(null); setDecisionComments(''); }}
                         className={`py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-2 transition-all ${
                           decisionType === 'Approve'
-                            ? 'bg-primary border-primary text-primary-foreground shadow-md'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-primary/30 hover:bg-primary/5 text-primary'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-md'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
                         }`}
                       >
                         <Check className="w-4 h-4" /> Approve
@@ -1236,7 +1245,7 @@ export const Dashboard: React.FC = () => {
                     )}
 
                     {decisionType === 'Approve' && (
-                      <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 font-medium">
+                      <p className="text-xs text-emerald-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-medium">
                         This will approve the OD application and forward it to the next reviewer.
                       </p>
                     )}
@@ -1249,7 +1258,7 @@ export const Dashboard: React.FC = () => {
                         disabled={decideMutation.isPending}
                         className={`w-full h-10 text-sm font-bold ${
                           decisionType === 'Approve'
-                            ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                             : 'bg-red-600 hover:bg-red-700 text-white'
                         }`}
                       >
@@ -1287,8 +1296,8 @@ export const Dashboard: React.FC = () => {
                                   onClick={() => { setVerifyType((prev) => ({ ...prev, [cert.requirementId]: 'Verified' })); setVerifyError((prev) => ({ ...prev, [cert.requirementId]: null })); }}
                                   className={`py-2 rounded-xl text-xs font-bold border-2 transition-all ${
                                     verifyType[cert.requirementId] === 'Verified'
-                                      ? 'bg-primary border-primary text-primary-foreground'
-                                      : 'bg-white border-gray-200 text-gray-700 hover:border-primary/30'
+                                      ? 'bg-emerald-600 border-emerald-600 text-white'
+                                      : 'bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
                                   }`}
                                 >Verify</button>
                                 <button
@@ -1563,33 +1572,42 @@ export const Dashboard: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* ── Mentor Grant Extension Dialog ── */}
-        <Dialog open={grantExtensionOpen} onOpenChange={(open) => !open && setGrantExtensionOpen(false)}>
-          <DialogContent className="max-w-sm bg-white">
+        {/* ── Mentor Extension Rejection Dialog ── */}
+        <Dialog open={!!mentorDecideExtId} onOpenChange={(open) => !open && setMentorDecideExtId(null)}>
+          <DialogContent className="max-w-md bg-white">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-gray-900">Grant Deadline Extension</DialogTitle>
+              <DialogTitle className="text-base font-bold text-gray-900">Reject Deadline Extension</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleGrantExtensionSubmit} className="space-y-4 pt-2">
-              {grantError && <div className="bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-xl font-medium">{grantError}</div>}
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!mentorDecideExtId) return;
+              if (mentorRejectComments.trim().length < 5) {
+                setMentorDecideError('Please provide a reason for rejecting the extension (minimum 5 characters).');
+                return;
+              }
+              decideExtensionMutation.mutate({
+                extensionId: mentorDecideExtId,
+                decision: 'Reject',
+                comments: mentorRejectComments,
+              });
+            }} className="space-y-4 pt-2">
+              {mentorDecideError && <div className="bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-xl font-medium">{mentorDecideError}</div>}
               <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-gray-700">New Deadline Date <span className="text-red-500">*</span></Label>
-                <Input type="date" required value={grantNewDeadline} onChange={(e) => setGrantNewDeadline(e.target.value)} disabled={grantExtensionMutation.isPending} className="h-10" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-gray-700">Reason <span className="text-red-500">*</span></Label>
+                <Label className="text-sm font-semibold text-gray-700">Rejection Reason <span className="text-red-500">*</span></Label>
                 <textarea
                   rows={3}
                   required
-                  value={grantReason}
-                  onChange={(e) => setGrantReason(e.target.value)}
-                  disabled={grantExtensionMutation.isPending}
+                  placeholder="Explain why this extension request is being rejected..."
+                  value={mentorRejectComments}
+                  onChange={(e) => setMentorRejectComments(e.target.value)}
+                  disabled={decideExtensionMutation.isPending}
                   className="flex w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
                 />
               </div>
               <div className="flex gap-3">
-                <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setGrantExtensionOpen(false)} disabled={grantExtensionMutation.isPending}>Cancel</Button>
-                <Button type="submit" className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={grantExtensionMutation.isPending}>
-                  {grantExtensionMutation.isPending ? 'Saving...' : 'Grant Extension'}
+                <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setMentorDecideExtId(null)} disabled={decideExtensionMutation.isPending}>Cancel</Button>
+                <Button type="submit" className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm" disabled={decideExtensionMutation.isPending}>
+                  {decideExtensionMutation.isPending ? 'Rejecting...' : 'Confirm Rejection'}
                 </Button>
               </div>
             </form>
