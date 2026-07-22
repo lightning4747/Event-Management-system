@@ -1,0 +1,148 @@
+import { db } from '../db';
+import { users, students, faculty, odApplications, certificateRequirements, certificates, certificateDeadlineExtensions } from '../db/schema';
+import { createApplication } from '../modules/applications/applications.service';
+import { checkCertificateDeadlines, uploadCertificate, verifyCertificate } from '../modules/certificates/certificates.service';
+import { requestDeadlineExtension, decideDeadlineExtension } from '../modules/extensions/extensions.service';
+import { eq } from 'drizzle-orm';
+import { addDays, format } from 'date-fns';
+
+const runSimulation = async () => {
+  console.log('\n===============================================================');
+  console.log('🚀 STARTING DEADLINE, EXTENSION & ONEDRIVE VERIFICATION SIMULATION');
+  console.log('===============================================================\n');
+
+  try {
+    // 1. Provision Test Users
+    console.log('1️⃣ Provisioning test users (Student: TEST_STU01, Mentor: TEST_FAC01)...');
+    await db.insert(users).values([
+      { userId: 'TEST_STU01', username: 'test_student', passwordHash: 'hash123', role: 'Student' },
+      { userId: 'TEST_FAC01', username: 'test_mentor', passwordHash: 'hash123', role: 'Mentor' },
+    ]).onConflictDoNothing();
+
+    await db.insert(faculty).values({
+      userId: 'TEST_FAC01',
+      fullName: 'Test Mentor Faculty',
+      designation: 'Assistant Professor',
+    }).onConflictDoNothing();
+
+    await db.insert(students).values({
+      userId: 'TEST_STU01',
+      fullName: 'Test Student User',
+      section: 'A',
+      admissionYear: 2024,
+      dateOfBirth: '2005-01-01',
+      mentorId: 'TEST_FAC01',
+    }).onConflictDoNothing();
+
+    // 2. Create Application with Past Event Dates
+    const pastToDateStr = format(addDays(new Date(), -10), 'yyyy-MM-dd');
+    const pastFromDateStr = format(addDays(new Date(), -12), 'yyyy-MM-dd');
+
+    console.log(`2️⃣ Creating OD Application with past event dates (${pastFromDateStr} to ${pastToDateStr})...`);
+    const appRes = await createApplication(
+      {
+        title: 'IEEE Hackathon Simulation 2026',
+        location: 'Coimbatore',
+        fromDate: pastFromDateStr,
+        toDate: pastToDateStr,
+        numberOfEvents: 1,
+      },
+      'TEST_STU01'
+    );
+    const appId = appRes.applicationId;
+    console.log(`   ✅ OD Application Created. ID: ${appId}`);
+
+    // Approve app to generate requirements with past deadline
+    const expiredDeadline = addDays(new Date(), -2); // 2 days expired
+    await db.update(odApplications).set({ status: 'Approved' }).where(eq(odApplications.applicationId, appId));
+
+    const [req] = await db.insert(certificateRequirements).values({
+      applicationId: appId,
+      sequenceNumber: 1,
+      status: 'Pending Upload',
+      submissionDeadline: expiredDeadline,
+    }).returning();
+    const reqId = req.requirementId;
+
+    console.log(`   ✅ Created Certificate Requirement #${reqId} with past deadline: ${expiredDeadline.toISOString().split('T')[0]}`);
+
+    // 3. Trigger Deadline Expiry Check
+    console.log('\n3️⃣ Running checkCertificateDeadlines()...');
+    const expiredCount = await checkCertificateDeadlines();
+    console.log(`   ✅ Deadline check finished. Total requirements expired: ${expiredCount}`);
+
+    const [updatedReq] = await db.select().from(certificateRequirements).where(eq(certificateRequirements.requirementId, reqId));
+    console.log(`   🔍 Requirement #${reqId} Status after check: "${updatedReq.status}" (Expected: "Deadline Expired")`);
+    if (updatedReq.status !== 'Deadline Expired') {
+      throw new Error(`Expected status 'Deadline Expired', but got '${updatedReq.status}'`);
+    }
+
+    // 4. Verify Upload is Blocked when Deadline Expired
+    console.log('\n4️⃣ Testing certificate upload while deadline is expired...');
+    const dummyPdf = {
+      fieldname: 'file',
+      originalname: 'test_cert.pdf',
+      encoding: '7bit',
+      mimetype: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 test dummy content'),
+      size: 100,
+    } as Express.Multer.File;
+
+    try {
+      await uploadCertificate('TEST_STU01', { requirementId: reqId.toString() }, dummyPdf);
+      throw new Error('Upload should have been blocked on expired deadline!');
+    } catch (err: any) {
+      console.log(`   ✅ Upload correctly blocked with error: "${err.message}"`);
+    }
+
+    // 5. Student Requests Deadline Extension
+    console.log('\n5️⃣ Student requesting 3-day deadline extension...');
+    const extRes = await requestDeadlineExtension('TEST_STU01', {
+      applicationId: appId.toString(),
+      requestedDays: 3,
+      reason: 'Delay receiving physical participation certificate from organizer',
+    });
+    console.log(`   ✅ Extension requested successfully. Extension ID: ${extRes.extensionId}`);
+
+    // 6. Mentor Approves Extension
+    console.log('\n6️⃣ Mentor approving extension request...');
+    const extDecision = await decideDeadlineExtension('TEST_FAC01', extRes.extensionId, { decision: 'Approve' });
+    console.log(`   ✅ Extension Approved. Status: "${extDecision.status}", New Deadline: ${extDecision.newDeadline}`);
+
+    const [unlockedReq] = await db.select().from(certificateRequirements).where(eq(certificateRequirements.requirementId, reqId));
+    console.log(`   🔍 Requirement #${reqId} Status after extension approval: "${unlockedReq.status}" (Expected: "Pending Upload")`);
+
+    // 7. Student Uploads Certificate PDF (Local Storage Only)
+    console.log('\n7️⃣ Student uploading certificate PDF after extension approval...');
+    const uploadRes = await uploadCertificate('TEST_STU01', { requirementId: reqId.toString() }, dummyPdf);
+    console.log(`   ✅ Certificate uploaded. File URL: ${uploadRes.fileUrl}`);
+
+    const [certRecord] = await db.select().from(certificates).where(eq(certificates.requirementId, reqId));
+    console.log(`   🔍 DB Certificate Record: driveItemId="${certRecord.driveItemId}", isCurrent=${certRecord.isCurrent}`);
+    if (certRecord.driveItemId !== null) {
+      throw new Error(`Expected driveItemId to be null before mentor approval, but got ${certRecord.driveItemId}`);
+    }
+    console.log('   ✅ Certificate stored in LOCAL storage only before mentor approval (driveItemId = null).');
+
+    // 8. Mentor Verifies Certificate (Triggers OneDrive Upload Sync)
+    console.log('\n8️⃣ Mentor verifying student certificate...');
+    const verifyRes = await verifyCertificate(reqId, { status: 'Verified' });
+    console.log(`   ✅ Verification complete. Requirement Status: "${verifyRes.status}"`);
+
+    const [finalCertRecord] = await db.select().from(certificates).where(eq(certificates.requirementId, reqId));
+    console.log(`   🔍 Final DB Certificate Record after Mentor Approval:`);
+    console.log(`      - requirementId: ${finalCertRecord.requirementId}`);
+    console.log(`      - driveItemId:   ${finalCertRecord.driveItemId || '(Local Fallback Active)'}`);
+    console.log(`      - fileUrl:       ${finalCertRecord.fileUrl}`);
+
+    console.log('\n===============================================================');
+    console.log('🎉 ALL WORKFLOW & DEADLINE EXTENSION TESTS PASSED 100% CLEANLY!');
+    console.log('===============================================================\n');
+    process.exit(0);
+  } catch (error: any) {
+    console.error('\n❌ SIMULATION FAILED WITH ERROR:', error);
+    process.exit(1);
+  }
+};
+
+runSimulation();

@@ -15,6 +15,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - mcet_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
@@ -23,14 +28,17 @@ services:
     container_name: mcet_backend
     restart: always
     environment:
-      NODE_ENV: development
-      PORT: 8080
+      NODE_ENV: production
+      PORT: 8000
+      HOST: 0.0.0.0
       DATABASE_URL: postgres://postgres:password123@postgres:5432/od_approval_db
       JWT_SECRET: supersecretjwtkeychangeinprod123
+      STORAGE_PROVIDER: local
     ports:
-      - "8080:8080"
+      - "8080:8000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - mcet_network
 

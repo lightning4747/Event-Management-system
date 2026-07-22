@@ -12,6 +12,7 @@ if (!databaseUrl) {
 
 export const pool = new pg.Pool({
   connectionString: databaseUrl,
+  ssl: false,
 });
 
 pool.on('error', (err) => {
