@@ -32,7 +32,8 @@ export const certStatusEnum = pgEnum('cert_status', [
   'Uploaded',
   'Verified',
   'Rejected',
-  'Deadline Expired'
+  'Deadline Expired',
+  'Skipped'
 ]);
 
 // 2. Table Definitions

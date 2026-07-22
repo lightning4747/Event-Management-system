@@ -66,3 +66,31 @@ export const handleVerification = async (req: Request, res: Response, next: Next
     next(error);
   }
 };
+
+export const handleSkip = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const studentId = req.user?.userId;
+    if (!studentId) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated user details.');
+    }
+
+    const { id } = req.params;
+    let reqId: bigint;
+    try {
+      reqId = BigInt(id);
+    } catch {
+      throw new AppError(400, 'BAD_REQUEST', 'Invalid requirement ID format.');
+    }
+
+    const result = await certificatesService.skipCertificateUpload(studentId, reqId);
+
+    const serializedData = {
+      ...result,
+      requirementId: result.requirementId.toString(),
+    };
+
+    res.status(200).json(serializedData);
+  } catch (error) {
+    next(error);
+  }
+};

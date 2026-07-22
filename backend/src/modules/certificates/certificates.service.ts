@@ -285,3 +285,44 @@ export const checkCertificateDeadlines = async (): Promise<number> => {
 
   return expiredReqs.length;
 };
+
+export const skipCertificateUpload = async (
+  userId: string,
+  requirementId: bigint
+): Promise<{ requirementId: bigint; status: 'Skipped' }> => {
+  const [req] = await db
+    .select({
+      requirementId: certificateRequirements.requirementId,
+      status: certificateRequirements.status,
+      studentId: odApplications.studentId,
+    })
+    .from(certificateRequirements)
+    .innerJoin(odApplications, eq(certificateRequirements.applicationId, odApplications.applicationId))
+    .where(eq(certificateRequirements.requirementId, requirementId))
+    .limit(1);
+
+  if (!req) {
+    throw new AppError(404, 'NOT_FOUND', 'Certificate requirement not found.');
+  }
+
+  if (req.studentId !== userId) {
+    throw new AppError(403, 'FORBIDDEN', 'Access Denied: You do not own this application requirement.');
+  }
+
+  if (req.status === 'Verified') {
+    throw new AppError(400, 'REQUIREMENT_VERIFIED', 'This requirement is already verified and locked.');
+  }
+
+  await db
+    .update(certificateRequirements)
+    .set({
+      status: 'Skipped',
+      updatedAt: new Date(),
+    })
+    .where(eq(certificateRequirements.requirementId, requirementId));
+
+  return {
+    requirementId,
+    status: 'Skipped',
+  };
+};

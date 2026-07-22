@@ -9,6 +9,8 @@ import {
   Clock, ArrowLeft, ExternalLink, AlertCircle
 } from 'lucide-react';
 
+import { EventTagBadge } from '../components/EventTagBadge';
+
 interface StudentRow {
   userId: string;
   fullName: string;
@@ -25,6 +27,7 @@ interface ApplicationRow {
   toDate: string;
   numberOfEvents: number;
   status: string;
+  eventTag?: string;
   createdAt: string;
 }
 
@@ -405,9 +408,12 @@ export const StudentsDirectory: React.FC = () => {
                                   </p>
                                   <p className="text-[10px] text-gray-400">{app.location}</p>
                                 </div>
-                                <span className={`text-[9px] font-bold px-2 py-0.5 border rounded-full ${getStatusColor(app.status)}`}>
-                                  {app.status}
-                                </span>
+                                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                                  <span className={`text-[9px] font-bold px-2 py-0.5 border rounded-full ${getStatusColor(app.status)}`}>
+                                    {app.status}
+                                  </span>
+                                  {app.eventTag && <EventTagBadge tag={app.eventTag} />}
+                                </div>
                               </div>
                             ))}
                           </div>

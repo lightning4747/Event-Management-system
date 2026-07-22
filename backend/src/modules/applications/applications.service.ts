@@ -2,7 +2,7 @@ import { db } from '../../db';
 import { odApplications, students, users, applicationApprovalHistory, certificateRequirements, certificates, certificateDeadlineExtensions } from '../../db/schema';
 import { eq, desc, or, and, inArray, sql, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
-import { CreateApplicationInput } from './applications.types';
+import { CreateApplicationInput, EventTag } from './applications.types';
 
 export interface ApplicationRow {
   applicationId: bigint;
@@ -13,6 +13,7 @@ export interface ApplicationRow {
   toDate: string;
   numberOfEvents: number;
   status: 'In Progress: Event Coordinator' | 'In Progress: Mentor' | 'In Progress: Program Coordinator' | 'In Progress: Head of Department' | 'Approved' | 'Rejected' | 'Withdrawn';
+  eventTag?: EventTag;
   finalApprovedAt: Date | null;
   withdrawnAt: Date | null;
   createdAt: Date;
@@ -22,6 +23,7 @@ export interface ApplicationRow {
 export interface ApplicationDetails extends ApplicationRow {
   studentName: string;
   mentorId: string;
+  eventTag?: EventTag;
 }
 
 export interface ApprovalHistoryItem {
@@ -37,7 +39,7 @@ export interface ApprovalHistoryItem {
 export interface CertificateRequirementItem {
   requirementId: bigint;
   sequenceNumber: number;
-  status: 'Pending Upload' | 'Uploaded' | 'Verified' | 'Rejected' | 'Deadline Expired';
+  status: 'Pending Upload' | 'Uploaded' | 'Verified' | 'Rejected' | 'Deadline Expired' | 'Skipped';
   submissionDeadline: string;
   rejectionReason: string | null;
   fileUrl: string | null;
@@ -45,6 +47,40 @@ export interface CertificateRequirementItem {
   isCurrent: boolean | null;
   uploadedAt: Date | null;
 }
+
+export const computeEventTag = (
+  fromDate: string,
+  toDate: string,
+  status: string,
+  certs: Array<{ status: string }> = []
+): EventTag => {
+  if (status === 'Rejected') return 'Rejected';
+  if (status === 'Withdrawn') return 'Withdrawn';
+  if (status.startsWith('In Progress')) return 'Pending Approval';
+
+  const today = new Date().toISOString().split('T')[0];
+
+  if (today < fromDate) {
+    return 'Upcoming';
+  }
+
+  if (today >= fromDate && today <= toDate) {
+    return 'Ongoing';
+  }
+
+  // Event concluded (today > toDate)
+  if (certs.length > 0) {
+    const allVerifiedOrSkipped = certs.every((c) => c.status === 'Verified' || c.status === 'Skipped');
+    if (allVerifiedOrSkipped) return 'Completed';
+
+    const hasUploaded = certs.some((c) => c.status === 'Uploaded');
+    if (hasUploaded) return 'Reviewing';
+
+    return 'Action Required';
+  }
+
+  return 'Completed';
+};
 
 export const createApplication = async (
   input: CreateApplicationInput,
@@ -65,6 +101,16 @@ export const createApplication = async (
 
   if (!student) {
     throw new AppError(404, 'NOT_FOUND', 'Student record not found in system.');
+  }
+
+  const currentDateStr = new Date().toISOString().split('T')[0];
+
+  if (input.fromDate < currentDateStr) {
+    throw new AppError(400, 'BAD_REQUEST', 'Event start date cannot be in the past.');
+  }
+
+  if (input.toDate < input.fromDate) {
+    throw new AppError(400, 'BAD_REQUEST', 'Event end date must be greater than or equal to the start date.');
   }
 
   const [insertedApp] = await db
@@ -94,13 +140,37 @@ export const getStudentApplications = async (
   limit?: number,
   offset?: number
 ): Promise<Array<ApplicationRow>> => {
-  return db
+  const apps = await db
     .select()
     .from(odApplications)
     .where(eq(odApplications.studentId, studentId))
     .orderBy(desc(odApplications.createdAt))
     .limit(limit ?? 100)
     .offset(offset ?? 0);
+
+  const appIds = apps.map((a) => a.applicationId);
+  const certMap: Record<string, Array<{ status: string }>> = {};
+
+  if (appIds.length > 0) {
+    const allCerts = await db
+      .select({
+        applicationId: certificateRequirements.applicationId,
+        status: certificateRequirements.status,
+      })
+      .from(certificateRequirements)
+      .where(inArray(certificateRequirements.applicationId, appIds));
+
+    for (const c of allCerts) {
+      const key = c.applicationId.toString();
+      if (!certMap[key]) certMap[key] = [];
+      certMap[key].push(c);
+    }
+  }
+
+  return apps.map((app) => ({
+    ...app,
+    eventTag: computeEventTag(app.fromDate, app.toDate, app.status, certMap[app.applicationId.toString()] || []),
+  }));
 };
 
 const hasApprovedPreviousStage = (approverRole: string) => {
@@ -324,8 +394,13 @@ export const getApplicationDetails = async (
     .where(eq(certificateDeadlineExtensions.applicationId, applicationId))
     .limit(1);
 
+  const eventTag = computeEventTag(app.fromDate, app.toDate, app.status, certs);
+
   return {
-    application: app,
+    application: {
+      ...app,
+      eventTag,
+    },
     history,
     certificates: certs,
     extension: ext ? { ...ext, extensionId: ext.extensionId.toString() } : null,

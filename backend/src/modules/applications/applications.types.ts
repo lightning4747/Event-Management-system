@@ -25,3 +25,5 @@ export const createApplicationSchema = z.object({
 });
 
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;
+
+export type EventTag = 'Upcoming' | 'Ongoing' | 'Action Required' | 'Reviewing' | 'Completed' | 'Pending Approval' | 'Rejected' | 'Withdrawn';

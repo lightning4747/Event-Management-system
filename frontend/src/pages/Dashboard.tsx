@@ -18,6 +18,8 @@ import {
   AlertTriangle, Users
 } from 'lucide-react';
 
+import { EventTagBadge } from '../components/EventTagBadge';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ApplicationRow {
@@ -30,6 +32,7 @@ interface ApplicationRow {
   toDate: string;
   numberOfEvents: number;
   status: string;
+  eventTag?: string;
   createdAt: string;
 }
 
@@ -315,6 +318,22 @@ export const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['applicationDetails', selectedAppId] });
       queryClient.invalidateQueries({ queryKey: ['studentApplications'] });
       queryClient.invalidateQueries({ queryKey: ['studentMetrics'] });
+    },
+  });
+
+  const skipCertMutation = useMutation({
+    mutationFn: async (reqId: string) => {
+      const res = await apiFetch(`/certificates/${reqId}/skip`, { method: 'POST' });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applicationDetails', selectedAppId] });
+      queryClient.invalidateQueries({ queryKey: ['studentApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['myApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['studentMetrics'] });
+    },
+    onError: (err: any) => {
+      alert(err.message || 'Failed to skip certificate upload.');
     },
   });
 
@@ -611,8 +630,9 @@ export const Dashboard: React.FC = () => {
         <p className="text-xs text-gray-500 mt-0.5">
           {formatDate(app.fromDate)} → {formatDate(app.toDate)} · {app.numberOfEvents} {app.numberOfEvents === 1 ? 'day' : 'days'}
         </p>
-        <div className="mt-2">
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
           <StatusBadge status={app.status} />
+          {app.eventTag && <EventTagBadge tag={app.eventTag} />}
         </div>
       </div>
       <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
@@ -1034,7 +1054,10 @@ export const Dashboard: React.FC = () => {
                       <h4 className="text-sm font-bold text-gray-900">{appDetails.application.title}</h4>
                       <p className="text-xs text-gray-500 mt-0.5">{appDetails.application.location}</p>
                     </div>
-                    <StatusBadge status={appDetails.application.status} />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <StatusBadge status={appDetails.application.status} />
+                      {appDetails.application.eventTag && <EventTagBadge tag={appDetails.application.eventTag} />}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
@@ -1168,7 +1191,12 @@ export const Dashboard: React.FC = () => {
                               <p className="text-xs text-red-700 mt-0.5">{cert.rejectionReason}</p>
                             </div>
                           )}
-                          {!isUploaded ? (
+                          {cert.status === 'Skipped' ? (
+                            <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+                              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                              Certificate Upload Skipped by Student — Event Marked Complete
+                            </div>
+                          ) : !isUploaded ? (
                             <div className="space-y-2.5">
                               <div className="flex items-center justify-between">
                                 <Label className="text-xs font-semibold text-gray-700">Upload Participation Certificate (PDF)</Label>
@@ -1193,17 +1221,32 @@ export const Dashboard: React.FC = () => {
                                       setCertErrors((prev) => ({ ...prev, [cert.requirementId]: null }));
                                     }
                                   }}
-                                  disabled={uploadCertMutation.isPending}
+                                  disabled={uploadCertMutation.isPending || skipCertMutation.isPending}
                                   className="flex-1 text-xs h-9 py-1 file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-0.5 file:text-xs file:font-semibold"
                                 />
                                 <Button
                                   size="sm"
                                   onClick={() => handleCertSubmit(cert.requirementId)}
-                                  disabled={uploadCertMutation.isPending || (!certFiles[cert.requirementId] && !certUrls[cert.requirementId])}
-                                  className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-xs shrink-0"
+                                  disabled={uploadCertMutation.isPending || skipCertMutation.isPending || (!certFiles[cert.requirementId] && !certUrls[cert.requirementId])}
+                                  className="h-9 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs shrink-0"
                                 >
                                   {uploadCertMutation.isPending ? 'Uploading...' : 'Upload & Submit'}
                                 </Button>
+                                {isStudent && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (confirm('Are you sure you want to skip uploading a certificate for this event? The event will be marked as completed.')) {
+                                        skipCertMutation.mutate(cert.requirementId);
+                                      }
+                                    }}
+                                    disabled={uploadCertMutation.isPending || skipCertMutation.isPending}
+                                    className="h-9 px-3 text-xs shrink-0 border-gray-300 text-gray-700 hover:bg-gray-50"
+                                  >
+                                    {skipCertMutation.isPending ? 'Skipping...' : 'Skip (No Cert)'}
+                                  </Button>
+                                )}
                               </div>
                               <p className="text-[11px] text-gray-400 font-medium">
                                 Accepted format: PDF only. Maximum file size: 1 MB.
