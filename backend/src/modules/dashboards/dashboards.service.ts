@@ -19,7 +19,6 @@ export interface ECDashboardMetrics {
 export interface MentorDashboardMetrics {
   totalMentees: number;
   pendingMenteeApprovals: number;
-  pendingCertificateVerifications: number;
   menteesWithExpiredDeadlines: number;
 }
 
@@ -141,22 +140,7 @@ export const getMentorDashboardMetrics = async (mentorId: string): Promise<Mento
       )
     );
 
-  // 3. Mentees with pending certificate verifications
-  const [pendingCerts] = await db
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(certificateRequirements)
-    .innerJoin(odApplications, eq(certificateRequirements.applicationId, odApplications.applicationId))
-    .innerJoin(students, eq(odApplications.studentId, students.userId))
-    .where(
-      and(
-        eq(students.mentorId, mentorId),
-        eq(certificateRequirements.status, 'Uploaded')
-      )
-    );
-
-  // 4. Mentees with expired deadlines
+  // 3. Mentees with expired deadlines
   const [expiredCount] = await db
     .select({
       count: sql<number>`count(distinct ${students.userId})::int`,
@@ -174,7 +158,6 @@ export const getMentorDashboardMetrics = async (mentorId: string): Promise<Mento
   return {
     totalMentees: menteesCount ? Number(menteesCount.count) : 0,
     pendingMenteeApprovals: pendingApprovals ? Number(pendingApprovals.count) : 0,
-    pendingCertificateVerifications: pendingCerts ? Number(pendingCerts.count) : 0,
     menteesWithExpiredDeadlines: expiredCount ? Number(expiredCount.count) : 0,
   };
 };

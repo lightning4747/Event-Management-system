@@ -40,6 +40,6 @@ const handleMulterUpload = (req: Request, res: Response, next: NextFunction) => 
 const router = Router();
 
 router.post('/', authenticate, requireRole(['Student']), handleMulterUpload, certificatesController.handleUpload);
-router.post('/:id/verify', authenticate, requireRole(['Mentor', 'Event Coordinator']), certificatesController.handleVerification);
+router.post('/:id/verify', authenticate, requireRole(['Event Coordinator']), certificatesController.handleVerification);
 
 export const certificatesRoutes = router;

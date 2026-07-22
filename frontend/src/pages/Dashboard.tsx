@@ -942,7 +942,7 @@ export const Dashboard: React.FC = () => {
 
             {/* Queue Tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-              {(['pending', ...((isEC || isMentor) ? ['certificates'] : []), ...(isMentor ? ['extensions'] : []), 'all'] as const).map((tab) => {
+              {(['pending', ...(isEC ? ['certificates'] : []), ...(isMentor ? ['extensions'] : []), 'all'] as const).map((tab) => {
                 const labels: Record<string, string> = {
                   pending: 'Pending Review',
                   certificates: 'Certificate Queue',
@@ -1229,7 +1229,7 @@ export const Dashboard: React.FC = () => {
                           ) : (
                             <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
                               <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-                              {cert.status === 'Verified' ? 'Certificate Verified & Stored in OneDrive' : 'Uploaded — Pending Mentor Review & Verification'}
+                              {cert.status === 'Verified' ? 'Certificate Verified & Stored in OneDrive' : 'Uploaded — Pending Event Coordinator Verification'}
                             </div>
                           )}
                         </div>
@@ -1240,7 +1240,7 @@ export const Dashboard: React.FC = () => {
                 })()}
 
                 {/* ── Faculty: Certificate Verification Panel ── */}
-                {!isStudent && (isMentor || isEC) && (
+                {!isStudent && isEC && (
                   appDetails.certificates.some((c) => c.status === 'Uploaded')
                 ) && (
                   <div className="border border-blue-200 bg-blue-50/50 rounded-xl p-4 space-y-3">

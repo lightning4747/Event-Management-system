@@ -35,8 +35,8 @@ export const handleVerification = async (req: Request, res: Response, next: Next
   try {
     const userId = req.user?.userId;
     const role = req.user?.role;
-    if (!userId || (role !== 'Mentor' && role !== 'Event Coordinator')) {
-      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Mentors or Event Coordinators can verify certificates.');
+    if (!userId || role !== 'Event Coordinator') {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Event Coordinators can verify certificates.');
     }
 
     const { id } = req.params;

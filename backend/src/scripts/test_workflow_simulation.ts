@@ -166,13 +166,13 @@ const runSimulation = async () => {
     }
     console.log('   ✅ Certificate stored in LOCAL storage only before mentor approval (driveItemId = null).');
 
-    // 8. Mentor Verifies Certificate (Triggers OneDrive Upload Sync)
-    console.log('\n8️⃣ Mentor verifying student certificate...');
+    // 8. Event Coordinator Verifies Certificate (Triggers OneDrive Upload Sync)
+    console.log('\n8️⃣ Event Coordinator verifying student certificate...');
     const verifyRes = await verifyCertificate(reqId, { status: 'Verified' });
     console.log(`   ✅ Verification complete. Requirement Status: "${verifyRes.status}"`);
 
     const [finalCertRecord] = await db.select().from(certificates).where(eq(certificates.requirementId, reqId));
-    console.log(`   🔍 Final DB Certificate Record after Mentor Approval:`);
+    console.log(`   🔍 Final DB Certificate Record after EC Approval:`);
     console.log(`      - requirementId: ${finalCertRecord.requirementId}`);
     console.log(`      - driveItemId:   ${finalCertRecord.driveItemId || '(Local Fallback Active)'}`);
     console.log(`      - fileUrl:       ${finalCertRecord.fileUrl}`);
