@@ -4,6 +4,9 @@ import { eq, lt, and, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
 import { storageService } from '../../services/storage/storage.service';
+import { LocalStorageProvider } from '../../services/storage/local.provider';
+import fs from 'fs';
+import path from 'path';
 
 const getAcademicYearName = (admissionYear: number): string => {
   const currentYear = new Date().getFullYear();
@@ -81,9 +84,8 @@ export const uploadCertificate = async (
     throw new AppError(400, 'DEADLINE_EXPIRED', 'The submission deadline has expired. Contact your mentor for an extension.');
   }
 
-  // 6. Upload file buffer to StorageProvider (OneDrive / Local fallback)
+  // 6. Save initial upload to local storage (pending mentor approval before pushing to OneDrive)
   let fileUrl = input.fileUrl || '';
-  let driveItemId: string | undefined;
   let fileName: string | undefined;
 
   if (file) {
@@ -98,24 +100,23 @@ export const uploadCertificate = async (
     const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
     fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
 
-    const storageResult = await storageService.uploadFile({
+    const localProvider = new LocalStorageProvider();
+    const localStorageResult = await localProvider.uploadFile({
       fileName,
       folderPath,
       mimeType: file.mimetype || 'application/pdf',
       buffer: file.buffer,
     });
 
-    fileUrl = storageResult.fileUrl;
-    driveItemId = storageResult.fileId;
+    fileUrl = localStorageResult.fileUrl;
   }
 
   if (!fileUrl) {
     throw new AppError(400, 'BAD_REQUEST', 'Please provide a PDF file to upload.');
   }
 
-  // 7. Perform upload inserts in transaction (supports re-upload while preserving history)
+  // 7. Perform upload inserts in transaction
   const result = await db.transaction(async (tx) => {
-    // Check previous upload count
     const existingCerts = await tx
       .select()
       .from(certificates)
@@ -129,12 +130,12 @@ export const uploadCertificate = async (
       .set({ isCurrent: false })
       .where(eq(certificates.requirementId, reqId));
 
-    // Insert new certificate record
+    // Insert new certificate record (driveItemId: null until mentor approves)
     const [inserted] = await tx
       .insert(certificates)
       .values({
         requirementId: reqId,
-        driveItemId: driveItemId || null,
+        driveItemId: null,
         fileName: fileName || null,
         fileUrl,
         uploadVersion,
@@ -152,7 +153,7 @@ export const uploadCertificate = async (
       .update(certificateRequirements)
       .set({
         status: 'Uploaded',
-        rejectionReason: null, // Clear past rejection comments upon re-upload
+        rejectionReason: null,
         updatedAt: new Date(),
       })
       .where(eq(certificateRequirements.requirementId, reqId));
@@ -175,9 +176,14 @@ export const verifyCertificate = async (
       .select({
         requirementId: certificateRequirements.requirementId,
         status: certificateRequirements.status,
+        studentId: odApplications.studentId,
+        title: odApplications.title,
+        admissionYear: students.admissionYear,
+        section: students.section,
       })
       .from(certificateRequirements)
       .innerJoin(odApplications, eq(certificateRequirements.applicationId, odApplications.applicationId))
+      .innerJoin(students, eq(odApplications.studentId, students.userId))
       .innerJoin(users, eq(odApplications.studentId, users.userId))
       .where(
         and(
@@ -192,9 +198,51 @@ export const verifyCertificate = async (
       throw new AppError(404, 'NOT_FOUND', 'Certificate requirement not found.');
     }
 
-    // Verification can only be done if status is Uploaded
     if (req.status !== 'Uploaded') {
       throw new AppError(400, 'INVALID_STATUS', 'No active certificate upload is available to verify for this requirement.');
+    }
+
+    if (input.status === 'Verified') {
+      // Find current active certificate record
+      const [currentCert] = await tx
+        .select()
+        .from(certificates)
+        .where(
+          and(
+            eq(certificates.requirementId, requirementId),
+            eq(certificates.isCurrent, true)
+          )
+        )
+        .limit(1);
+
+      if (currentCert && currentCert.fileUrl && currentCert.fileUrl.startsWith('/uploads/')) {
+        const relativeFilePath = currentCert.fileUrl.replace(/^\/uploads\//, '');
+        const localFilePath = path.join(process.cwd(), 'uploads', relativeFilePath);
+
+        if (fs.existsSync(localFilePath)) {
+          const fileBuffer = await fs.promises.readFile(localFilePath);
+          const yearFolder = getAcademicYearName(req.admissionYear);
+          const folderPath = `Certificates/${yearFolder}/${req.section}`;
+          const fileName = currentCert.fileName || `${req.studentId}_${req.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+
+          // Push verified certificate to Microsoft OneDrive (or local fallback)
+          const storageResult = await storageService.uploadFile({
+            fileName,
+            folderPath,
+            mimeType: 'application/pdf',
+            buffer: fileBuffer,
+          });
+
+          // Update certificate record with OneDrive details upon mentor approval
+          await tx
+            .update(certificates)
+            .set({
+              driveItemId: storageResult.fileId,
+              fileUrl: storageResult.fileUrl,
+            })
+            .where(eq(certificates.certificateId, currentCert.certificateId));
+        }
+      }
     }
 
     await tx
