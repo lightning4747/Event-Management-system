@@ -55,12 +55,17 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/dashboards', dashboardsRoutes);
 app.use('/api/students', studentsRoutes);
 
+import { runMigrations } from './db/migrate';
+
 // Centralized error handler (must be registered last)
 app.use(errorHandler);
 
-app.listen(port, host, () => {
-  const lanIp = getLocalIpAddress();
-  logger.info(`Backend server running on host ${host}:${port}`);
+// Execute database migrations on startup before starting server listener
+runMigrations()
+  .then(() => {
+    app.listen(port, host, () => {
+      const lanIp = getLocalIpAddress();
+      logger.info(`Backend server running on host ${host}:${port}`);
   console.log(`
 ┌──────────────────────────────────────────────────────────┐
 │  MCET On-Duty Portal — Backend API Hosted on Network     │
@@ -84,4 +89,8 @@ app.listen(port, host, () => {
   runDeadlineChecks();
   // Run once daily (24-hour interval)
   setInterval(runDeadlineChecks, 24 * 60 * 60 * 1000);
+});
+}).catch((err) => {
+  logger.error({ err }, 'Failed to start server due to migration error');
+  process.exit(1);
 });

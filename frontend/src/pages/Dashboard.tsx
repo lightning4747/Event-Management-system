@@ -1148,7 +1148,10 @@ export const Dashboard: React.FC = () => {
                           )}
                           {!isUploaded ? (
                             <div className="space-y-2.5">
-                              <Label className="text-xs font-semibold text-gray-700">Upload Participation Certificate (PDF)</Label>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold text-gray-700">Upload Participation Certificate (PDF)</Label>
+                                <span className="text-[11px] text-gray-400 font-medium">Max: 1 MB</span>
+                              </div>
                               <div className="flex flex-col sm:flex-row gap-2">
                                 <Input
                                   type="file"
@@ -1156,6 +1159,14 @@ export const Dashboard: React.FC = () => {
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
+                                      if (file.size > 1 * 1024 * 1024) {
+                                        setCertErrors((prev) => ({
+                                          ...prev,
+                                          [cert.requirementId]: 'Certificate file size must not exceed 1 MB.',
+                                        }));
+                                        e.target.value = '';
+                                        return;
+                                      }
                                       setCertFiles((prev) => ({ ...prev, [cert.requirementId]: file }));
                                       setCertErrors((prev) => ({ ...prev, [cert.requirementId]: null }));
                                     }
@@ -1172,6 +1183,9 @@ export const Dashboard: React.FC = () => {
                                   {uploadCertMutation.isPending ? 'Uploading...' : 'Upload & Submit'}
                                 </Button>
                               </div>
+                              <p className="text-[11px] text-gray-400 font-medium">
+                                Accepted format: PDF only. Maximum file size: 1 MB.
+                              </p>
                               {certFiles[cert.requirementId] && (
                                 <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
                                   Selected: {certFiles[cert.requirementId].name} ({Math.round(certFiles[cert.requirementId].size / 1024)} KB)
