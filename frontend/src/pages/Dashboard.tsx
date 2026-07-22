@@ -1106,25 +1106,50 @@ export const Dashboard: React.FC = () => {
                 )}
 
                 {/* ── Student: Certificate Upload ── */}
-                {isStudent && showUploadSection && appDetails.certificates.length > 0 && (
-                  <div className="space-y-3 pt-2 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Certificate Submission</h5>
-                      {!appDetails.extension && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setRequestExtensionOpen(true)}
-                          className="text-xs h-8 px-3 border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold"
-                        >
-                          <Hourglass className="w-3.5 h-3.5 mr-1.5" />
-                          Request Extension
-                        </Button>
+                {isStudent && showUploadSection && appDetails.certificates.length > 0 && (() => {
+                  const totalCerts = appDetails.certificates.length;
+                  const submittedCertsCount = appDetails.certificates.filter(
+                    (c) => c.status === 'Uploaded' || c.status === 'Verified' || c.status === 'Submitted'
+                  ).length;
+                  const isAllCertsSubmitted = totalCerts > 0 && submittedCertsCount === totalCerts;
+
+                  return (
+                    <div className="space-y-3 pt-2 border-t border-gray-200">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Certificate Submission</h5>
+                          <span className="text-[11px] font-bold text-emerald-600 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-0.5">
+                            {submittedCertsCount} / {totalCerts} Submitted
+                          </span>
+                        </div>
+                        {!appDetails.extension && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRequestExtensionOpen(true)}
+                            className="text-xs h-8 px-3 border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold"
+                          >
+                            <Hourglass className="w-3.5 h-3.5 mr-1.5" />
+                            Request Extension
+                          </Button>
+                        )}
+                      </div>
+
+                      {isAllCertsSubmitted && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-start gap-3">
+                          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-emerald-600">All Required Certificates Submitted ({submittedCertsCount} / {totalCerts})</p>
+                            <p className="text-xs text-gray-600 mt-0.5">
+                              You have uploaded all {totalCerts} required certificate(s) for this OD application. Your submission is complete and awaiting verification by the Event Coordinator.
+                            </p>
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    {appDetails.certificates.map((cert) => {
-                      const deadlineInfo = getDeadlineInfo(cert.submissionDeadline);
-                      const isUploaded = cert.status === 'Submitted' || cert.status === 'Verified';
+
+                      {appDetails.certificates.map((cert) => {
+                        const deadlineInfo = getDeadlineInfo(cert.submissionDeadline);
+                        const isUploaded = cert.status === 'Uploaded' || cert.status === 'Verified' || cert.status === 'Submitted';
                       return (
                         <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-gray-50">
                           <div className="flex items-center justify-between">
@@ -1208,8 +1233,9 @@ export const Dashboard: React.FC = () => {
                         </div>
                       );
                     })}
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
 
                 {/* ── Faculty: Decision Panel ── */}
                 {!isStudent && isUserCurrentReviewer && (

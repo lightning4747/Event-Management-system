@@ -79,7 +79,7 @@ export const Login: React.FC = () => {
             <Label htmlFor="userId">Register Number / Faculty ID</Label>
             <Input
               id="userId"
-              placeholder="e.g. 24BAD115"
+              placeholder="e.g. 727624BAD115"
               {...register('userId')}
               disabled={isSubmitting}
             />
