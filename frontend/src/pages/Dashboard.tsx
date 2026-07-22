@@ -1269,39 +1269,71 @@ export const Dashboard: React.FC = () => {
                           </a>
                         )}
 
-                        <div className="flex gap-2 pt-1">
-                          <Button
-                            size="sm"
+                        {/* Decision Selection Buttons */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
                             onClick={() => {
-                              verifyCertMutation.mutate({
-                                requirementId: String(cert.requirementId),
-                                status: 'Verified',
-                              });
+                              setVerifyType({ ...verifyType, [cert.requirementId]: 'Verified' });
+                              setVerifyError({ ...verifyError, [cert.requirementId]: null });
                             }}
-                            disabled={verifyCertMutation.isPending}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9"
+                            className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border-2 transition-all ${
+                              verifyType[cert.requirementId] === 'Verified'
+                                ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                                : 'bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'
+                            }`}
                           >
-                            <Check className="w-3.5 h-3.5 mr-1" /> Approve & Store in OneDrive
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
+                            <Check className="w-3.5 h-3.5" /> Approve
+                          </button>
+                          <button
                             onClick={() => {
-                              const reason = prompt('Enter rejection reason for this certificate:');
-                              if (reason) {
-                                verifyCertMutation.mutate({
-                                  requirementId: String(cert.requirementId),
-                                  status: 'Rejected',
-                                  comments: reason,
-                                });
-                              }
+                              setVerifyType({ ...verifyType, [cert.requirementId]: 'Rejected' });
+                              setVerifyError({ ...verifyError, [cert.requirementId]: null });
                             }}
-                            disabled={verifyCertMutation.isPending}
-                            className="flex-1 border-red-200 text-red-700 hover:bg-red-50 font-bold text-xs h-9"
+                            className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border-2 transition-all ${
+                              verifyType[cert.requirementId] === 'Rejected'
+                                ? 'bg-red-600 border-red-600 text-white shadow-sm'
+                                : 'bg-white border-gray-200 text-gray-700 hover:border-red-300 hover:bg-red-50'
+                            }`}
                           >
-                            <X className="w-3.5 h-3.5 mr-1" /> Reject Certificate
-                          </Button>
+                            <X className="w-3.5 h-3.5" /> Reject
+                          </button>
                         </div>
+
+                        {/* Dedicated Rejection Comment Space */}
+                        {verifyType[cert.requirementId] === 'Rejected' && (
+                          <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150 pt-1">
+                            <Label className="text-xs font-semibold text-gray-700">
+                              Rejection Reason <span className="text-red-500">*</span>
+                            </Label>
+                            <textarea
+                              rows={2}
+                              placeholder="Explain why this certificate is being rejected..."
+                              value={verifyComments[cert.requirementId] || ''}
+                              onChange={(e) => setVerifyComments({ ...verifyComments, [cert.requirementId]: e.target.value })}
+                              className="w-full text-xs p-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium"
+                            />
+                          </div>
+                        )}
+
+                        {verifyError[cert.requirementId] && (
+                          <p className="text-xs text-red-600 font-medium">{verifyError[cert.requirementId]}</p>
+                        )}
+
+                        {/* Confirm Action Button */}
+                        {verifyType[cert.requirementId] && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleVerifySubmit(String(cert.requirementId))}
+                            disabled={verifyCertMutation.isPending}
+                            className={`w-full font-bold text-xs h-9 ${
+                              verifyType[cert.requirementId] === 'Verified'
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                : 'bg-red-600 hover:bg-red-700 text-white'
+                            }`}
+                          >
+                            {verifyCertMutation.isPending ? 'Submitting...' : verifyType[cert.requirementId] === 'Verified' ? 'Confirm Approval & Store in OneDrive' : 'Confirm Certificate Rejection'}
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
