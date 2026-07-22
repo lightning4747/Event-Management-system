@@ -21,7 +21,7 @@ import path from 'path';
 import { getLocalIpAddress } from './utils/network';
 
 const app = express();
-const port = Number(process.env.PORT) || 8082;
+const port = Number(process.env.PORT) || 8000;
 const host = process.env.HOST || '0.0.0.0';
 
 app.use(helmet({
