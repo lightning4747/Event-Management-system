@@ -1518,14 +1518,14 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* ── Review History ── */}
-                {appDetails.history.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-gray-200">
-                    <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Review Comments</h5>
+                {/* ── Review Comments ── */}
+                <div className="space-y-2 pt-2 border-t border-gray-200">
+                  <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Review Comments</h5>
+                  {appDetails.history.filter((h) => h.comments && h.comments.trim().length > 0).length > 0 ? (
                     <div className="space-y-2">
-                      {appDetails.history.filter((h) => h.comments).map((hist, hidx) => (
-                        <div key={hidx} className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-                          <div className="flex items-center justify-between mb-1">
+                      {appDetails.history.filter((h) => h.comments && h.comments.trim().length > 0).map((hist, hidx) => (
+                        <div key={hidx} className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-1">
+                          <div className="flex items-center justify-between">
                             <span className="text-[11px] font-bold text-gray-700">{hist.approverRole}</span>
                             <span className={`text-[11px] font-bold ${
                               hist.decision === 'Approve' ? 'text-primary'
@@ -1541,8 +1541,12 @@ export const Dashboard: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-400 italic">
+                      No review comments.
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex justify-end items-center gap-2 pt-1">
                   {isStudent &&
