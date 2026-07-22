@@ -65,7 +65,7 @@ export const MenteeRosterDialog: React.FC<MenteeRosterDialogProps> = ({ open, on
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search by roll number, username, or name..."
+              placeholder="Search by roll number or name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-10"

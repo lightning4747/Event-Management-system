@@ -46,7 +46,6 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
             </div>
             <div className="block">
               <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">AI&DS On-Duty Portal</p>
-              <p className="text-[9px] sm:text-[10px] text-gray-400 font-medium">MCET Department</p>
             </div>
           </Link>
 

@@ -190,7 +190,7 @@ export const Dashboard: React.FC = () => {
   // ── Student onboard (mentor) ──
   const [createStudentOpen, setCreateStudentOpen] = React.useState(false);
   const [studentFormValues, setStudentFormValues] = React.useState({
-    userId: '', fullName: '', dateOfBirth: '', section: 'A',
+    userId: '', fullName: '', section: 'A',
   });
   const [createStudentError, setCreateStudentError] = React.useState<string | null>(null);
   const [createStudentSuccess, setCreateStudentSuccess] = React.useState<string | null>(null);
@@ -366,7 +366,7 @@ export const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['departmentApplications'] });
       queryClient.invalidateQueries({ queryKey: ['menteesList'] });
-      setStudentFormValues({ userId: '', fullName: '', dateOfBirth: '', section: 'A' });
+      setStudentFormValues({ userId: '', fullName: '', section: 'A' });
       setTimeout(() => { setCreateStudentOpen(false); setCreateStudentSuccess(null); }, 1500);
     },
     onError: (err: any) => setCreateStudentError(err.message || 'Failed to create student account.'),
@@ -644,9 +644,6 @@ export const Dashboard: React.FC = () => {
             <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-red-800">Certificate Submission Overdue</p>
-              <p className="text-xs text-red-700 mt-0.5">
-                One or more of your approved OD applications have passed the 7-day certificate upload deadline. Contact your Mentor to request an extension.
-              </p>
             </div>
           </div>
         )}
@@ -762,7 +759,6 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-gray-900">Create New OD Application</h3>
-                  <p className="text-[11px] text-gray-500 mt-1 leading-normal">Submit a new request for academic event On-Duty approval and verification steps.</p>
                 </div>
               </Link>
             </div>
@@ -789,7 +785,7 @@ export const Dashboard: React.FC = () => {
         {isFaculty && (
           <div className="space-y-5">
             <div className="flex items-center justify-between gap-4">
-              <SectionTitle subtitle="Review pending OD applications and manage your cohort">
+              <SectionTitle>
                 {user?.role} Console
               </SectionTitle>
               {isMentor && (
@@ -817,7 +813,6 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="mt-4">
                   <h3 className="text-xs font-bold text-gray-900 leading-none">Pending Reviews</h3>
-                  <p className="text-[10px] text-gray-400 mt-1 leading-tight">Review and decide on active OD requests.</p>
                 </div>
               </div>
 
@@ -835,7 +830,6 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="mt-4">
                     <h3 className="text-xs font-bold text-gray-900 leading-none">Verify Certificates</h3>
-                    <p className="text-[10px] text-gray-400 mt-1 leading-tight">Check and verify student credentials.</p>
                   </div>
                 </div>
               )}
@@ -854,7 +848,6 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="mt-4">
                     <h3 className="text-xs font-bold text-gray-900 leading-none">Extension Requests</h3>
-                    <p className="text-[10px] text-gray-400 mt-1 leading-tight">Grant deadline extensions for mentees.</p>
                   </div>
                 </div>
               )}
@@ -872,7 +865,6 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="mt-4">
                   <h3 className="text-xs font-bold text-gray-900 leading-none">Application History</h3>
-                  <p className="text-[10px] text-gray-400 mt-1 leading-tight">View all resolved department OD records.</p>
                 </div>
               </div>
 
@@ -885,7 +877,6 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="mt-4">
                   <h3 className="text-xs font-bold text-gray-900 leading-none">Students Directory</h3>
-                  <p className="text-[10px] text-gray-400 mt-1 leading-tight">Search profiles and participation logs.</p>
                 </div>
               </div>
             </div>
@@ -1610,11 +1601,6 @@ export const Dashboard: React.FC = () => {
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold text-gray-700">Full Name</Label>
                 <Input placeholder="e.g. NEERAJ K" required value={studentFormValues.fullName} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, fullName: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-gray-700">Date of Birth</Label>
-                <Input type="date" required value={studentFormValues.dateOfBirth} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, dateOfBirth: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10" />
-                <p className="text-[11px] text-gray-400">Default password: DDMMYYYY from this date.</p>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold text-gray-700">Section</Label>

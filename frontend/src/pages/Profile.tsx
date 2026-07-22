@@ -13,7 +13,6 @@ import { Label } from '../components/ui/Label';
 import { User, Shield, GraduationCap, CheckCircle2, AlertCircle, FileText, Clock, XCircle, Users, BarChart3, LogOut } from 'lucide-react';
 
 const facultyUpdateSchema = z.object({
-  username: z.string().min(1, 'Username cannot be empty.').optional(),
   password: z
     .string()
     .refine((val) => val === '' || val.length >= 6, {
@@ -82,21 +81,18 @@ export const Profile: React.FC = () => {
     formState: { errors },
   } = useForm<FacultyUpdateValues>({
     resolver: zodResolver(facultyUpdateSchema),
-    defaultValues: { username: '', password: '', currentPassword: '' },
+    defaultValues: { password: '', currentPassword: '' },
   });
 
   React.useEffect(() => {
     if (profile) {
-      reset({ username: profile.username || '', password: '', currentPassword: '' });
+      reset({ password: '', currentPassword: '' });
     }
   }, [profile, reset]);
 
   const updateMutation = useMutation({
     mutationFn: async (values: FacultyUpdateValues) => {
       const payload: any = { currentPassword: values.currentPassword };
-      if (values.username && values.username !== profile?.username) {
-        payload.username = values.username;
-      }
       if (values.password) {
         payload.password = values.password;
       }
@@ -107,7 +103,7 @@ export const Profile: React.FC = () => {
       return res.json();
     },
     onSuccess: () => {
-      setSuccessMsg('Your credentials have been updated successfully.');
+      setSuccessMsg('Your password has been updated successfully.');
       setErrorMsg(null);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       reset({ password: '', currentPassword: '' });
@@ -154,7 +150,6 @@ export const Profile: React.FC = () => {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-sm text-gray-500 mt-1">View your registry details and manage account security</p>
         </div>
 
         {/* Identity Card */}
@@ -166,19 +161,15 @@ export const Profile: React.FC = () => {
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
             <FieldItem label="Full Name" value={profile.fullName} />
             <FieldItem label={isStudent ? 'Register Number' : 'Faculty ID'} value={profile.userId} />
-            <FieldItem label="System Role" value={profile.role} />
+            <FieldItem label="Account type" value={profile.role} />
 
             {isStudent ? (
               <>
                 <FieldItem label="Class Section" value={profile.section} />
                 <FieldItem label="Admission Year" value={String(profile.admissionYear)} />
-                <FieldItem label="Date of Birth" value={profile.dateOfBirth} />
               </>
             ) : (
-              <>
-                <FieldItem label="Academic Designation" value={profile.designation} />
-                <FieldItem label="Login Username" value={profile.username} />
-              </>
+              <FieldItem label="Academic Designation" value={profile.designation} />
             )}
           </div>
         </div>
@@ -340,19 +331,6 @@ export const Profile: React.FC = () => {
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="username" className="text-sm font-semibold text-gray-700">Login Username</Label>
-                  <Input
-                    id="username"
-                    {...register('username')}
-                    disabled={updateMutation.isPending}
-                    className="h-10"
-                  />
-                  {errors.username && (
-                    <p className="text-xs text-red-600 font-medium">{errors.username.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
                   <Label htmlFor="password" className="text-sm font-semibold text-gray-700">New Password</Label>
                   <Input
                     id="password"
@@ -362,9 +340,6 @@ export const Profile: React.FC = () => {
                     disabled={updateMutation.isPending}
                     className="h-10"
                   />
-                  <p className="text-[11px] text-gray-400 font-medium">
-                    Leave blank to keep your current password. Minimum 6 characters if changing.
-                  </p>
                   {errors.password && (
                     <p className="text-xs text-red-600 font-medium">{errors.password.message}</p>
                   )}
@@ -382,7 +357,6 @@ export const Profile: React.FC = () => {
                     disabled={updateMutation.isPending}
                     className="h-10"
                   />
-                  <p className="text-[11px] text-gray-400 font-medium">Required to confirm any credential changes.</p>
                   {errors.currentPassword && (
                     <p className="text-xs text-red-600 font-medium">{errors.currentPassword.message}</p>
                   )}
@@ -393,7 +367,7 @@ export const Profile: React.FC = () => {
                   disabled={updateMutation.isPending}
                   className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm"
                 >
-                  {updateMutation.isPending ? 'Saving Changes...' : 'Update Credentials'}
+                  {updateMutation.isPending ? 'Saving Changes...' : 'Update Password'}
                 </Button>
               </form>
             </div>
