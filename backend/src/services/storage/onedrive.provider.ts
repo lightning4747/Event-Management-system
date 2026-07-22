@@ -1,15 +1,19 @@
 import { Client } from '@microsoft/microsoft-graph-client';
 import { IStorageProvider, UploadFileOptions, UploadFileResult } from './storage.interface';
+import { LocalStorageProvider } from './local.provider';
 import { AppError } from '../../lib/errors';
+import { logger } from '../../utils/logger';
 
 export class OneDriveStorageProvider implements IStorageProvider {
+  private localFallback = new LocalStorageProvider();
+
   private async getAccessToken(): Promise<string> {
     const tenantId = process.env.ONEDRIVE_TENANT_ID;
     const clientId = process.env.ONEDRIVE_CLIENT_ID;
     const clientSecret = process.env.ONEDRIVE_CLIENT_SECRET;
 
-    if (!tenantId || !clientId || !clientSecret) {
-      throw new AppError(500, 'STORAGE_CONFIG_ERROR', 'Microsoft OneDrive credentials (ONEDRIVE_TENANT_ID, ONEDRIVE_CLIENT_ID, ONEDRIVE_CLIENT_SECRET) are not configured.');
+    if (!tenantId || !clientId || !clientSecret || tenantId.includes('your-tenant-id')) {
+      throw new AppError(500, 'STORAGE_CONFIG_ERROR', 'Microsoft OneDrive credentials are not configured or contain placeholder values.');
     }
 
     const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
@@ -43,39 +47,57 @@ export class OneDriveStorageProvider implements IStorageProvider {
   }
 
   async uploadFile(options: UploadFileOptions): Promise<UploadFileResult> {
-    const client = await this.getClient();
-    const userId = process.env.ONEDRIVE_USER_ID;
+    try {
+      const client = await this.getClient();
+      const userId = process.env.ONEDRIVE_USER_ID;
 
-    // Clean folder path and filename
-    const cleanFolderPath = options.folderPath.replace(/^\/+|\/+$/g, '');
-    const targetPath = `${cleanFolderPath}/${options.fileName}`;
+      // Clean folder path and filename
+      const cleanFolderPath = options.folderPath.replace(/^\/+|\/+$/g, '');
+      const targetPath = `${cleanFolderPath}/${options.fileName}`;
 
-    // Path format: /users/{userId}/drive/root:/{targetPath}:/content or /drive/root:/{targetPath}:/content
-    const uploadEndpoint = userId
-      ? `/users/${userId}/drive/root:/${targetPath}:/content`
-      : `/drive/root:/${targetPath}:/content`;
+      // Path format: /users/{userId}/drive/root:/{targetPath}:/content or /drive/root:/{targetPath}:/content
+      const uploadEndpoint = userId
+        ? `/users/${userId}/drive/root:/${targetPath}:/content`
+        : `/drive/root:/${targetPath}:/content`;
 
-    const driveItem = await client.api(uploadEndpoint).put(options.buffer);
+      const driveItem = await client.api(uploadEndpoint).put(options.buffer);
 
-    return {
-      fileId: driveItem.id,
-      fileUrl: driveItem.webUrl || `https://onedrive.live.com/?id=${driveItem.id}`,
-      path: targetPath,
-    };
+      return {
+        fileId: driveItem.id,
+        fileUrl: driveItem.webUrl || `https://onedrive.live.com/?id=${driveItem.id}`,
+        path: targetPath,
+      };
+    } catch (err: any) {
+      logger.warn(
+        { err: err?.message || String(err) },
+        'Microsoft Graph API unavailable. Silently falling back to local disk storage.'
+      );
+      return await this.localFallback.uploadFile(options);
+    }
   }
 
   async deleteFile(fileId: string): Promise<void> {
-    const client = await this.getClient();
-    const userId = process.env.ONEDRIVE_USER_ID;
-    const endpoint = userId ? `/users/${userId}/drive/items/${fileId}` : `/drive/items/${fileId}`;
-    await client.api(endpoint).delete();
+    try {
+      const client = await this.getClient();
+      const userId = process.env.ONEDRIVE_USER_ID;
+      const endpoint = userId ? `/users/${userId}/drive/items/${fileId}` : `/drive/items/${fileId}`;
+      await client.api(endpoint).delete();
+    } catch (err: any) {
+      logger.warn({ err: err?.message }, 'Microsoft Graph API delete failed, attempting local delete fallback.');
+      await this.localFallback.deleteFile(fileId);
+    }
   }
 
   async getDownloadUrl(fileId: string): Promise<string> {
-    const client = await this.getClient();
-    const userId = process.env.ONEDRIVE_USER_ID;
-    const endpoint = userId ? `/users/${userId}/drive/items/${fileId}` : `/drive/items/${fileId}`;
-    const item = await client.api(endpoint).select('@microsoft.graph.downloadUrl,webUrl').get();
-    return item['@microsoft.graph.downloadUrl'] || item.webUrl;
+    try {
+      const client = await this.getClient();
+      const userId = process.env.ONEDRIVE_USER_ID;
+      const endpoint = userId ? `/users/${userId}/drive/items/${fileId}` : `/drive/items/${fileId}`;
+      const item = await client.api(endpoint).select('@microsoft.graph.downloadUrl,webUrl').get();
+      return item['@microsoft.graph.downloadUrl'] || item.webUrl;
+    } catch (err: any) {
+      logger.warn({ err: err?.message }, 'Microsoft Graph API getDownloadUrl failed, using local download URL fallback.');
+      return await this.localFallback.getDownloadUrl(fileId);
+    }
   }
 }
