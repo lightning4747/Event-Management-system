@@ -11,6 +11,8 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { ArrowLeft, AlertCircle, FileText } from 'lucide-react';
 
+const todayStr = new Date().toISOString().split('T')[0];
+
 const newAppSchema = z
   .object({
     title: z.string().min(1, 'Event title is required.'),
@@ -20,7 +22,11 @@ const newAppSchema = z
     numberOfEvents: z.coerce.number().int().min(1, 'Number of days must be at least 1.'),
   })
   .refine(
-    (data) => new Date(data.toDate) >= new Date(data.fromDate),
+    (data) => data.fromDate >= todayStr,
+    { message: 'Event start date cannot be in the past.', path: ['fromDate'] }
+  )
+  .refine(
+    (data) => data.toDate >= data.fromDate,
     { message: 'End date must be on or after start date.', path: ['toDate'] }
   );
 
@@ -37,7 +43,7 @@ export const NewApplication: React.FC = () => {
     formState: { errors },
   } = useForm<NewAppValues>({
     resolver: zodResolver(newAppSchema),
-    defaultValues: { title: '', location: '', fromDate: '', toDate: '', numberOfEvents: 1 },
+    defaultValues: { title: '', location: '', fromDate: '', toDate: '', numberOfEvents: 5 },
   });
 
   const submitMutation = useMutation({
@@ -121,6 +127,7 @@ export const NewApplication: React.FC = () => {
                   <Input
                     id="fromDate"
                     type="date"
+                    min={todayStr}
                     {...register('fromDate')}
                     disabled={submitMutation.isPending}
                     className="h-10"
