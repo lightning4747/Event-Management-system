@@ -148,4 +148,32 @@ describe('OD Application Workflow Lifecycle Integration Test', () => {
     // Verify submission deadline logic (toDate = 2026-09-03 + 7 days = 2026-09-10)
     expect(certReqs[0].submissionDeadline).toBe('2026-09-10');
   });
+
+  it('should reject application creation when fromDate is in the past', async () => {
+    const invalidInput = {
+      title: 'Past Event Hackathon',
+      location: 'Block A',
+      fromDate: '2020-01-01',
+      toDate: '2020-01-02',
+      numberOfEvents: 1,
+    };
+
+    await expect(createApplication(invalidInput, 'STUDENT_01')).rejects.toThrow(
+      'Event start date cannot be in the past.'
+    );
+  });
+
+  it('should reject application creation when toDate is before fromDate', async () => {
+    const invalidInput = {
+      title: 'Invalid Date Range Event',
+      location: 'Block B',
+      fromDate: '2026-10-10',
+      toDate: '2026-10-05',
+      numberOfEvents: 1,
+    };
+
+    await expect(createApplication(invalidInput, 'STUDENT_01')).rejects.toThrow(
+      'Event end date must be greater than or equal to the start date.'
+    );
+  });
 });
