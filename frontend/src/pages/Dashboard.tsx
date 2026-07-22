@@ -936,7 +936,7 @@ export const Dashboard: React.FC = () => {
 
             {/* Queue Tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-              {(['pending', ...(isEC ? ['certificates'] : []), ...(isMentor ? ['extensions'] : []), 'all'] as const).map((tab) => {
+              {(['pending', ...((isEC || isMentor) ? ['certificates'] : []), ...(isMentor ? ['extensions'] : []), 'all'] as const).map((tab) => {
                 const labels: Record<string, string> = {
                   pending: 'Pending Review',
                   certificates: 'Certificate Queue',
@@ -1221,14 +1221,10 @@ export const Dashboard: React.FC = () => {
                               )}
                             </div>
                           ) : (
-                            <a
-                              href={cert.fileUrl || '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-semibold hover:underline"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" /> View Submitted Document
-                            </a>
+                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                              <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                              {cert.status === 'Verified' ? 'Certificate Verified & Stored in OneDrive' : 'Uploaded — Pending Mentor Review & Verification'}
+                            </div>
                           )}
                         </div>
                       );
@@ -1236,6 +1232,74 @@ export const Dashboard: React.FC = () => {
                     </div>
                   );
                 })()}
+
+                {/* ── Faculty: Certificate Verification Panel ── */}
+                {!isStudent && (isMentor || isEC) && (
+                  appDetails.certificates.some((c) => c.status === 'Uploaded')
+                ) && (
+                  <div className="border border-blue-200 bg-blue-50/50 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-blue-600" />
+                      <h5 className="text-xs font-bold text-blue-900 uppercase tracking-wider">Certificate Review Required</h5>
+                    </div>
+                    {appDetails.certificates.filter((c) => c.status === 'Uploaded').map((cert) => (
+                      <div key={cert.requirementId} className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-900">
+                            Certificate #{cert.sequenceNumber} (Uploaded by Student)
+                          </span>
+                          <StatusBadge status={cert.status} />
+                        </div>
+                        
+                        {/* Mentor can view uploaded PDF for review before approving */}
+                        {cert.fileUrl && (
+                          <a
+                            href={cert.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold underline"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> Preview Uploaded Certificate PDF
+                          </a>
+                        )}
+
+                        <div className="flex gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              verifyCertMutation.mutate({
+                                requirementId: String(cert.requirementId),
+                                status: 'Verified',
+                              });
+                            }}
+                            disabled={verifyCertMutation.isPending}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9"
+                          >
+                            <Check className="w-3.5 h-3.5 mr-1" /> Approve & Store in OneDrive
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const reason = prompt('Enter rejection reason for this certificate:');
+                              if (reason) {
+                                verifyCertMutation.mutate({
+                                  requirementId: String(cert.requirementId),
+                                  status: 'Rejected',
+                                  comments: reason,
+                                });
+                              }
+                            }}
+                            disabled={verifyCertMutation.isPending}
+                            className="flex-1 border-red-200 text-red-700 hover:bg-red-50 font-bold text-xs h-9"
+                          >
+                            <X className="w-3.5 h-3.5 mr-1" /> Reject Certificate
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* ── Faculty: Decision Panel ── */}
                 {!isStudent && isUserCurrentReviewer && (

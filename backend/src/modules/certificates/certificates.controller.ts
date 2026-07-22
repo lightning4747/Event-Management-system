@@ -33,10 +33,10 @@ export const handleUpload = async (req: Request, res: Response, next: NextFuncti
 
 export const handleVerification = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const ecUserId = req.user?.userId;
+    const userId = req.user?.userId;
     const role = req.user?.role;
-    if (!ecUserId || role !== 'Event Coordinator') {
-      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Event Coordinators can verify certificates.');
+    if (!userId || (role !== 'Mentor' && role !== 'Event Coordinator')) {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Mentors or Event Coordinators can verify certificates.');
     }
 
     const { id } = req.params;
