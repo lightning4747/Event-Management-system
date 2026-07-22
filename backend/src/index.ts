@@ -18,11 +18,19 @@ import { globalLimiter } from './middleware/rateLimiter';
 
 import path from 'path';
 
-const app = express();
-const port = process.env.PORT || 8082;
+import { getLocalIpAddress } from './utils/network';
 
-app.use(helmet());
-app.use(cors());
+const app = express();
+const port = Number(process.env.PORT) || 8082;
+const host = process.env.HOST || '0.0.0.0';
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -50,8 +58,17 @@ app.use('/api/students', studentsRoutes);
 // Centralized error handler (must be registered last)
 app.use(errorHandler);
 
-app.listen(port, () => {
-  logger.info(`Backend server listening at http://localhost:${port}`);
+app.listen(port, host, () => {
+  const lanIp = getLocalIpAddress();
+  logger.info(`Backend server running on host ${host}:${port}`);
+  console.log(`
+┌──────────────────────────────────────────────────────────┐
+│  MCET On-Duty Portal — Backend API Hosted on Network     │
+│                                                          │
+│  ➜ Local:   http://localhost:${port}                       │
+│  ➜ Network: http://${lanIp}:${port}                     │
+└──────────────────────────────────────────────────────────┘
+  `);
 
   // Daily automated deadline checks
   const runDeadlineChecks = async () => {
