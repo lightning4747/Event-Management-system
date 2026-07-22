@@ -46,10 +46,20 @@ describe('NewApplication Form Validations', () => {
       </QueryClientProvider>
     );
 
-    fireEvent.change(screen.getByLabelText(/Event Title/i), { target: { value: 'TechFest' } });
-    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Block C' } });
-    fireEvent.change(screen.getByLabelText(/Start Date/i), { target: { value: '2026-07-20' } });
-    fireEvent.change(screen.getByLabelText(/End Date/i), { target: { value: '2026-07-18' } });
+    const titleInput = screen.getByLabelText(/Event Title/i);
+    const locationInput = screen.getByLabelText(/Location/i);
+    const fromDateInput = screen.getByLabelText(/Start Date/i);
+    const toDateInput = screen.getByLabelText(/End Date/i);
+
+    // Provide future dates where toDate < fromDate
+    const today = new Date();
+    const futureFrom = new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const futureTo = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    fireEvent.change(titleInput, { target: { value: 'TechFest' } });
+    fireEvent.change(locationInput, { target: { value: 'Block C' } });
+    fireEvent.change(fromDateInput, { target: { value: futureFrom } });
+    fireEvent.change(toDateInput, { target: { value: futureTo } });
 
     const submitBtn = screen.getByRole('button', { name: /Submit Request/i });
     fireEvent.click(submitBtn);
