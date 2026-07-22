@@ -1,17 +1,55 @@
-import { db } from '../db';
-import { users, students, faculty, odApplications, certificateRequirements, certificates } from '../db/schema';
-import { createApplication } from '../modules/applications/applications.service';
-import { checkCertificateDeadlines, uploadCertificate, verifyCertificate } from '../modules/certificates/certificates.service';
-import { requestDeadlineExtension, decideDeadlineExtension } from '../modules/extensions/extensions.service';
-import { eq } from 'drizzle-orm';
+// 1. MUST set test DATABASE_URL BEFORE any dynamic imports run (prevents ES module hoisting)
+if (process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL.replace(
+    /\/od_approval_db(\?|$)/,
+    '/od_approval_test_db$1'
+  );
+} else {
+  process.env.DATABASE_URL = 'postgres://postgres:password123@localhost:5432/od_approval_test_db';
+}
+
 import { addDays, format } from 'date-fns';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 2. Dynamic imports to ensure process.env.DATABASE_URL modification takes effect
+const { db, pool } = await import('../db');
+const { users, students, faculty, odApplications, certificateRequirements, certificates } = await import('../db/schema');
+const { createApplication } = await import('../modules/applications/applications.service');
+const { checkCertificateDeadlines, uploadCertificate, verifyCertificate } = await import('../modules/certificates/certificates.service');
+const { requestDeadlineExtension, decideDeadlineExtension } = await import('../modules/extensions/extensions.service');
+const { eq, sql } = await import('drizzle-orm');
+const { migrate } = await import('drizzle-orm/node-postgres/migrator');
 
 const runSimulation = async () => {
   console.log('\n===============================================================');
   console.log('🚀 STARTING DEADLINE, EXTENSION & ONEDRIVE VERIFICATION SIMULATION');
+  console.log('🔒 ISOLATED TEST DATABASE ACTIVE: od_approval_test_db');
   console.log('===============================================================\n');
 
   try {
+    // 0. Migrate test database structure
+    console.log('0️⃣ Running migrations on isolated test database (od_approval_test_db)...');
+    const migrationsPath = path.resolve(__dirname, '../../drizzle');
+    await migrate(db, { migrationsFolder: migrationsPath });
+
+    // Clean isolated test database
+    await db.execute(sql`
+      TRUNCATE TABLE 
+        certificate_deadline_extensions,
+        certificates,
+        certificate_requirements,
+        application_approval_history,
+        od_applications,
+        students,
+        faculty,
+        users
+      CASCADE;
+    `);
+
     // 1. Provision Test Users
     console.log('1️⃣ Provisioning test users (Student: TEST_STU01, Mentor: TEST_FAC01)...');
     await db.insert(users).values([
@@ -76,7 +114,6 @@ const runSimulation = async () => {
       throw new Error(`Expected status 'Deadline Expired', but got '${updatedReq.status}'`);
     }
 
-    // 4. Verify Upload is Blocked when Deadline Expired
     // 4. Verify Upload is Blocked before Event End Date
     console.log('\n4️⃣ Testing certificate upload before event end date (future toDate)...');
     const tomorrowStr = format(addDays(new Date(), 1), 'yyyy-MM-dd');
@@ -142,11 +179,13 @@ const runSimulation = async () => {
 
     console.log('\n===============================================================');
     console.log('🎉 ALL WORKFLOW & DEADLINE EXTENSION TESTS PASSED 100% CLEANLY!');
+    console.log('🔒 MAIN DATABASE (od_approval_db) WAS NOT TOUCHED AT ALL.');
     console.log('===============================================================\n');
-    process.exit(0);
   } catch (error: any) {
     console.error('\n❌ SIMULATION FAILED WITH ERROR:', error);
     process.exit(1);
+  } finally {
+    await pool.end();
   }
 };
 
