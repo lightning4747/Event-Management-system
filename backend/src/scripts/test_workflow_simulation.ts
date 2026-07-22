@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { users, students, faculty, odApplications, certificateRequirements, certificates, certificateDeadlineExtensions } from '../db/schema';
+import { users, students, faculty, odApplications, certificateRequirements, certificates } from '../db/schema';
 import { createApplication } from '../modules/applications/applications.service';
 import { checkCertificateDeadlines, uploadCertificate, verifyCertificate } from '../modules/certificates/certificates.service';
 import { requestDeadlineExtension, decideDeadlineExtension } from '../modules/extensions/extensions.service';
@@ -34,17 +34,16 @@ const runSimulation = async () => {
       mentorId: 'TEST_FAC01',
     }).onConflictDoNothing();
 
-    // 2. Create Application with Past Event Dates
-    const pastToDateStr = format(addDays(new Date(), -10), 'yyyy-MM-dd');
-    const pastFromDateStr = format(addDays(new Date(), -12), 'yyyy-MM-dd');
+    // 2. Create Application with Current Event Date (1 day event)
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    console.log(`2️⃣ Creating OD Application with past event dates (${pastFromDateStr} to ${pastToDateStr})...`);
+    console.log(`2️⃣ Creating OD Application starting today (${todayStr})...`);
     const appRes = await createApplication(
       {
         title: 'IEEE Hackathon Simulation 2026',
         location: 'Coimbatore',
-        fromDate: pastFromDateStr,
-        toDate: pastToDateStr,
+        fromDate: todayStr,
+        toDate: todayStr,
         numberOfEvents: 1,
       },
       'TEST_STU01'
@@ -53,18 +52,18 @@ const runSimulation = async () => {
     console.log(`   ✅ OD Application Created. ID: ${appId}`);
 
     // Approve app to generate requirements with past deadline
-    const expiredDeadline = addDays(new Date(), -2); // 2 days expired
+    const expiredDeadlineStr = format(addDays(new Date(), -2), 'yyyy-MM-dd'); // 2 days expired
     await db.update(odApplications).set({ status: 'Approved' }).where(eq(odApplications.applicationId, appId));
 
     const [req] = await db.insert(certificateRequirements).values({
       applicationId: appId,
       sequenceNumber: 1,
       status: 'Pending Upload',
-      submissionDeadline: expiredDeadline,
+      submissionDeadline: expiredDeadlineStr,
     }).returning();
     const reqId = req.requirementId;
 
-    console.log(`   ✅ Created Certificate Requirement #${reqId} with past deadline: ${expiredDeadline.toISOString().split('T')[0]}`);
+    console.log(`   ✅ Created Certificate Requirement #${reqId} with past deadline: ${expiredDeadlineStr}`);
 
     // 3. Trigger Deadline Expiry Check
     console.log('\n3️⃣ Running checkCertificateDeadlines()...');
@@ -78,7 +77,11 @@ const runSimulation = async () => {
     }
 
     // 4. Verify Upload is Blocked when Deadline Expired
-    console.log('\n4️⃣ Testing certificate upload while deadline is expired...');
+    // 4. Verify Upload is Blocked before Event End Date
+    console.log('\n4️⃣ Testing certificate upload before event end date (future toDate)...');
+    const tomorrowStr = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+    await db.update(odApplications).set({ toDate: tomorrowStr }).where(eq(odApplications.applicationId, appId));
+
     const dummyPdf = {
       fieldname: 'file',
       originalname: 'test_cert.pdf',
@@ -90,7 +93,7 @@ const runSimulation = async () => {
 
     try {
       await uploadCertificate('TEST_STU01', { requirementId: reqId.toString() }, dummyPdf);
-      throw new Error('Upload should have been blocked on expired deadline!');
+      throw new Error('Upload should have been blocked before event end date!');
     } catch (err: any) {
       console.log(`   ✅ Upload correctly blocked with error: "${err.message}"`);
     }
@@ -112,7 +115,9 @@ const runSimulation = async () => {
     const [unlockedReq] = await db.select().from(certificateRequirements).where(eq(certificateRequirements.requirementId, reqId));
     console.log(`   🔍 Requirement #${reqId} Status after extension approval: "${unlockedReq.status}" (Expected: "Pending Upload")`);
 
-    // 7. Student Uploads Certificate PDF (Local Storage Only)
+    // 7. Student Uploads Certificate PDF on Event End Date (Local Storage Only)
+    await db.update(odApplications).set({ toDate: todayStr }).where(eq(odApplications.applicationId, appId));
+
     console.log('\n7️⃣ Student uploading certificate PDF after extension approval...');
     const uploadRes = await uploadCertificate('TEST_STU01', { requirementId: reqId.toString() }, dummyPdf);
     console.log(`   ✅ Certificate uploaded. File URL: ${uploadRes.fileUrl}`);

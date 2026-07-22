@@ -68,10 +68,10 @@ export const uploadCertificate = async (
     throw new AppError(403, 'FORBIDDEN', 'Access Denied: You do not own this application requirement.');
   }
 
-  // 3. Verify event end date has passed
+  // 3. Verify event has reached its end date
   const currentDateStr = new Date().toISOString().split('T')[0];
-  if (currentDateStr <= req.toDate) {
-    throw new AppError(400, 'EVENT_NOT_CONCLUDED', 'You can only upload certificates after the event dates have concluded.');
+  if (currentDateStr < req.toDate) {
+    throw new AppError(400, 'EVENT_NOT_CONCLUDED', 'You can only upload certificates on or after the event end date.');
   }
 
   // 4. Verify requirement is uploadable (not verified yet)
