@@ -18,11 +18,10 @@ import { globalLimiter } from './middleware/rateLimiter';
 
 import path from 'path';
 
-import { getLocalIpAddress } from './utils/network';
 
 const app = express();
 const port = Number(process.env.PORT) || 8000;
-const host = process.env.HOST || '0.0.0.0';
+const host = process.env.HOST || '127.0.0.1';
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -64,16 +63,14 @@ app.use(errorHandler);
 runMigrations()
   .then(() => {
     app.listen(port, host, () => {
-      const lanIp = getLocalIpAddress();
-      logger.info(`Backend server running on host ${host}:${port}`);
-  console.log(`
+      logger.info(`Backend API server running locally on http://${host}:${port}`);
+      console.log(`
 ┌──────────────────────────────────────────────────────────┐
-│  MCET On-Duty Portal — Backend API Hosted on Network     │
+│  MCET On-Duty Portal — Backend API Server                │
 │                                                          │
-│  ➜ Local:   http://localhost:${port}                       │
-│  ➜ Network: http://${lanIp}:${port}                     │
+│  ➜ Local API: http://${host}:${port}                      │
 └──────────────────────────────────────────────────────────┘
-  `);
+      `);
 
   // Daily automated deadline checks
   const runDeadlineChecks = async () => {

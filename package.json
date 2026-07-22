@@ -7,7 +7,7 @@
     "frontend"
   ],
   "scripts": {
-    "host": "bun --cwd backend host & bun --cwd frontend host",
+    "host": "bun --cwd backend dev & bun --cwd frontend host",
     "dev": "bun --cwd backend dev & bun --cwd frontend dev",
     "dev:backend": "bun --cwd backend dev",
     "dev:frontend": "bun --cwd frontend dev",
