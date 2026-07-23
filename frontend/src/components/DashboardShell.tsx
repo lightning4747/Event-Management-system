@@ -41,9 +41,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2.5">
-            <div className="h-8 w-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-bold text-[10px] tracking-tight shadow-sm">
-              MCET
-            </div>
+            <img src="/mcet_logo.jpg" alt="MCET Logo" className="h-9 w-9 object-contain rounded-lg shadow-sm border border-gray-100" />
             <div className="block">
               <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">AI&DS On-Duty Portal</p>
             </div>
