@@ -16,7 +16,7 @@ const upload = multer({
 });
 
 const handleMulterUpload = (req: Request, res: Response, next: NextFunction) => {
-  upload.single('file')(req, res, (err: any) => {
+  upload.single('file')(req, res, (err: unknown) => {
     if (err) {
       if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
@@ -29,7 +29,7 @@ const handleMulterUpload = (req: Request, res: Response, next: NextFunction) => 
       return res.status(400).json({
         error: {
           code: 'BAD_REQUEST',
-          message: err.message || 'File upload failed.',
+          message: (err as Error)?.message || 'File upload failed.',
         },
       });
     }

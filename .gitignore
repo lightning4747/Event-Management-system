@@ -62,3 +62,5 @@ postgres_data/
 
 #testing
 .postman
+
+uploads/

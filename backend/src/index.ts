@@ -68,7 +68,7 @@ runMigrations()
 ┌──────────────────────────────────────────────────────────┐
 │  MCET On-Duty Portal — Backend API Server                │
 │                                                          │
-│  ➜ Local API: http://${host}:${port}                      │
+│  ➜ Local API: http://${host}:${port}                    │
 └──────────────────────────────────────────────────────────┘
       `);
 

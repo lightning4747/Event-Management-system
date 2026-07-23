@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "🚀 Running pre-push checks (lint, typecheck & tests)..."
+bun run lint && bun run typecheck && bun run test

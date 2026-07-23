@@ -29,7 +29,7 @@ export const errorHandler = (
   }
 
   // Translate known PostgreSQL constraints into 4xx AppErrors
-  const targetErr = (err as any)?.cause || err;
+  const targetErr = (err as Error & { cause?: unknown })?.cause || err;
   if (targetErr && typeof targetErr === 'object' && 'code' in targetErr) {
     const pgErr = targetErr as { code: unknown; constraint?: unknown; detail?: unknown; message?: string };
     if (typeof pgErr.code === 'string' && pgErr.code.length === 5) {

@@ -131,8 +131,8 @@ const runSimulation = async () => {
     try {
       await uploadCertificate('TEST_STU01', { requirementId: reqId.toString() }, dummyPdf);
       throw new Error('Upload should have been blocked before event end date!');
-    } catch (err: any) {
-      console.log(`   ✅ Upload correctly blocked with error: "${err.message}"`);
+    } catch (err: unknown) {
+      console.log(`   ✅ Upload correctly blocked with error: "${(err as Error).message}"`);
     }
 
     // 5. Student Requests Deadline Extension
@@ -181,7 +181,7 @@ const runSimulation = async () => {
     console.log('🎉 ALL WORKFLOW & DEADLINE EXTENSION TESTS PASSED 100% CLEANLY!');
     console.log('🔒 MAIN DATABASE (od_approval_db) WAS NOT TOUCHED AT ALL.');
     console.log('===============================================================\n');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('\n❌ SIMULATION FAILED WITH ERROR:', error);
     process.exit(1);
   } finally {

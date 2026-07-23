@@ -67,9 +67,9 @@ export class OneDriveStorageProvider implements IStorageProvider {
         fileUrl: driveItem.webUrl || `https://onedrive.live.com/?id=${driveItem.id}`,
         path: targetPath,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.warn(
-        { err: err?.message || String(err) },
+        { err: (err as Error)?.message || String(err) },
         'Microsoft Graph API unavailable. Silently falling back to local disk storage.'
       );
       return await this.localFallback.uploadFile(options);
@@ -82,8 +82,8 @@ export class OneDriveStorageProvider implements IStorageProvider {
       const userId = process.env.ONEDRIVE_USER_ID;
       const endpoint = userId ? `/users/${userId}/drive/items/${fileId}` : `/drive/items/${fileId}`;
       await client.api(endpoint).delete();
-    } catch (err: any) {
-      logger.warn({ err: err?.message }, 'Microsoft Graph API delete failed, attempting local delete fallback.');
+    } catch (err: unknown) {
+      logger.warn({ err: (err as Error)?.message }, 'Microsoft Graph API delete failed, attempting local delete fallback.');
       await this.localFallback.deleteFile(fileId);
     }
   }
@@ -95,8 +95,8 @@ export class OneDriveStorageProvider implements IStorageProvider {
       const endpoint = userId ? `/users/${userId}/drive/items/${fileId}` : `/drive/items/${fileId}`;
       const item = await client.api(endpoint).select('@microsoft.graph.downloadUrl,webUrl').get();
       return item['@microsoft.graph.downloadUrl'] || item.webUrl;
-    } catch (err: any) {
-      logger.warn({ err: err?.message }, 'Microsoft Graph API getDownloadUrl failed, using local download URL fallback.');
+    } catch (err: unknown) {
+      logger.warn({ err: (err as Error)?.message }, 'Microsoft Graph API getDownloadUrl failed, using local download URL fallback.');
       return await this.localFallback.getDownloadUrl(fileId);
     }
   }
