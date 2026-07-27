@@ -12,8 +12,25 @@ describe('User Management Updates Integration Tests', () => {
     const mentorId = 'MENTOR_01';
     const unauthorizedMentorId = 'MENTOR_02';
 
-    // 1. Clean up & insert student under MENTOR_01
+    // 1. Clean up student & ensure mentor exists
+    await db.delete(students).where(eq(students.userId, studentId));
     await db.delete(users).where(eq(users.userId, studentId));
+
+    const [existingMentor] = await db.select().from(users).where(eq(users.userId, mentorId));
+    if (!existingMentor) {
+      await db.insert(users).values({
+        userId: mentorId,
+        username: mentorId,
+        role: 'Mentor',
+        passwordHash: 'hash',
+      });
+      await db.insert(faculty).values({
+        userId: mentorId,
+        fullName: 'Assigned Mentor',
+        designation: 'Assistant Professor',
+      });
+    }
+
     await db.insert(users).values({
       userId: studentId,
       username: studentId,
