@@ -11,15 +11,22 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { ArrowLeft, AlertCircle, FileText } from 'lucide-react';
 
+import { Select } from '../components/ui/Select';
+
 const todayStr = new Date().toISOString().split('T')[0];
+
+const extracurricularTypes = ['Sports', 'NCC', 'NSS', 'Dance'];
+const cocurricularTypes = ['Hackathon', 'Seminar', 'Workshop', 'Symposium', 'Conference'];
 
 const newAppSchema = z
   .object({
     title: z.string().min(1, 'Event title is required.'),
+    activityCategory: z.enum(['Extracurricular', 'Co-curricular', 'Others']),
+    activityType: z.string().min(1, 'Activity type is required.'),
     location: z.string().min(1, 'Event location is required.'),
     fromDate: z.string().min(1, 'Start date is required.'),
     toDate: z.string().min(1, 'End date is required.'),
-    numberOfEvents: z.coerce.number().int().min(1, 'Number of days must be at least 1.'),
+    numberOfEvents: z.coerce.number().int().min(1, 'Number of events must be at least 1.'),
   })
   .refine(
     (data) => data.fromDate >= todayStr,
@@ -40,11 +47,33 @@ export const NewApplication: React.FC = () => {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<NewAppValues>({
     resolver: zodResolver(newAppSchema),
-    defaultValues: { title: '', location: '', fromDate: '', toDate: '', numberOfEvents: 5 },
+    defaultValues: {
+      title: '',
+      activityCategory: 'Co-curricular',
+      activityType: 'Hackathon',
+      location: '',
+      fromDate: '',
+      toDate: '',
+      numberOfEvents: 1,
+    },
   });
+
+  const selectedCategory = watch('activityCategory');
+
+  React.useEffect(() => {
+    if (selectedCategory === 'Extracurricular') {
+      setValue('activityType', extracurricularTypes[0]);
+    } else if (selectedCategory === 'Co-curricular') {
+      setValue('activityType', cocurricularTypes[0]);
+    } else {
+      setValue('activityType', '');
+    }
+  }, [selectedCategory, setValue]);
 
   const submitMutation = useMutation({
     mutationFn: async (values: NewAppValues) => {
@@ -107,6 +136,60 @@ export const NewApplication: React.FC = () => {
                   className="h-10"
                 />
                 {errors.title && <p className="text-xs text-red-600 font-medium">{errors.title.message}</p>}
+              </div>
+
+              {/* Activity Classification Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="activityCategory" className="text-sm font-semibold text-gray-700">Activity Category</Label>
+                  <Select
+                    id="activityCategory"
+                    {...register('activityCategory')}
+                    disabled={submitMutation.isPending}
+                    className="h-10"
+                  >
+                    <option value="Co-curricular">Co-curricular</option>
+                    <option value="Extracurricular">Extracurricular</option>
+                    <option value="Others">Others</option>
+                  </Select>
+                  {errors.activityCategory && <p className="text-xs text-red-600 font-medium">{errors.activityCategory.message}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="activityType" className="text-sm font-semibold text-gray-700">Activity Type</Label>
+                  {selectedCategory === 'Extracurricular' ? (
+                    <Select
+                      id="activityType"
+                      {...register('activityType')}
+                      disabled={submitMutation.isPending}
+                      className="h-10"
+                    >
+                      {extracurricularTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </Select>
+                  ) : selectedCategory === 'Co-curricular' ? (
+                    <Select
+                      id="activityType"
+                      {...register('activityType')}
+                      disabled={submitMutation.isPending}
+                      className="h-10"
+                    >
+                      {cocurricularTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      id="activityType"
+                      placeholder="Specify custom activity name..."
+                      {...register('activityType')}
+                      disabled={submitMutation.isPending}
+                      className="h-10"
+                    />
+                  )}
+                  {errors.activityType && <p className="text-xs text-red-600 font-medium">{errors.activityType.message}</p>}
+                </div>
               </div>
 
               <div className="space-y-1.5">

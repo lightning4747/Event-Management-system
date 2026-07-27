@@ -79,6 +79,8 @@ const runSimulation = async () => {
     const appRes = await createApplication(
       {
         title: 'IEEE Hackathon Simulation 2026',
+        activityCategory: 'Co-curricular',
+        activityType: 'Hackathon',
         location: 'Coimbatore',
         fromDate: todayStr,
         toDate: todayStr,

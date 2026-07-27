@@ -43,6 +43,8 @@ export const uploadCertificate = async (
       studentId: odApplications.studentId,
       toDate: odApplications.toDate,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
       admissionYear: students.admissionYear,
       section: students.section,
     })
@@ -94,8 +96,11 @@ export const uploadCertificate = async (
       .where(eq(certificates.requirementId, reqId));
 
     const uploadVersion = existingCerts.length + 1;
-    const yearFolder = getAcademicYearName(req.admissionYear);
-    const folderPath = `Certificates/${yearFolder}/${req.section}`;
+    const categoryFolder = req.activityCategory === 'Co-curricular'
+      ? 'Cocurricular'
+      : (req.activityCategory || 'Others');
+    const subFolder = (req.activityType || 'General').replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
+    const folderPath = `${req.studentId}/${categoryFolder}/${subFolder}`;
     const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
     fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
 

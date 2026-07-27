@@ -27,6 +27,8 @@ interface ApplicationRow {
   studentId: string;
   studentName: string;
   title: string;
+  activityCategory?: 'Extracurricular' | 'Co-curricular' | 'Others';
+  activityType?: string;
   location: string;
   fromDate: string;
   toDate: string;
@@ -239,6 +241,8 @@ export const Dashboard: React.FC = () => {
   const [filterToDate, setFilterToDate] = React.useState('');
   const [filterSection, setFilterSection] = React.useState('');
   const [filterYear, setFilterYear] = React.useState('');
+  const [filterActivityCategory, setFilterActivityCategory] = React.useState('');
+  const [filterActivityType, setFilterActivityType] = React.useState('');
 
   // ── All Applications Date Range Filter ──
   const [allAppsFromDate, setAllAppsFromDate] = React.useState('');
@@ -575,6 +579,8 @@ export const Dashboard: React.FC = () => {
     if (filterToDate) params.append('toDate', filterToDate);
     if (filterSection) params.append('section', filterSection);
     if (filterYear) params.append('admissionYear', filterYear);
+    if (filterActivityCategory) params.append('activityCategory', filterActivityCategory);
+    if (filterActivityType) params.append('activityType', filterActivityType);
     const path = isMentor ? `/reports/cohort?${params}` : `/reports/global?${params}`;
     try {
       setExportLoading(true);
@@ -1092,7 +1098,7 @@ export const Dashboard: React.FC = () => {
                   <h3 className="text-sm font-bold text-gray-900">Export OD Data Report</h3>
                 </div>
                 <div className="p-5 space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-gray-500">From Date</Label>
                       <Input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="h-9 text-sm" />
@@ -1100,6 +1106,24 @@ export const Dashboard: React.FC = () => {
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-gray-500">To Date</Label>
                       <Input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-500">Category</Label>
+                      <Select value={filterActivityCategory} onChange={(e) => setFilterActivityCategory(e.target.value)} className="h-9 text-sm">
+                        <option value="">All Categories</option>
+                        <option value="Co-curricular">Co-curricular</option>
+                        <option value="Extracurricular">Extracurricular</option>
+                        <option value="Others">Others</option>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-500">Activity Type</Label>
+                      <Input
+                        placeholder="Search type..."
+                        value={filterActivityType}
+                        onChange={(e) => setFilterActivityType(e.target.value)}
+                        className="h-9 text-sm"
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-gray-500">Section</Label>

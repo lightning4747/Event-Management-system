@@ -36,6 +36,12 @@ export const certStatusEnum = pgEnum('cert_status', [
   'Skipped'
 ]);
 
+export const activityCategoryEnum = pgEnum('activity_category', [
+  'Extracurricular',
+  'Co-curricular',
+  'Others'
+]);
+
 // 2. Table Definitions
 
 // USERS Table
@@ -79,6 +85,8 @@ export const odApplications = pgTable('od_applications', {
   applicationId: bigserial('application_id', { mode: 'bigint' }).primaryKey(),
   studentId: varchar('student_id', { length: 255 }).references(() => students.userId).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
+  activityCategory: activityCategoryEnum('activity_category').default('Co-curricular').notNull(),
+  activityType: varchar('activity_type', { length: 255 }).default('General').notNull(),
   location: varchar('location', { length: 255 }).notNull(),
   fromDate: date('from_date', { mode: 'string' }).notNull(),
   toDate: date('to_date', { mode: 'string' }).notNull(),

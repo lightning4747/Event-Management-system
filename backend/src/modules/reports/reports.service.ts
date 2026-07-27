@@ -10,6 +10,8 @@ const CSV_HEADERS = [
   { label: 'Admission Year', key: 'admissionYear' },
   { label: 'Section', key: 'section' },
   { label: 'OD Title', key: 'title' },
+  { label: 'Activity Category', key: 'activityCategory' },
+  { label: 'Activity Type', key: 'activityType' },
   { label: 'Location', key: 'location' },
   { label: 'From Date', key: 'fromDate' },
   { label: 'To Date', key: 'toDate' },
@@ -33,6 +35,12 @@ export const generateGlobalReport = async (filters: ExportFilterInput): Promise<
   if (filters.admissionYear) {
     whereClauses.push(eq(students.admissionYear, filters.admissionYear));
   }
+  if (filters.activityCategory) {
+    whereClauses.push(eq(odApplications.activityCategory, filters.activityCategory));
+  }
+  if (filters.activityType) {
+    whereClauses.push(eq(odApplications.activityType, filters.activityType));
+  }
 
   const rows = await db
     .select({
@@ -41,6 +49,8 @@ export const generateGlobalReport = async (filters: ExportFilterInput): Promise<
       admissionYear: students.admissionYear,
       section: students.section,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
@@ -79,6 +89,12 @@ export const generateCohortReport = async (
   if (filters.admissionYear) {
     whereClauses.push(eq(students.admissionYear, filters.admissionYear));
   }
+  if (filters.activityCategory) {
+    whereClauses.push(eq(odApplications.activityCategory, filters.activityCategory));
+  }
+  if (filters.activityType) {
+    whereClauses.push(eq(odApplications.activityType, filters.activityType));
+  }
 
   const rows = await db
     .select({
@@ -87,6 +103,8 @@ export const generateCohortReport = async (
       admissionYear: students.admissionYear,
       section: students.section,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,

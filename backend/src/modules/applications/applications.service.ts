@@ -8,6 +8,8 @@ export interface ApplicationRow {
   applicationId: bigint;
   studentId: string;
   title: string;
+  activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+  activityType: string;
   location: string;
   fromDate: string;
   toDate: string;
@@ -85,7 +87,15 @@ export const computeEventTag = (
 export const createApplication = async (
   input: CreateApplicationInput,
   studentId: string
-): Promise<{ applicationId: bigint; studentId: string; title: string; status: string; createdAt: Date }> => {
+): Promise<{
+  applicationId: bigint;
+  studentId: string;
+  title: string;
+  activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+  activityType: string;
+  status: string;
+  createdAt: Date;
+}> => {
   // Verify student exists in students table
   const [student] = await db
     .select()
@@ -118,6 +128,8 @@ export const createApplication = async (
     .values({
       studentId,
       title: input.title,
+      activityCategory: input.activityCategory || 'Co-curricular',
+      activityType: input.activityType || 'General',
       location: input.location,
       fromDate: input.fromDate,
       toDate: input.toDate,
@@ -128,6 +140,8 @@ export const createApplication = async (
       applicationId: odApplications.applicationId,
       studentId: odApplications.studentId,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
       status: odApplications.status,
       createdAt: odApplications.createdAt,
     });
@@ -195,6 +209,8 @@ export const getDepartmentApplications = async (
       studentName: students.fullName,
       mentorId: students.mentorId,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
@@ -217,6 +233,8 @@ export const getDepartmentApplications = async (
     studentName: string;
     mentorId: string;
     title: string;
+    activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+    activityType: string;
     location: string;
     fromDate: string;
     toDate: string;
@@ -327,6 +345,8 @@ export const getApplicationDetails = async (
       studentName: students.fullName,
       mentorId: students.mentorId,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
