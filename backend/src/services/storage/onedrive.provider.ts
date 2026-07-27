@@ -7,14 +7,30 @@ import { logger } from '../../utils/logger';
 export class OneDriveStorageProvider implements IStorageProvider {
   private localFallback = new LocalStorageProvider();
 
-  private async getAccessToken(): Promise<string> {
+  private hasValidCredentials(): boolean {
     const tenantId = process.env.ONEDRIVE_TENANT_ID;
     const clientId = process.env.ONEDRIVE_CLIENT_ID;
     const clientSecret = process.env.ONEDRIVE_CLIENT_SECRET;
 
-    if (!tenantId || !clientId || !clientSecret || tenantId.includes('your-tenant-id')) {
+    if (!tenantId || !clientId || !clientSecret) return false;
+    if (
+      tenantId.includes('your-tenant-id') ||
+      clientId.includes('your-client-id') ||
+      clientSecret.includes('your-client-secret')
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  private async getAccessToken(): Promise<string> {
+    if (!this.hasValidCredentials()) {
       throw new AppError(500, 'STORAGE_CONFIG_ERROR', 'Microsoft OneDrive credentials are not configured or contain placeholder values.');
     }
+
+    const tenantId = process.env.ONEDRIVE_TENANT_ID!;
+    const clientId = process.env.ONEDRIVE_CLIENT_ID!;
+    const clientSecret = process.env.ONEDRIVE_CLIENT_SECRET!;
 
     const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
     const params = new URLSearchParams({
@@ -47,6 +63,13 @@ export class OneDriveStorageProvider implements IStorageProvider {
   }
 
   async uploadFile(options: UploadFileOptions): Promise<UploadFileResult> {
+    if (!this.hasValidCredentials()) {
+      logger.warn(
+        'Microsoft OneDrive credentials missing or contain placeholders. Automatically storing certificate in local /uploads directory.'
+      );
+      return await this.localFallback.uploadFile(options);
+    }
+
     try {
       const client = await this.getClient();
       const userId = process.env.ONEDRIVE_USER_ID;

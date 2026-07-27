@@ -1,16 +1,32 @@
-name: Backend CI Pipeline
+name: CI Pipeline
 
 on:
   push:
-    branches: [ main, backend-base ]
+    branches: [main]
   pull_request:
-    branches: [ main, backend-base ]
+    branches: [main]
 
 jobs:
+  # ── Backend ───────────────────────────────────────────────
   backend-ci:
-    name: Lint & Type Check Verification
+    name: Backend — Lint, Typecheck & Test
     runs-on: ubuntu-latest
-    
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password123
+          POSTGRES_DB: od_approval_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -31,3 +47,37 @@ jobs:
       - name: TypeScript Compile Verification
         working-directory: ./backend
         run: bunx tsc --noEmit
+
+      - name: Run Tests
+        working-directory: ./backend
+        run: bun run test
+        env:
+          DATABASE_URL: postgres://postgres:password123@localhost:5432/od_approval_db
+          JWT_SECRET: ci_test_secret_not_for_production
+          STORAGE_PROVIDER: local
+
+  # ── Frontend ──────────────────────────────────────────────
+  frontend-ci:
+    name: Frontend — Typecheck, Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: '1.3.14'
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        working-directory: ./frontend
+        run: bun run lint
+
+      - name: Build (validates TypeScript + Vite)
+        working-directory: ./frontend
+        run: bun run build

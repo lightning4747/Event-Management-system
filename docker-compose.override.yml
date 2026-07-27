@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────
+#  MCET OD Portal — Developer Overrides
+#
+#  This file is AUTO-MERGED by Docker Compose when you run:
+#    docker compose up
+#
+#  It adds hot reload, source code mounts, and exposes the
+#  backend port for direct API testing (e.g. Postman).
+#
+#  For production, use ONLY the base file:
+#    docker compose -f docker-compose.yml up -d --build
+# ─────────────────────────────────────────────────────────
+
+services:
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  backend:
+    # Override to dev mode with hot reload
+    command: ["bun", "--watch", "src/index.ts"]
+    environment:
+      NODE_ENV: development
+    volumes:
+      # Mount source code for live reload
+      - ./backend/src:/app/src
+      # Persist uploaded files between restarts
+      - backend_uploads:/app/uploads
+    ports:
+      # Expose backend directly for Postman / API testing
+      - "8000:8000"

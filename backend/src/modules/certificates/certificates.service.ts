@@ -4,7 +4,6 @@ import { eq, lt, and, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
 import { storageService } from '../../services/storage/storage.service';
-import { LocalStorageProvider } from '../../services/storage/local.provider';
 import fs from 'fs';
 import path from 'path';
 
@@ -100,15 +99,14 @@ export const uploadCertificate = async (
     const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
     fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
 
-    const localProvider = new LocalStorageProvider();
-    const localStorageResult = await localProvider.uploadFile({
+    const storageResult = await storageService.uploadFile({
       fileName,
       folderPath,
       mimeType: file.mimetype || 'application/pdf',
       buffer: file.buffer,
     });
 
-    fileUrl = localStorageResult.fileUrl;
+    fileUrl = storageResult.fileUrl;
   }
 
   if (!fileUrl) {

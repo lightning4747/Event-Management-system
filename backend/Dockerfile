@@ -13,7 +13,7 @@ WORKDIR /app
 COPY --from=builder /app ./
 
 # Run as a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN mkdir -p /app/uploads && addgroup -S appgroup && adduser -S appuser -G appgroup && chown -R appuser:appgroup /app
 USER appuser
 
 ENV NODE_ENV=production

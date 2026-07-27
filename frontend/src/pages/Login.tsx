@@ -64,7 +64,7 @@ export const Login: React.FC = () => {
     <main className="min-h-screen bg-background text-foreground flex items-start sm:items-center justify-center p-6 pt-10 sm:pt-16 font-sans">
       <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 shadow-2xl space-y-6">
         <div className="space-y-2 text-center">
-          <img src="/mcet_logo.jpg" alt="MCET Logo" className="h-16 w-16 object-contain mx-auto rounded-xl shadow-md border border-gray-100 mb-3" />
+          <img src="/mcet_logo.jpg" alt="MCET Logo" className="h-16 w-32 object-contain mx-auto " />
           <h1 className="text-xl font-bold tracking-tight">Department of AI&DS</h1>
         </div>
 

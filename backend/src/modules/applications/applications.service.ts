@@ -53,10 +53,10 @@ export const computeEventTag = (
   toDate: string,
   status: string,
   certs: Array<{ status: string }> = []
-): EventTag => {
-  if (status === 'Rejected') return 'Rejected';
-  if (status === 'Withdrawn') return 'Withdrawn';
-  if (status.startsWith('In Progress')) return 'Pending Approval';
+): EventTag | undefined => {
+  if (status !== 'Approved') {
+    return undefined;
+  }
 
   const today = new Date().toISOString().split('T')[0];
 
