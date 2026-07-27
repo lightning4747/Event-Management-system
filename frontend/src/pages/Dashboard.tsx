@@ -245,6 +245,17 @@ export const Dashboard: React.FC = () => {
   const [allAppsToDate, setAllAppsToDate] = React.useState('');
   const [exportLoading, setExportLoading] = React.useState(false);
 
+  // ── Faculty Search Filter (Admin Console) ──
+  const [facultySearchQuery, setFacultySearchQuery] = React.useState('');
+  const [debouncedFacultySearch, setDebouncedFacultySearch] = React.useState('');
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedFacultySearch(facultySearchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [facultySearchQuery]);
+
   // ── Role flags ──
   const isStudent = user?.role === 'Student';
   const isEC = user?.role === 'Event Coordinator';
@@ -285,6 +296,16 @@ export const Dashboard: React.FC = () => {
     queryFn: async () => { const res = await apiFetch('/admin/faculty'); return res.json(); },
     enabled: isAdmin,
   });
+
+  const filteredFacultyList = React.useMemo(() => {
+    const q = debouncedFacultySearch.trim().toLowerCase();
+    if (!q) return facultyList;
+    return facultyList.filter(
+      (fac) =>
+        fac.fullName.toLowerCase().includes(q) ||
+        fac.userId.toLowerCase().includes(q)
+    );
+  }, [facultyList, debouncedFacultySearch]);
 
   const { data: studentApps = [], isLoading: studentAppsLoading } = useQuery<ApplicationRow[]>({
     queryKey: ['studentApplications'],
@@ -757,13 +778,26 @@ export const Dashboard: React.FC = () => {
                 <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
                   <Settings className="w-4 h-4 text-gray-400" />
                   <h3 className="text-sm font-bold text-gray-900">Faculty Accounts Registry</h3>
-                  <span className="ml-auto text-xs text-gray-400 font-medium">{facultyList.length} accounts</span>
+                  <span className="ml-auto text-xs text-gray-400 font-medium">
+                    {debouncedFacultySearch ? `${filteredFacultyList.length} of ${facultyList.length} accounts` : `${facultyList.length} accounts`}
+                  </span>
                 </div>
-                {facultyListLoading ? <LoadingState /> : facultyList.length === 0 ? (
-                  <EmptyState message="No faculty accounts registered yet." />
+                <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search faculty by name or ID / register number..."
+                      value={facultySearchQuery}
+                      onChange={(e) => setFacultySearchQuery(e.target.value)}
+                      className="pl-9 h-9 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+                {facultyListLoading ? <LoadingState /> : filteredFacultyList.length === 0 ? (
+                  <EmptyState message={debouncedFacultySearch ? 'No faculty accounts match your search.' : 'No faculty accounts registered yet.'} />
                 ) : (
                   <div className="divide-y divide-gray-100">
-                    {[...facultyList]
+                    {[...filteredFacultyList]
                       .sort((a, b) => a.fullName.localeCompare(b.fullName))
                       .map((fac) => {
                         const isSelected = selectedFacultyId === fac.userId;
