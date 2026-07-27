@@ -15,7 +15,7 @@ import {
   FileText, Clock, CheckCircle, XCircle, PlusCircle,
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList,
   UserPlus, Calendar, Hourglass, Download, Settings,
-  AlertTriangle, Users
+  AlertTriangle, Users, Edit2, Search
 } from 'lucide-react';
 
 import { EventTagBadge } from '../components/EventTagBadge';
@@ -193,7 +193,7 @@ export const Dashboard: React.FC = () => {
   // ── Student onboard (mentor) ──
   const [createStudentOpen, setCreateStudentOpen] = React.useState(false);
   const [studentFormValues, setStudentFormValues] = React.useState({
-    userId: '', fullName: '', section: 'A',
+    userId: '', fullName: '', dateOfBirth: '', section: 'A',
   });
   const [createStudentError, setCreateStudentError] = React.useState<string | null>(null);
   const [createStudentSuccess, setCreateStudentSuccess] = React.useState<string | null>(null);
@@ -205,6 +205,25 @@ export const Dashboard: React.FC = () => {
   });
   const [createFacultyError, setCreateFacultyError] = React.useState<string | null>(null);
   const [createFacultySuccess, setCreateFacultySuccess] = React.useState<string | null>(null);
+
+  // ── Faculty edit (admin) ──
+  const [selectedFacultyId, setSelectedFacultyId] = React.useState<string | null>(null);
+  const [editingFaculty, setEditingFaculty] = React.useState<FacultyRow | null>(null);
+  const [editFacultyForm, setEditFacultyForm] = React.useState({
+    fullName: '', designation: '', role: 'Mentor', password: '',
+  });
+  const [editFacultyError, setEditFacultyError] = React.useState<string | null>(null);
+  const [editFacultySuccess, setEditFacultySuccess] = React.useState<string | null>(null);
+
+  // Double verification role change state
+  const [pendingRoleChange, setPendingRoleChange] = React.useState<{
+    userId: string;
+    facultyName: string;
+    currentRole: string;
+    newRole: string;
+    actionType: 'assign' | 'edit';
+    editPayload?: any;
+  } | null>(null);
 
   const yearOptions = React.useMemo(() => {
     const current = new Date().getFullYear();
@@ -220,6 +239,10 @@ export const Dashboard: React.FC = () => {
   const [filterToDate, setFilterToDate] = React.useState('');
   const [filterSection, setFilterSection] = React.useState('');
   const [filterYear, setFilterYear] = React.useState('');
+
+  // ── All Applications Date Range Filter ──
+  const [allAppsFromDate, setAllAppsFromDate] = React.useState('');
+  const [allAppsToDate, setAllAppsToDate] = React.useState('');
   const [exportLoading, setExportLoading] = React.useState(false);
 
   // ── Role flags ──
@@ -385,7 +408,7 @@ export const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['mentorMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['departmentApplications'] });
       queryClient.invalidateQueries({ queryKey: ['menteesList'] });
-      setStudentFormValues({ userId: '', fullName: '', section: 'A' });
+      setStudentFormValues({ userId: '', fullName: '', dateOfBirth: '', section: 'A' });
       setTimeout(() => { setCreateStudentOpen(false); setCreateStudentSuccess(null); }, 1500);
     },
     onError: (err: any) => setCreateStudentError(err.message || 'Failed to create student account.'),
@@ -422,6 +445,36 @@ export const Dashboard: React.FC = () => {
     },
     onError: (err: any) => {
       alert(err.message || 'Failed to assign role.');
+    },
+  });
+
+  const updateFacultyMutation = useMutation({
+    mutationFn: async (payload: { fullName?: string; designation?: string; role?: string; password?: string }) => {
+      if (!editingFaculty) return;
+      const cleanPayload: Record<string, string> = {};
+      if (payload.fullName) cleanPayload.fullName = payload.fullName;
+      if (payload.designation) cleanPayload.designation = payload.designation;
+      if (payload.role) cleanPayload.role = payload.role;
+      if (payload.password) cleanPayload.password = payload.password;
+
+      const res = await apiFetch(`/admin/faculty/${editingFaculty.userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(cleanPayload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setEditFacultySuccess('Faculty account updated successfully.');
+      setEditFacultyError(null);
+      queryClient.invalidateQueries({ queryKey: ['adminFacultyList'] });
+      setTimeout(() => {
+        setEditingFaculty(null);
+        setEditFacultySuccess(null);
+      }, 1200);
+    },
+    onError: (err: any) => {
+      setEditFacultyError(err.message || 'Failed to update faculty account.');
+      setEditFacultySuccess(null);
     },
   });
 
@@ -600,8 +653,21 @@ export const Dashboard: React.FC = () => {
   };
 
   const getFilteredApps = () => {
-    if (activeTab === 'pending') return departmentApps.filter((a) => a.status === getFacultyPendingStatus());
-    if (activeTab === 'certificates') return departmentApps.filter((a) => a.status === 'Approved');
+    if (activeTab === 'pending') {
+      return departmentApps.filter((a) => a.status === getFacultyPendingStatus());
+    }
+    if (activeTab === 'certificates') {
+      return departmentApps.filter(
+        (a) => a.status === 'Approved' && (a.eventTag === 'Reviewing' || a.eventTag === 'Action Required')
+      );
+    }
+    if (activeTab === 'all') {
+      return departmentApps.filter((a) => {
+        if (allAppsFromDate && a.fromDate < allAppsFromDate) return false;
+        if (allAppsToDate && a.toDate > allAppsToDate) return false;
+        return true;
+      });
+    }
     return departmentApps;
   };
 
@@ -685,72 +751,155 @@ export const Dashboard: React.FC = () => {
               </Button>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
-                <Settings className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-bold text-gray-900">Faculty Accounts Registry</h3>
-                <span className="ml-auto text-xs text-gray-400 font-medium">{facultyList.length} accounts</span>
-              </div>
-              {facultyListLoading ? <LoadingState /> : facultyList.length === 0 ? (
-                <EmptyState message="No faculty accounts registered yet." />
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {[...facultyList]
-                    .sort((a, b) => a.fullName.localeCompare(b.fullName))
-                    .map((fac) => (
-                      <div key={fac.userId} className="px-5 py-4 flex items-center gap-4 hover:bg-gray-50">
-                        <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center font-bold text-xs text-gray-600">
-                          {fac.fullName.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900">{fac.fullName}</p>
-                          <p className="text-xs text-gray-500">{fac.designation} · ID: {fac.userId}</p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {fac.role !== 'Administrator' && (
-                            <>
-                              <Button
-                                variant="outline"
-                                onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Head of Department' })}
-                                disabled={fac.role === 'Head of Department' || assignRoleMutation.isPending}
-                                className="text-[10px] h-7 px-2"
-                              >
-                                {fac.role === 'Head of Department' ? 'HOD' : 'Assign HOD'}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Program Coordinator' })}
-                                disabled={fac.role === 'Program Coordinator' || assignRoleMutation.isPending}
-                                className="text-[10px] h-7 px-2"
-                              >
-                                {fac.role === 'Program Coordinator' ? 'PC' : 'Assign PC'}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Event Coordinator' })}
-                                disabled={fac.role === 'Event Coordinator' || assignRoleMutation.isPending}
-                                className="text-[10px] h-7 px-2"
-                              >
-                                {fac.role === 'Event Coordinator' ? 'EC' : 'Assign EC'}
-                              </Button>
-                              {(fac.role === 'Head of Department' || fac.role === 'Program Coordinator' || fac.role === 'Event Coordinator') && (
-                                <Button
-                                  variant="outline"
-                                  onClick={() => assignRoleMutation.mutate({ userId: fac.userId, role: 'Mentor' })}
-                                  disabled={assignRoleMutation.isPending}
-                                  className="text-[10px] h-7 px-2 border-red-200 text-red-600 hover:bg-red-50"
-                                >
-                                  Revert
-                                </Button>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* Faculty List */}
+              <div className={`${selectedFacultyId ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden`}>
+                <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-gray-400" />
+                  <h3 className="text-sm font-bold text-gray-900">Faculty Accounts Registry</h3>
+                  <span className="ml-auto text-xs text-gray-400 font-medium">{facultyList.length} accounts</span>
+                </div>
+                {facultyListLoading ? <LoadingState /> : facultyList.length === 0 ? (
+                  <EmptyState message="No faculty accounts registered yet." />
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {[...facultyList]
+                      .sort((a, b) => a.fullName.localeCompare(b.fullName))
+                      .map((fac) => {
+                        const isSelected = selectedFacultyId === fac.userId;
+                        return (
+                          <div
+                            key={fac.userId}
+                            onClick={() => setSelectedFacultyId(isSelected ? null : fac.userId)}
+                            className={`px-5 py-4 flex items-center gap-4 cursor-pointer transition-colors ${
+                              isSelected ? 'bg-primary/5 hover:bg-primary/5' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center font-bold text-xs text-gray-600">
+                              {fac.fullName.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-gray-900">{fac.fullName}</p>
+                              <p className="text-xs text-gray-500">{fac.designation} · ID: {fac.userId}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              {fac.role !== 'Administrator' && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setPendingRoleChange({ userId: fac.userId, facultyName: fac.fullName, currentRole: fac.role, newRole: 'Head of Department', actionType: 'assign' })}
+                                    disabled={fac.role === 'Head of Department' || assignRoleMutation.isPending}
+                                    className="text-[10px] h-7 px-2"
+                                  >
+                                    {fac.role === 'Head of Department' ? 'HOD' : 'Assign HOD'}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setPendingRoleChange({ userId: fac.userId, facultyName: fac.fullName, currentRole: fac.role, newRole: 'Program Coordinator', actionType: 'assign' })}
+                                    disabled={fac.role === 'Program Coordinator' || assignRoleMutation.isPending}
+                                    className="text-[10px] h-7 px-2"
+                                  >
+                                    {fac.role === 'Program Coordinator' ? 'PC' : 'Assign PC'}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setPendingRoleChange({ userId: fac.userId, facultyName: fac.fullName, currentRole: fac.role, newRole: 'Event Coordinator', actionType: 'assign' })}
+                                    disabled={fac.role === 'Event Coordinator' || assignRoleMutation.isPending}
+                                    className="text-[10px] h-7 px-2"
+                                  >
+                                    {fac.role === 'Event Coordinator' ? 'EC' : 'Assign EC'}
+                                  </Button>
+                                  {(fac.role === 'Head of Department' || fac.role === 'Program Coordinator' || fac.role === 'Event Coordinator') && (
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => setPendingRoleChange({ userId: fac.userId, facultyName: fac.fullName, currentRole: fac.role, newRole: 'Mentor', actionType: 'assign' })}
+                                      disabled={assignRoleMutation.isPending}
+                                      className="text-[10px] h-7 px-2 border-red-200 text-red-600 hover:bg-red-50"
+                                    >
+                                      Revert
+                                    </Button>
+                                  )}
+                                </>
                               )}
-                            </>
-                          )}
-                        <span className="text-[11px] font-bold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
-                          {fac.role}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                              <span className="text-[11px] font-bold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full">
+                                {fac.role}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Faculty Details Card */}
+              {selectedFacultyId && (
+                <div className="lg:col-span-5 bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
+                  {(() => {
+                    const selFac = facultyList.find(f => f.userId === selectedFacultyId);
+                    if (!selFac) return null;
+                    return (
+                      <>
+                        <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm">
+                              {selFac.fullName.charAt(0)}
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-gray-900 leading-tight">{selFac.fullName}</h3>
+                              <p className="text-xs text-gray-500 font-mono mt-0.5">Faculty ID: {selFac.userId}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[10px] px-2"
+                            onClick={() => setSelectedFacultyId(null)}
+                          >
+                            Close
+                          </Button>
+                        </div>
+
+                        <div className="space-y-3 text-xs">
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Academic Designation</p>
+                            <p className="font-semibold text-gray-800 mt-0.5">{selFac.designation}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">System Role</p>
+                            <span className="inline-block mt-1 text-[11px] font-bold px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full">
+                              {selFac.role}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Account Creation Date</p>
+                            <p className="font-semibold text-gray-800 mt-0.5">
+                              {selFac.createdAt ? new Date(selFac.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          <Button
+                            className="w-full h-9 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5"
+                            onClick={() => {
+                              setEditingFaculty(selFac);
+                              setEditFacultyForm({
+                                fullName: selFac.fullName,
+                                designation: selFac.designation,
+                                role: selFac.role,
+                                password: '',
+                              });
+                              setEditFacultyError(null);
+                              setEditFacultySuccess(null);
+                            }}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" /> Update Faculty Details
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -975,6 +1124,46 @@ export const Dashboard: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Date Range Search Filter Bar for All Applications */}
+            {activeTab === 'all' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-gray-400" /> Filter Applications by Event Date Range
+                  </p>
+                  {(allAppsFromDate || allAppsToDate) && (
+                    <button
+                      type="button"
+                      onClick={() => { setAllAppsFromDate(''); setAllAppsToDate(''); }}
+                      className="text-[11px] text-primary hover:underline font-semibold"
+                    >
+                      Clear Date Filter
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-semibold text-gray-500">From Date</Label>
+                    <Input
+                      type="date"
+                      value={allAppsFromDate}
+                      onChange={(e) => setAllAppsFromDate(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-semibold text-gray-500">To Date</Label>
+                    <Input
+                      type="date"
+                      value={allAppsToDate}
+                      onChange={(e) => setAllAppsToDate(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Queue Content */}
             {activeTab === 'extensions' && isMentor ? (
@@ -1640,6 +1829,10 @@ export const Dashboard: React.FC = () => {
                 <Input placeholder="e.g. NEERAJ K" required value={studentFormValues.fullName} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, fullName: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10" />
               </div>
               <div className="space-y-1.5">
+                <Label className="text-sm font-semibold text-gray-700">Date of Birth <span className="text-red-500">*</span></Label>
+                <Input type="date" required value={studentFormValues.dateOfBirth} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, dateOfBirth: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10" />
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-sm font-semibold text-gray-700">Section</Label>
                 <Select value={studentFormValues.section} onChange={(e) => setStudentFormValues((prev) => ({ ...prev, section: e.target.value }))} disabled={onboardStudentMutation.isPending} className="h-10">
                   <option value="A">Section A</option>
@@ -1700,6 +1893,119 @@ export const Dashboard: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Edit Faculty Dialog (Admin) ── */}
+        <Dialog open={!!editingFaculty} onOpenChange={(open) => !open && setEditingFaculty(null)}>
+          <DialogContent className="max-w-md bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-gray-900">
+                Edit Faculty Details ({editingFaculty?.userId})
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              setEditFacultyError(null);
+              setEditFacultySuccess(null);
+              if (editingFaculty && editFacultyForm.role !== editingFaculty.role) {
+                setPendingRoleChange({
+                  userId: editingFaculty.userId,
+                  facultyName: editFacultyForm.fullName,
+                  currentRole: editingFaculty.role,
+                  newRole: editFacultyForm.role,
+                  actionType: 'edit',
+                  editPayload: editFacultyForm,
+                });
+              } else {
+                updateFacultyMutation.mutate(editFacultyForm);
+              }
+            }} className="space-y-4 pt-2">
+              {editFacultySuccess && <div className="bg-muted border border-border text-foreground text-sm p-3 rounded-xl font-medium">{editFacultySuccess}</div>}
+              {editFacultyError && <div className="bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-xl font-medium">{editFacultyError}</div>}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold text-gray-700">Full Name</Label>
+                <Input placeholder="e.g. Dr. ARUN PRASAD" required value={editFacultyForm.fullName} onChange={(e) => setEditFacultyForm((prev) => ({ ...prev, fullName: e.target.value }))} disabled={updateFacultyMutation.isPending} className="h-10" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-gray-700">Designation</Label>
+                  <Input placeholder="e.g. Assistant Professor" required value={editFacultyForm.designation} onChange={(e) => setEditFacultyForm((prev) => ({ ...prev, designation: e.target.value }))} disabled={updateFacultyMutation.isPending} className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold text-gray-700">System Role</Label>
+                  <Select value={editFacultyForm.role} onChange={(e) => setEditFacultyForm((prev) => ({ ...prev, role: e.target.value }))} disabled={updateFacultyMutation.isPending} className="h-10">
+                    <option value="Mentor">Mentor</option>
+                    <option value="Event Coordinator">Event Coordinator</option>
+                    <option value="Program Coordinator">Program Coordinator</option>
+                    <option value="Head of Department">Head of Department</option>
+                    <option value="Administrator">Administrator</option>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                <Label className="text-sm font-semibold text-gray-700">Reset Password (Optional)</Label>
+                <Input type="password" placeholder="Leave blank to keep current password" value={editFacultyForm.password} onChange={(e) => setEditFacultyForm((prev) => ({ ...prev, password: e.target.value }))} disabled={updateFacultyMutation.isPending} className="h-10" />
+                <p className="text-[11px] text-gray-400 font-medium">Minimum 6 characters if resetting password.</p>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => setEditingFaculty(null)} disabled={updateFacultyMutation.isPending}>Cancel</Button>
+                <Button type="submit" className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={updateFacultyMutation.isPending}>
+                  {updateFacultyMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Double Verification Role Change Dialog ── */}
+        <Dialog open={!!pendingRoleChange} onOpenChange={(open) => !open && setPendingRoleChange(null)}>
+          <DialogContent className="max-w-md bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Confirm Faculty Role Change
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Are you sure you want to change the system role of{' '}
+                <strong className="text-gray-900">{pendingRoleChange?.facultyName}</strong> ({pendingRoleChange?.userId}) from{' '}
+                <span className="font-bold text-gray-700">{pendingRoleChange?.currentRole}</span> to{' '}
+                <span className="font-bold text-primary">{pendingRoleChange?.newRole}</span>?
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 font-medium">
+                This action will immediately update access permissions for this faculty account.
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-10"
+                  onClick={() => setPendingRoleChange(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                  onClick={() => {
+                    if (!pendingRoleChange) return;
+                    if (pendingRoleChange.actionType === 'assign') {
+                      assignRoleMutation.mutate({
+                        userId: pendingRoleChange.userId,
+                        role: pendingRoleChange.newRole as any,
+                      });
+                    } else if (pendingRoleChange.actionType === 'edit') {
+                      updateFacultyMutation.mutate(pendingRoleChange.editPayload);
+                    }
+                    setPendingRoleChange(null);
+                  }}
+                >
+                  Confirm Role Change
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 

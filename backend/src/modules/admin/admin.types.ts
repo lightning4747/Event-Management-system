@@ -16,3 +16,12 @@ export const assignRoleSchema = z.object({
 });
 
 export type AssignRoleInput = z.infer<typeof assignRoleSchema>;
+
+export const updateFacultySchema = z.object({
+  fullName: z.string().min(1, 'Full name cannot be empty.').optional(),
+  designation: z.string().min(1, 'Designation cannot be empty.').optional(),
+  role: z.enum(['Mentor', 'Event Coordinator', 'Program Coordinator', 'Head of Department', 'Administrator']).optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters.').optional(),
+});
+
+export type UpdateFacultyInput = z.infer<typeof updateFacultySchema>;

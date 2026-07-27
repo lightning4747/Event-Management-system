@@ -89,7 +89,13 @@ export const getStudentCompleteRecord = async (studentId: string, role?: string,
     })
     .from(certificateRequirements)
     .innerJoin(odApplications, eq(certificateRequirements.applicationId, odApplications.applicationId))
-    .leftJoin(certificates, eq(certificateRequirements.requirementId, certificates.requirementId))
+    .leftJoin(
+      certificates,
+      and(
+        eq(certificateRequirements.requirementId, certificates.requirementId),
+        eq(certificates.isCurrent, true)
+      )
+    )
     .where(eq(odApplications.studentId, studentId))
     .orderBy(desc(certificates.uploadedAt));
 

@@ -1,12 +1,16 @@
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { DashboardShell } from '../components/DashboardShell';
 import { Input } from '../components/ui/Input';
+import { Label } from '../components/ui/Label';
+import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/Dialog';
 import {
   Search, Users, GraduationCap, FileText, CheckCircle,
-  Clock, ArrowLeft, ExternalLink, AlertCircle
+  Clock, ArrowLeft, ExternalLink, AlertCircle, Edit2, CheckCircle2
 } from 'lucide-react';
 
 import { EventTagBadge } from '../components/EventTagBadge';
@@ -87,9 +91,13 @@ const formatDate = (dateStr: string) => {
 };
 
 export const StudentsDirectory: React.FC = () => {
-  // Directory Filters
-  const [selectedYear, setSelectedYear] = React.useState<number | null>(null);
-  const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const isMentor = user?.role === 'Mentor';
+
+  // Directory Filters (for non-mentors)
+  const [selectedYear, setSelectedYear] = React.useState<number | null>(isMentor ? null : 2);
+  const [selectedSection, setSelectedSection] = React.useState<string | null>(isMentor ? null : 'A');
   const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState<string>('');
 
@@ -106,15 +114,39 @@ export const StudentsDirectory: React.FC = () => {
   // Tabs for student detailed profile
   const [detailsTab, setDetailsTab] = React.useState<'applications' | 'pending' | 'certificates'>('applications');
 
+  // Edit Student State & Form
+  const [editStudentOpen, setEditStudentOpen] = React.useState(false);
+  const [editFormValues, setEditFormValues] = React.useState({
+    fullName: '',
+    dateOfBirth: '',
+    section: 'A',
+  });
+  const [updateError, setUpdateError] = React.useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = React.useState<string | null>(null);
+
   // ── Queries ──
-  const { data: studentsList = [], isLoading: listLoading } = useQuery<StudentRow[]>({
+  // 1. Fetch Mentees list if user is a Mentor
+  const { data: mentorMenteesList = [], isLoading: mentorMenteesLoading } = useQuery<StudentRow[]>({
+    queryKey: ['mentorMenteesDirectoryList'],
+    queryFn: async () => {
+      const res = await apiFetch('/mentor/mentees');
+      return res.json();
+    },
+    enabled: isMentor,
+  });
+
+  // 2. Fetch Department-wide students list if user is NOT a Mentor
+  const { data: deptStudentsList = [], isLoading: deptStudentsLoading } = useQuery<StudentRow[]>({
     queryKey: ['studentsDirectoryList', selectedYear, selectedSection],
     queryFn: async () => {
       const res = await apiFetch(`/students?year=${selectedYear}&section=${selectedSection}`);
       return res.json();
     },
-    enabled: selectedYear !== null && selectedSection !== null,
+    enabled: !isMentor && selectedYear !== null && selectedSection !== null,
   });
+
+  const studentsList = isMentor ? mentorMenteesList : deptStudentsList;
+  const listLoading = isMentor ? mentorMenteesLoading : deptStudentsLoading;
 
   const { data: studentDetails, isLoading: detailsLoading } = useQuery<StudentDetails>({
     queryKey: ['studentDetailsRecord', selectedStudentId],
@@ -125,10 +157,44 @@ export const StudentsDirectory: React.FC = () => {
     enabled: !!selectedStudentId,
   });
 
+  // ── Edit Mutation ──
+  const updateStudentMutation = useMutation({
+    mutationFn: async (payload: { fullName?: string; dateOfBirth?: string; section?: string }) => {
+      if (!selectedStudentId) return;
+      const res = await apiFetch(`/mentor/students/${selectedStudentId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setUpdateSuccess('Student details updated successfully.');
+      setUpdateError(null);
+      queryClient.invalidateQueries({ queryKey: ['studentDetailsRecord', selectedStudentId] });
+      queryClient.invalidateQueries({ queryKey: ['mentorMenteesDirectoryList'] });
+      queryClient.invalidateQueries({ queryKey: ['studentsDirectoryList', selectedYear, selectedSection] });
+      setTimeout(() => {
+        setEditStudentOpen(false);
+        setUpdateSuccess(null);
+      }, 1200);
+    },
+    onError: (err: Error) => {
+      setUpdateError(err.message || 'Failed to update student details.');
+      setUpdateSuccess(null);
+    },
+  });
+
   // ── Handlers ──
   const handleStudentSelect = (id: string) => {
     setSelectedStudentId(id);
     setDetailsTab('applications');
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdateError(null);
+    setUpdateSuccess(null);
+    updateStudentMutation.mutate(editFormValues);
   };
 
   // Filter and sort students based on search query
@@ -144,7 +210,6 @@ export const StudentsDirectory: React.FC = () => {
       return true;
     });
 
-    // Sort based on roll number (userId)
     return [...filtered].sort((a, b) => a.userId.localeCompare(b.userId));
   }, [studentsList, debouncedSearchQuery]);
 
@@ -157,47 +222,45 @@ export const StudentsDirectory: React.FC = () => {
     <DashboardShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Student Directory</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Hierarchical directory of students and event participation records</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isMentor ? 'My Mentees Directory' : 'Student Directory'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {isMentor ? 'Overview of your assigned mentee cohort and event records' : 'Hierarchical directory of students and event participation records'}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* ── Left Pane: Directory Filters & List (Lg Col: 5 or 12) ── */}
           <div className={`${selectedStudentId ? 'lg:col-span-5' : 'lg:col-span-12'} space-y-4`}>
-            {/* Academic Year Tabs */}
-            <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm flex">
-              {[
-                { label: 'Second Year', value: 2 },
-                { label: 'Third Year', value: 3 },
-                { label: 'Fourth Year', value: 4 }
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  onClick={() => {
-                    setSelectedYear(item.value);
-                    setSelectedSection('A'); // Automatically default to Section A
-                    setSelectedStudentId(null);
-                  }}
-                  className={`flex-1 text-xs font-bold py-2.5 rounded-lg transition-all border border-transparent ${
-                    selectedYear === item.value
-                      ? 'bg-primary/10 text-primary shadow-sm border-primary/20'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-            {selectedYear === null ? (
-              <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center border-dashed">
-                <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-gray-900">Select Academic Year</p>
-                <p className="text-xs text-gray-500 mt-1">Choose a B.E./B.Tech year above to browse student records.</p>
-              </div>
-            ) : (
+            
+            {/* Show Academic Year & Section filters ONLY for non-mentors */}
+            {!isMentor && (
               <>
-                {/* Section Toggles & Search Bar */}
+                <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm flex">
+                  {[
+                    { label: 'Second Year', value: 2 },
+                    { label: 'Third Year', value: 3 },
+                    { label: 'Fourth Year', value: 4 }
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => {
+                        setSelectedYear(item.value);
+                        setSelectedSection('A');
+                        setSelectedStudentId(null);
+                      }}
+                      className={`flex-1 text-xs font-bold py-2.5 rounded-lg transition-all border border-transparent ${
+                        selectedYear === item.value
+                          ? 'bg-primary/10 text-primary shadow-sm border-primary/20'
+                          : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3.5">
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Section</p>
@@ -231,56 +294,73 @@ export const StudentsDirectory: React.FC = () => {
                     />
                   </div>
                 </div>
-
-                {/* Students List */}
-                <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-400" /> Students List
-                    </h3>
-                    <span className="text-[11px] text-gray-400 font-bold bg-gray-50 border border-gray-100 rounded-full px-2.5 py-0.5">
-                      {filteredStudents.length} Students
-                    </span>
-                  </div>
-
-                  {listLoading ? (
-                    <div className="flex items-center justify-center py-16">
-                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  ) : filteredStudents.length === 0 ? (
-                    <div className="text-center py-16">
-                      <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-sm text-gray-500 font-medium">No students match selection filters.</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-gray-100 max-h-[50vh] lg:max-h-[65vh] overflow-y-auto">
-                      {filteredStudents.map((std) => (
-                        <div
-                          key={std.userId}
-                          onClick={() => handleStudentSelect(std.userId)}
-                          className={`px-5 py-3.5 flex items-center gap-3.5 cursor-pointer transition-all ${
-                            selectedStudentId === std.userId
-                              ? 'bg-primary/5 hover:bg-primary/5'
-                              : 'hover:bg-gray-50/60'
-                          }`}
-                        >
-                          <div className="w-9 h-9 rounded-full bg-muted text-muted-foreground font-bold text-xs flex items-center justify-center shrink-0">
-                            {std.fullName.charAt(0)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-gray-900 truncate">{std.fullName}</p>
-                            <p className="text-[10px] text-gray-400 font-mono mt-0.5">{std.userId}</p>
-                          </div>
-                          <span className="text-[10px] font-bold px-2.5 py-1 bg-white border border-gray-200 text-gray-600 rounded-full shrink-0">
-                            Sec {std.section}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </>
             )}
+
+            {/* Mentor Search Bar */}
+            {isMentor && (
+              <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search mentees by name or register number..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-10 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Students / Mentees List */}
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-400" /> {isMentor ? 'My Mentees Cohort' : 'Students List'}
+                </h3>
+                <span className="text-[11px] text-gray-400 font-bold bg-gray-50 border border-gray-100 rounded-full px-2.5 py-0.5">
+                  {filteredStudents.length} {isMentor ? 'Mentees' : 'Students'}
+                </span>
+              </div>
+
+              {listLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : filteredStudents.length === 0 ? (
+                <div className="text-center py-16">
+                  <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 font-medium">
+                    {isMentor ? 'No mentees assigned to your cohort yet.' : 'No students match selection filters.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100 max-h-[50vh] lg:max-h-[65vh] overflow-y-auto">
+                  {filteredStudents.map((std) => (
+                    <div
+                      key={std.userId}
+                      onClick={() => handleStudentSelect(std.userId)}
+                      className={`px-5 py-3.5 flex items-center gap-3.5 cursor-pointer transition-all ${
+                        selectedStudentId === std.userId
+                          ? 'bg-primary/5 hover:bg-primary/5'
+                          : 'hover:bg-gray-50/60'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-full bg-muted text-muted-foreground font-bold text-xs flex items-center justify-center shrink-0">
+                        {std.fullName.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-900 truncate">{std.fullName}</p>
+                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{std.userId}</p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-1 bg-white border border-gray-200 text-gray-600 rounded-full shrink-0">
+                        Sec {std.section}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Right Pane: Selected Student Detailed Profile ── */}
@@ -309,14 +389,35 @@ export const StudentsDirectory: React.FC = () => {
                           <p className="text-xs font-mono font-medium text-gray-400 mt-0.5">Register: {studentDetails.student.userId}</p>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-[10px]"
-                        onClick={() => setSelectedStudentId(null)}
-                      >
-                        <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Close Details
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {isMentor && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2.5 text-xs flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/5 font-semibold"
+                            onClick={() => {
+                              setEditFormValues({
+                                fullName: studentDetails.student.fullName,
+                                dateOfBirth: studentDetails.student.dateOfBirth || '',
+                                section: studentDetails.student.section || 'A',
+                              });
+                              setUpdateError(null);
+                              setUpdateSuccess(null);
+                              setEditStudentOpen(true);
+                            }}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" /> Update Details
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 text-[10px]"
+                          onClick={() => setSelectedStudentId(null)}
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Close
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-3 border-t border-gray-100">
@@ -329,8 +430,8 @@ export const StudentsDirectory: React.FC = () => {
                         <p className="text-xs font-bold text-gray-800">Section {studentDetails.student.section}</p>
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Cohort Mentor</p>
-                        <p className="text-xs font-bold text-gray-800">{studentDetails.student.mentorId}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date of Birth</p>
+                        <p className="text-xs font-bold text-gray-800">{formatDate(studentDetails.student.dateOfBirth)}</p>
                       </div>
                     </div>
                   </div>
@@ -491,6 +592,104 @@ export const StudentsDirectory: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── Edit Student Modal Dialog ── */}
+      <Dialog open={editStudentOpen} onOpenChange={setEditStudentOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Edit2 className="w-4 h-4 text-primary" />
+              Update Student Details ({selectedStudentId})
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
+            {updateSuccess && (
+              <div className="flex items-center gap-2 bg-muted border border-border text-foreground text-sm p-3 rounded-xl font-medium">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                {updateSuccess}
+              </div>
+            )}
+            {updateError && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-xl font-medium">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                {updateError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                  Full Name
+                </Label>
+                <span title="Editable field"><Edit2 className="w-3.5 h-3.5 text-primary shrink-0" /></span>
+              </div>
+              <Input
+                required
+                value={editFormValues.fullName}
+                onChange={(e) => setEditFormValues((prev) => ({ ...prev, fullName: e.target.value }))}
+                disabled={updateStudentMutation.isPending}
+                className="h-10"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                  Date of Birth
+                </Label>
+                <span title="Editable field"><Edit2 className="w-3.5 h-3.5 text-primary shrink-0" /></span>
+              </div>
+              <Input
+                type="date"
+                required
+                value={editFormValues.dateOfBirth}
+                onChange={(e) => setEditFormValues((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
+                disabled={updateStudentMutation.isPending}
+                className="h-10"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                  Section
+                </Label>
+                <span title="Editable field"><Edit2 className="w-3.5 h-3.5 text-primary shrink-0" /></span>
+              </div>
+              <Select
+                value={editFormValues.section}
+                onChange={(e) => setEditFormValues((prev) => ({ ...prev, section: e.target.value }))}
+                disabled={updateStudentMutation.isPending}
+                className="h-10"
+              >
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+              </Select>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 h-10"
+                onClick={() => setEditStudentOpen(false)}
+                disabled={updateStudentMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={updateStudentMutation.isPending}
+              >
+                {updateStudentMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </DashboardShell>
   );
 };

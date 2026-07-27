@@ -165,3 +165,60 @@ export const assignSpecialRole = async (
     };
   });
 };
+
+export const updateFaculty = async (
+  facultyUserId: string,
+  input: { fullName?: string; designation?: string; role?: 'Mentor' | 'Event Coordinator' | 'Program Coordinator' | 'Head of Department' | 'Administrator'; password?: string }
+): Promise<{ userId: string; fullName: string; designation: string; role: string }> => {
+  const cleanUserId = facultyUserId.trim().toUpperCase();
+
+  const [targetUser] = await db
+    .select({
+      userId: users.userId,
+      role: users.role,
+      fullName: faculty.fullName,
+      designation: faculty.designation,
+    })
+    .from(users)
+    .innerJoin(faculty, eq(users.userId, faculty.userId))
+    .where(
+      and(
+        eq(users.userId, cleanUserId),
+        isNull(users.deletedAt)
+      )
+    )
+    .limit(1);
+
+  if (!targetUser) {
+    throw new AppError(404, 'NOT_FOUND', 'Faculty user not found.');
+  }
+
+  await db.transaction(async (tx) => {
+    const facultyUpdates: Partial<typeof faculty.$inferInsert> = {};
+    if (input.fullName) facultyUpdates.fullName = input.fullName;
+    if (input.designation) facultyUpdates.designation = input.designation;
+
+    if (Object.keys(facultyUpdates).length > 0) {
+      await tx
+        .update(faculty)
+        .set(facultyUpdates)
+        .where(eq(faculty.userId, cleanUserId));
+    }
+
+    const userUpdates: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
+    if (input.role) userUpdates.role = input.role;
+    if (input.password) userUpdates.passwordHash = await hashPassword(input.password);
+
+    await tx
+      .update(users)
+      .set(userUpdates)
+      .where(eq(users.userId, cleanUserId));
+  });
+
+  return {
+    userId: cleanUserId,
+    fullName: input.fullName || targetUser.fullName,
+    designation: input.designation || targetUser.designation,
+    role: input.role || targetUser.role,
+  };
+};

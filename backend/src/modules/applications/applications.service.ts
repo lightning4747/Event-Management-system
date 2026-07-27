@@ -187,7 +187,7 @@ export const getDepartmentApplications = async (
   userId: string,
   limit?: number,
   offset?: number
-): Promise<Array<ApplicationDetails>> => {
+): Promise<Array<ApplicationRow>> => {
   const query = db
     .select({
       applicationId: odApplications.applicationId,
@@ -211,16 +211,29 @@ export const getDepartmentApplications = async (
     .limit(limit ?? 100)
     .offset(offset ?? 0);
 
+  let apps: Array<{
+    applicationId: bigint;
+    studentId: string;
+    studentName: string;
+    mentorId: string;
+    title: string;
+    location: string;
+    fromDate: string;
+    toDate: string;
+    numberOfEvents: number;
+    status: string;
+    finalApprovedAt: Date | null;
+    withdrawnAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = [];
+
   if (role === 'Administrator') {
-    return query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
-  }
-
-  if (role === 'Event Coordinator') {
-    return query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
-  }
-
-  if (role === 'Mentor') {
-    return query
+    apps = await query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
+  } else if (role === 'Event Coordinator') {
+    apps = await query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
+  } else if (role === 'Mentor') {
+    apps = await query
       .where(
         and(
           eq(students.mentorId, userId),
@@ -237,10 +250,8 @@ export const getDepartmentApplications = async (
         )
       )
       .orderBy(desc(odApplications.createdAt));
-  }
-
-  if (role === 'Program Coordinator') {
-    return query
+  } else if (role === 'Program Coordinator') {
+    apps = await query
       .where(
         and(
           isNull(users.deletedAt),
@@ -255,10 +266,8 @@ export const getDepartmentApplications = async (
         )
       )
       .orderBy(desc(odApplications.createdAt));
-  }
-
-  if (role === 'Head of Department') {
-    return query
+  } else if (role === 'Head of Department') {
+    apps = await query
       .where(
         and(
           isNull(users.deletedAt),
@@ -274,7 +283,30 @@ export const getDepartmentApplications = async (
       .orderBy(desc(odApplications.createdAt));
   }
 
-  return [];
+  const appIds = apps.map((a) => a.applicationId);
+  const certMap: Record<string, Array<{ status: string }>> = {};
+
+  if (appIds.length > 0) {
+    const allCerts = await db
+      .select({
+        applicationId: certificateRequirements.applicationId,
+        status: certificateRequirements.status,
+      })
+      .from(certificateRequirements)
+      .where(inArray(certificateRequirements.applicationId, appIds));
+
+    for (const c of allCerts) {
+      const key = c.applicationId.toString();
+      if (!certMap[key]) certMap[key] = [];
+      certMap[key].push(c);
+    }
+  }
+
+  return apps.map((app) => ({
+    ...app,
+    status: app.status as ApplicationRow['status'],
+    eventTag: computeEventTag(app.fromDate, app.toDate, app.status, certMap[app.applicationId.toString()] || []),
+  }));
 };
 
 export const getApplicationDetails = async (
@@ -378,7 +410,13 @@ export const getApplicationDetails = async (
       uploadedAt: certificates.uploadedAt,
     })
     .from(certificateRequirements)
-    .leftJoin(certificates, eq(certificateRequirements.requirementId, certificates.requirementId))
+    .leftJoin(
+      certificates,
+      and(
+        eq(certificateRequirements.requirementId, certificates.requirementId),
+        eq(certificates.isCurrent, true)
+      )
+    )
     .where(eq(certificateRequirements.applicationId, applicationId));
 
   const [ext] = await db

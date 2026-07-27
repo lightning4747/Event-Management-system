@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticate, requireRole(['Mentor']));
 
 router.post('/students', mentorController.onboardStudent);
+router.patch('/students/:studentId', mentorController.handleUpdateStudent);
 router.get('/mentees', mentorController.listMentees);
 
 export const mentorRoutes = router;

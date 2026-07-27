@@ -122,3 +122,66 @@ export const getMenteesList = async (mentorUserId: string): Promise<Array<{
 
   return list;
 };
+
+export const updateStudent = async (
+  studentId: string,
+  input: { fullName?: string; dateOfBirth?: string; section?: string; password?: string },
+  mentorUserId: string
+): Promise<{ userId: string; fullName: string; section: string; dateOfBirth: string }> => {
+  const cleanUserId = studentId.trim().toUpperCase();
+
+  const [student] = await db
+    .select({
+      userId: students.userId,
+      mentorId: students.mentorId,
+      fullName: students.fullName,
+      dateOfBirth: students.dateOfBirth,
+      section: students.section,
+    })
+    .from(students)
+    .innerJoin(users, eq(students.userId, users.userId))
+    .where(
+      and(
+        eq(students.userId, cleanUserId),
+        isNull(users.deletedAt)
+      )
+    )
+    .limit(1);
+
+  if (!student) {
+    throw new AppError(404, 'NOT_FOUND', 'Student record not found.');
+  }
+
+  if (student.mentorId !== mentorUserId) {
+    throw new AppError(403, 'FORBIDDEN', 'Access Denied: You are not the assigned mentor for this student.');
+  }
+
+  await db.transaction(async (tx) => {
+    const studentUpdates: Partial<typeof students.$inferInsert> = {};
+    if (input.fullName) studentUpdates.fullName = input.fullName;
+    if (input.dateOfBirth) studentUpdates.dateOfBirth = input.dateOfBirth;
+    if (input.section) studentUpdates.section = input.section;
+
+    if (Object.keys(studentUpdates).length > 0) {
+      await tx
+        .update(students)
+        .set(studentUpdates)
+        .where(eq(students.userId, cleanUserId));
+    }
+
+    if (input.password) {
+      const passwordHash = await hashPassword(input.password);
+      await tx
+        .update(users)
+        .set({ passwordHash, updatedAt: new Date() })
+        .where(eq(users.userId, cleanUserId));
+    }
+  });
+
+  return {
+    userId: cleanUserId,
+    fullName: input.fullName || student.fullName,
+    dateOfBirth: input.dateOfBirth || student.dateOfBirth,
+    section: input.section || student.section,
+  };
+};
