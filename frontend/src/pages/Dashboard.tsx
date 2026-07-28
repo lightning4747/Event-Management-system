@@ -29,6 +29,7 @@ interface ApplicationRow {
   title: string;
   activityCategory?: 'Extracurricular' | 'Co-curricular' | 'Others';
   activityType?: string;
+  events?: Array<{ sequenceNumber: number; activityCategory: string; activityType: string }>;
   location: string;
   fromDate: string;
   toDate: string;
@@ -51,6 +52,8 @@ interface ApplicationDetails {
   certificates: Array<{
     requirementId: string;
     sequenceNumber: number;
+    activityCategory?: string;
+    activityType?: string;
     status: string;
     submissionDeadline: string;
     rejectionReason: string | null;
@@ -1421,7 +1424,7 @@ export const Dashboard: React.FC = () => {
                         <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-gray-50">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-gray-800">
-                              {appDetails.certificates.length > 1 ? `Certificate #${cert.sequenceNumber}` : 'Certificate'}
+                              {cert.activityType || (appDetails.certificates.length > 1 ? `Event #${cert.sequenceNumber}` : 'Event Certificate')}
                             </span>
                             <div className="flex gap-1.5">
                               <StatusBadge status={cert.status} />
@@ -1446,7 +1449,9 @@ export const Dashboard: React.FC = () => {
                           ) : !isUploaded ? (
                             <div className="space-y-2.5">
                               <div className="flex items-center justify-between">
-                                <Label className="text-xs font-semibold text-gray-700">Upload Participation Certificate (PDF)</Label>
+                                <Label className="text-xs font-semibold text-gray-700">
+                                  Upload {cert.activityType ? `${cert.activityType} ` : ''}Certificate (PDF)
+                                </Label>
                                 <span className="text-[11px] text-gray-400 font-medium">Max: 1 MB</span>
                               </div>
                               <div className="flex flex-col sm:flex-row gap-2">
@@ -1533,7 +1538,7 @@ export const Dashboard: React.FC = () => {
                       <div key={cert.requirementId} className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-3 shadow-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-gray-900">
-                            Certificate #{cert.sequenceNumber} (Uploaded by Student)
+                            {cert.activityType || `Event #${cert.sequenceNumber}`} (Uploaded by Student)
                           </span>
                           <StatusBadge status={cert.status} />
                         </div>
@@ -1701,7 +1706,7 @@ export const Dashboard: React.FC = () => {
                         <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-gray-50">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-gray-800">
-                              {appDetails.certificates.length > 1 ? `Cert #${cert.sequenceNumber}` : 'Certificate'}
+                              {cert.activityType || (appDetails.certificates.length > 1 ? `Event #${cert.sequenceNumber}` : 'Certificate')}
                             </span>
                             <StatusBadge status={cert.status} />
                           </div>

@@ -233,7 +233,7 @@ export const NewApplication: React.FC = () => {
 
                 {watchedEvents.map((evt, idx) => (
                   <div key={idx} className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-                    <p className="text-xs font-bold text-blue-700">Event #{idx + 1}</p>
+                    <p className="text-xs font-bold text-blue-700">Event {idx + 1}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-gray-700">Category</Label>

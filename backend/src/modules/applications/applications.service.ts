@@ -10,6 +10,7 @@ export interface ApplicationRow {
   title: string;
   activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
   activityType: string;
+  events?: Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }> | null;
   location: string;
   fromDate: string;
   toDate: string;
@@ -41,6 +42,8 @@ export interface ApprovalHistoryItem {
 export interface CertificateRequirementItem {
   requirementId: bigint;
   sequenceNumber: number;
+  activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others' | null;
+  activityType: string | null;
   status: 'Pending Upload' | 'Uploaded' | 'Verified' | 'Rejected' | 'Deadline Expired' | 'Skipped';
   submissionDeadline: string;
   rejectionReason: string | null;
@@ -360,6 +363,7 @@ export const getApplicationDetails = async (
       title: odApplications.title,
       activityCategory: odApplications.activityCategory,
       activityType: odApplications.activityType,
+      events: odApplications.events,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
@@ -434,6 +438,8 @@ export const getApplicationDetails = async (
     .select({
       requirementId: certificateRequirements.requirementId,
       sequenceNumber: certificateRequirements.sequenceNumber,
+      activityCategory: certificateRequirements.activityCategory,
+      activityType: certificateRequirements.activityType,
       status: certificateRequirements.status,
       submissionDeadline: certificateRequirements.submissionDeadline,
       rejectionReason: certificateRequirements.rejectionReason,
