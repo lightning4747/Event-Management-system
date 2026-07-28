@@ -54,6 +54,7 @@ export const NewApplication: React.FC = () => {
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<NewAppValues>({
     resolver: zodResolver(newAppSchema),
@@ -64,7 +65,7 @@ export const NewApplication: React.FC = () => {
       toDate: '',
       numberOfEvents: 1,
       events: [
-        { sequenceNumber: 1, activityCategory: 'Co-curricular', activityType: 'Hackathon' }
+        { sequenceNumber: 1, activityCategory: '' as any, activityType: '' }
       ],
     },
   });
@@ -75,15 +76,15 @@ export const NewApplication: React.FC = () => {
   // Synchronize events array length when numberOfEvents changes
   React.useEffect(() => {
     const count = Math.max(1, Number(numberOfEventsInput) || 1);
-    const currentEvents = watchedEvents;
+    const currentEvents = getValues('events') || [];
     if (currentEvents.length !== count) {
       const updated = Array.from({ length: count }).map((_, idx) => {
         if (currentEvents[idx]) return currentEvents[idx];
-        return { sequenceNumber: idx + 1, activityCategory: 'Co-curricular' as const, activityType: 'Hackathon' };
+        return { sequenceNumber: idx + 1, activityCategory: '' as any, activityType: '' };
       });
-      setValue('events', updated);
+      setValue('events', updated, { shouldValidate: true, shouldDirty: true });
     }
-  }, [numberOfEventsInput, setValue]);
+  }, [numberOfEventsInput, getValues, setValue]);
 
   const submitMutation = useMutation({
     mutationFn: async (values: NewAppValues) => {
@@ -111,25 +112,23 @@ export const NewApplication: React.FC = () => {
     submitMutation.mutate(values);
   };
 
-  const handleCategoryChange = (index: number, category: 'Extracurricular' | 'Co-curricular' | 'Others') => {
-    let defaultType = '';
-    if (category === 'Extracurricular') defaultType = extracurricularTypes[0];
-    else if (category === 'Co-curricular') defaultType = cocurricularTypes[0];
-
-    const current = [...(watch('events') || [])];
-    current[index] = {
+  const handleCategoryChange = (index: number, category: 'Extracurricular' | 'Co-curricular' | 'Others' | '') => {
+    const current = getValues('events') || [];
+    const updated = [...current];
+    updated[index] = {
       sequenceNumber: index + 1,
-      activityCategory: category,
-      activityType: defaultType,
+      activityCategory: category as any,
+      activityType: '',
     };
-    setValue('events', current);
+    setValue('events', updated, { shouldValidate: true, shouldDirty: true });
   };
 
   const handleTypeChange = (index: number, type: string) => {
-    const current = [...(watch('events') || [])];
-    if (current[index]) {
-      current[index].activityType = type;
-      setValue('events', current);
+    const current = getValues('events') || [];
+    const updated = [...current];
+    if (updated[index]) {
+      updated[index] = { ...updated[index], activityType: type };
+      setValue('events', updated, { shouldValidate: true, shouldDirty: true });
     }
   };
 
@@ -239,11 +238,12 @@ export const NewApplication: React.FC = () => {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-gray-700">Category</Label>
                         <Select
-                          value={evt.activityCategory}
+                          value={evt.activityCategory || ''}
                           onChange={(e) => handleCategoryChange(idx, e.target.value as any)}
                           disabled={submitMutation.isPending}
                           className="h-9 text-xs"
                         >
+                          <option value="" disabled>Select Category...</option>
                           <option value="Co-curricular">Co-curricular</option>
                           <option value="Extracurricular">Extracurricular</option>
                           <option value="Others">Others</option>
@@ -252,24 +252,30 @@ export const NewApplication: React.FC = () => {
 
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-gray-700">Activity Type</Label>
-                        {evt.activityCategory === 'Extracurricular' ? (
+                        {!evt.activityCategory ? (
+                          <Select disabled className="h-9 text-xs opacity-60">
+                            <option value="">Select Category first...</option>
+                          </Select>
+                        ) : evt.activityCategory === 'Extracurricular' ? (
                           <Select
-                            value={evt.activityType}
+                            value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
                             disabled={submitMutation.isPending}
                             className="h-9 text-xs"
                           >
+                            <option value="" disabled>Select Activity Type...</option>
                             {extracurricularTypes.map((t) => (
                               <option key={t} value={t}>{t}</option>
                             ))}
                           </Select>
                         ) : evt.activityCategory === 'Co-curricular' ? (
                           <Select
-                            value={evt.activityType}
+                            value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
                             disabled={submitMutation.isPending}
                             className="h-9 text-xs"
                           >
+                            <option value="" disabled>Select Activity Type...</option>
                             {cocurricularTypes.map((t) => (
                               <option key={t} value={t}>{t}</option>
                             ))}
@@ -277,7 +283,7 @@ export const NewApplication: React.FC = () => {
                         ) : (
                           <Input
                             placeholder="Specify custom activity name..."
-                            value={evt.activityType}
+                            value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
                             disabled={submitMutation.isPending}
                             className="h-9 text-xs"
