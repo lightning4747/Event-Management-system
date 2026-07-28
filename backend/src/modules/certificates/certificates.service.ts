@@ -40,11 +40,13 @@ export const uploadCertificate = async (
       applicationId: certificateRequirements.applicationId,
       status: certificateRequirements.status,
       submissionDeadline: certificateRequirements.submissionDeadline,
+      reqActivityCategory: certificateRequirements.activityCategory,
+      reqActivityType: certificateRequirements.activityType,
       studentId: odApplications.studentId,
       toDate: odApplications.toDate,
       title: odApplications.title,
-      activityCategory: odApplications.activityCategory,
-      activityType: odApplications.activityType,
+      appActivityCategory: odApplications.activityCategory,
+      appActivityType: odApplications.activityType,
       admissionYear: students.admissionYear,
       section: students.section,
     })
@@ -96,10 +98,12 @@ export const uploadCertificate = async (
       .where(eq(certificates.requirementId, reqId));
 
     const uploadVersion = existingCerts.length + 1;
-    const categoryFolder = req.activityCategory === 'Co-curricular'
+    const activeCategory = req.reqActivityCategory || req.appActivityCategory || 'Co-curricular';
+    const activeType = req.reqActivityType || req.appActivityType || 'General';
+    const categoryFolder = activeCategory === 'Co-curricular'
       ? 'Cocurricular'
-      : (req.activityCategory || 'Others');
-    const subFolder = (req.activityType || 'General').replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
+      : activeCategory;
+    const subFolder = activeType.replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
     const folderPath = `${req.studentId}/${categoryFolder}/${subFolder}`;
     const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
     fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;

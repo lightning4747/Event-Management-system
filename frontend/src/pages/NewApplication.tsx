@@ -18,15 +18,20 @@ const todayStr = new Date().toISOString().split('T')[0];
 const extracurricularTypes = ['Sports', 'NCC', 'NSS', 'Dance'];
 const cocurricularTypes = ['Hackathon', 'Seminar', 'Workshop', 'Symposium', 'Conference'];
 
+const eventSchema = z.object({
+  sequenceNumber: z.number(),
+  activityCategory: z.enum(['Extracurricular', 'Co-curricular', 'Others']),
+  activityType: z.string().min(1, 'Activity type is required.'),
+});
+
 const newAppSchema = z
   .object({
     title: z.string().min(1, 'Event title is required.'),
-    activityCategory: z.enum(['Extracurricular', 'Co-curricular', 'Others']),
-    activityType: z.string().min(1, 'Activity type is required.'),
     location: z.string().min(1, 'Event location is required.'),
     fromDate: z.string().min(1, 'Start date is required.'),
     toDate: z.string().min(1, 'End date is required.'),
     numberOfEvents: z.coerce.number().int().min(1, 'Number of events must be at least 1.'),
+    events: z.array(eventSchema),
   })
   .refine(
     (data) => data.fromDate >= todayStr,
@@ -54,32 +59,42 @@ export const NewApplication: React.FC = () => {
     resolver: zodResolver(newAppSchema),
     defaultValues: {
       title: '',
-      activityCategory: 'Co-curricular',
-      activityType: 'Hackathon',
       location: '',
       fromDate: '',
       toDate: '',
       numberOfEvents: 1,
+      events: [
+        { sequenceNumber: 1, activityCategory: 'Co-curricular', activityType: 'Hackathon' }
+      ],
     },
   });
 
-  const selectedCategory = watch('activityCategory');
+  const numberOfEventsInput = watch('numberOfEvents');
+  const watchedEvents = watch('events') || [];
 
+  // Synchronize events array length when numberOfEvents changes
   React.useEffect(() => {
-    if (selectedCategory === 'Extracurricular') {
-      setValue('activityType', extracurricularTypes[0]);
-    } else if (selectedCategory === 'Co-curricular') {
-      setValue('activityType', cocurricularTypes[0]);
-    } else {
-      setValue('activityType', '');
+    const count = Math.max(1, Number(numberOfEventsInput) || 1);
+    const currentEvents = watchedEvents;
+    if (currentEvents.length !== count) {
+      const updated = Array.from({ length: count }).map((_, idx) => {
+        if (currentEvents[idx]) return currentEvents[idx];
+        return { sequenceNumber: idx + 1, activityCategory: 'Co-curricular' as const, activityType: 'Hackathon' };
+      });
+      setValue('events', updated);
     }
-  }, [selectedCategory, setValue]);
+  }, [numberOfEventsInput, setValue]);
 
   const submitMutation = useMutation({
     mutationFn: async (values: NewAppValues) => {
+      const payload = {
+        ...values,
+        activityCategory: values.events[0]?.activityCategory || 'Co-curricular',
+        activityType: values.events[0]?.activityType || 'General',
+      };
       const res = await apiFetch('/applications', {
         method: 'POST',
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
       return res.json();
     },
@@ -94,6 +109,28 @@ export const NewApplication: React.FC = () => {
   const onSubmit = (values: NewAppValues) => {
     setErrorMsg(null);
     submitMutation.mutate(values);
+  };
+
+  const handleCategoryChange = (index: number, category: 'Extracurricular' | 'Co-curricular' | 'Others') => {
+    let defaultType = '';
+    if (category === 'Extracurricular') defaultType = extracurricularTypes[0];
+    else if (category === 'Co-curricular') defaultType = cocurricularTypes[0];
+
+    const current = [...(watch('events') || [])];
+    current[index] = {
+      sequenceNumber: index + 1,
+      activityCategory: category,
+      activityType: defaultType,
+    };
+    setValue('events', current);
+  };
+
+  const handleTypeChange = (index: number, type: string) => {
+    const current = [...(watch('events') || [])];
+    if (current[index]) {
+      current[index].activityType = type;
+      setValue('events', current);
+    }
   };
 
   return (
@@ -136,60 +173,6 @@ export const NewApplication: React.FC = () => {
                   className="h-10"
                 />
                 {errors.title && <p className="text-xs text-red-600 font-medium">{errors.title.message}</p>}
-              </div>
-
-              {/* Activity Classification Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="activityCategory" className="text-sm font-semibold text-gray-700">Activity Category</Label>
-                  <Select
-                    id="activityCategory"
-                    {...register('activityCategory')}
-                    disabled={submitMutation.isPending}
-                    className="h-10"
-                  >
-                    <option value="Co-curricular">Co-curricular</option>
-                    <option value="Extracurricular">Extracurricular</option>
-                    <option value="Others">Others</option>
-                  </Select>
-                  {errors.activityCategory && <p className="text-xs text-red-600 font-medium">{errors.activityCategory.message}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="activityType" className="text-sm font-semibold text-gray-700">Activity Type</Label>
-                  {selectedCategory === 'Extracurricular' ? (
-                    <Select
-                      id="activityType"
-                      {...register('activityType')}
-                      disabled={submitMutation.isPending}
-                      className="h-10"
-                    >
-                      {extracurricularTypes.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </Select>
-                  ) : selectedCategory === 'Co-curricular' ? (
-                    <Select
-                      id="activityType"
-                      {...register('activityType')}
-                      disabled={submitMutation.isPending}
-                      className="h-10"
-                    >
-                      {cocurricularTypes.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Input
-                      id="activityType"
-                      placeholder="Specify custom activity name..."
-                      {...register('activityType')}
-                      disabled={submitMutation.isPending}
-                      className="h-10"
-                    />
-                  )}
-                  {errors.activityType && <p className="text-xs text-red-600 font-medium">{errors.activityType.message}</p>}
-                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -241,6 +224,69 @@ export const NewApplication: React.FC = () => {
                   className="h-10"
                 />
                 {errors.numberOfEvents && <p className="text-xs text-red-600 font-medium">{errors.numberOfEvents.message}</p>}
+              </div>
+
+              {/* Dynamic Per-Event Activity Classification */}
+              <div className="space-y-4 pt-2 border-t border-gray-100">
+                <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                  Event Activity Classifications ({watchedEvents.length})
+                </p>
+
+                {watchedEvents.map((evt, idx) => (
+                  <div key={idx} className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold text-blue-700">Event #{idx + 1}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-gray-700">Category</Label>
+                        <Select
+                          value={evt.activityCategory}
+                          onChange={(e) => handleCategoryChange(idx, e.target.value as any)}
+                          disabled={submitMutation.isPending}
+                          className="h-9 text-xs"
+                        >
+                          <option value="Co-curricular">Co-curricular</option>
+                          <option value="Extracurricular">Extracurricular</option>
+                          <option value="Others">Others</option>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-gray-700">Activity Type</Label>
+                        {evt.activityCategory === 'Extracurricular' ? (
+                          <Select
+                            value={evt.activityType}
+                            onChange={(e) => handleTypeChange(idx, e.target.value)}
+                            disabled={submitMutation.isPending}
+                            className="h-9 text-xs"
+                          >
+                            {extracurricularTypes.map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </Select>
+                        ) : evt.activityCategory === 'Co-curricular' ? (
+                          <Select
+                            value={evt.activityType}
+                            onChange={(e) => handleTypeChange(idx, e.target.value)}
+                            disabled={submitMutation.isPending}
+                            className="h-9 text-xs"
+                          >
+                            {cocurricularTypes.map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </Select>
+                        ) : (
+                          <Input
+                            placeholder="Specify custom activity name..."
+                            value={evt.activityType}
+                            onChange={(e) => handleTypeChange(idx, e.target.value)}
+                            disabled={submitMutation.isPending}
+                            className="h-9 text-xs"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex gap-3 pt-2">

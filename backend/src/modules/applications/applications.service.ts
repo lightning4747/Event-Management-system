@@ -123,13 +123,25 @@ export const createApplication = async (
     throw new AppError(400, 'BAD_REQUEST', 'Event end date must be greater than or equal to the start date.');
   }
 
+  const primaryCategory = input.events?.[0]?.activityCategory || input.activityCategory || 'Co-curricular';
+  const primaryType = input.events?.[0]?.activityType || input.activityType || 'General';
+
+  const defaultEvents = Array.from({ length: input.numberOfEvents }).map((_, idx) => ({
+    sequenceNumber: idx + 1,
+    activityCategory: primaryCategory,
+    activityType: primaryType,
+  }));
+
+  const eventsToSave = input.events && input.events.length === input.numberOfEvents ? input.events : defaultEvents;
+
   const [insertedApp] = await db
     .insert(odApplications)
     .values({
       studentId,
       title: input.title,
-      activityCategory: input.activityCategory || 'Co-curricular',
-      activityType: input.activityType || 'General',
+      activityCategory: primaryCategory,
+      activityType: primaryType,
+      events: eventsToSave,
       location: input.location,
       fromDate: input.fromDate,
       toDate: input.toDate,
@@ -142,6 +154,7 @@ export const createApplication = async (
       title: odApplications.title,
       activityCategory: odApplications.activityCategory,
       activityType: odApplications.activityType,
+      events: odApplications.events,
       status: odApplications.status,
       createdAt: odApplications.createdAt,
     });

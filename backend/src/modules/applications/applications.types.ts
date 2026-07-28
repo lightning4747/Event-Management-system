@@ -1,9 +1,16 @@
 import { z } from 'zod';
 
+export const eventItemSchema = z.object({
+  sequenceNumber: z.number().int().positive(),
+  activityCategory: z.enum(['Extracurricular', 'Co-curricular', 'Others']),
+  activityType: z.string().min(1, 'Activity type is required.').max(255),
+});
+
 export const createApplicationSchema = z.object({
   title: z.string().min(1, 'Title is required.').max(255, 'Title must not exceed 255 characters.'),
   activityCategory: z.enum(['Extracurricular', 'Co-curricular', 'Others']).optional().default('Co-curricular'),
   activityType: z.string().optional().default('General'),
+  events: z.array(eventItemSchema).optional(),
   location: z.string().min(1, 'Location is required.').max(255, 'Location must not exceed 255 characters.'),
   fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'From Date must be in YYYY-MM-DD format.'),
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'To Date must be in YYYY-MM-DD format.'),
@@ -48,6 +55,7 @@ export type CreateApplicationInput = {
   title: string;
   activityCategory?: 'Extracurricular' | 'Co-curricular' | 'Others';
   activityType?: string;
+  events?: Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }>;
   location: string;
   fromDate: string;
   toDate: string;
