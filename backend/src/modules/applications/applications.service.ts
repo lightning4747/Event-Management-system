@@ -63,6 +63,14 @@ export const computeEventTag = (
     return undefined;
   }
 
+  if (certs.length > 0) {
+    const hasUploaded = certs.some((c) => c.status === 'Uploaded');
+    if (hasUploaded) return 'Reviewing';
+
+    const allVerifiedOrSkipped = certs.every((c) => c.status === 'Verified' || c.status === 'Skipped');
+    if (allVerifiedOrSkipped) return 'Completed';
+  }
+
   const today = new Date().toISOString().split('T')[0];
 
   if (today < fromDate) {
@@ -73,18 +81,7 @@ export const computeEventTag = (
     return 'Ongoing';
   }
 
-  // Event concluded (today > toDate)
-  if (certs.length > 0) {
-    const allVerifiedOrSkipped = certs.every((c) => c.status === 'Verified' || c.status === 'Skipped');
-    if (allVerifiedOrSkipped) return 'Completed';
-
-    const hasUploaded = certs.some((c) => c.status === 'Uploaded');
-    if (hasUploaded) return 'Reviewing';
-
-    return 'Action Required';
-  }
-
-  return 'Completed';
+  return certs.length > 0 ? 'Action Required' : 'Completed';
 };
 
 export const createApplication = async (
