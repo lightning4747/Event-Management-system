@@ -236,8 +236,9 @@ export const NewApplication: React.FC = () => {
                     <p className="text-xs font-bold text-blue-700">Event {idx + 1}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-gray-700">Category</Label>
+                        <Label htmlFor={`category_${idx}`} className="text-xs font-semibold text-gray-700">Category</Label>
                         <Select
+                          id={`category_${idx}`}
                           value={evt.activityCategory || ''}
                           onChange={(e) => handleCategoryChange(idx, e.target.value as any)}
                           disabled={submitMutation.isPending}
@@ -251,13 +252,14 @@ export const NewApplication: React.FC = () => {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-gray-700">Activity Type</Label>
+                        <Label htmlFor={`type_${idx}`} className="text-xs font-semibold text-gray-700">Activity Type</Label>
                         {!evt.activityCategory ? (
-                          <Select disabled className="h-9 text-xs opacity-60">
+                          <Select id={`type_${idx}`} disabled className="h-9 text-xs opacity-60">
                             <option value="">Select Category first...</option>
                           </Select>
                         ) : evt.activityCategory === 'Extracurricular' ? (
                           <Select
+                            id={`type_${idx}`}
                             value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
                             disabled={submitMutation.isPending}
@@ -270,6 +272,7 @@ export const NewApplication: React.FC = () => {
                           </Select>
                         ) : evt.activityCategory === 'Co-curricular' ? (
                           <Select
+                            id={`type_${idx}`}
                             value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
                             disabled={submitMutation.isPending}
@@ -282,6 +285,7 @@ export const NewApplication: React.FC = () => {
                           </Select>
                         ) : (
                           <Input
+                            id={`type_${idx}`}
                             placeholder="Specify custom activity name..."
                             value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}

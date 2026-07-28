@@ -61,6 +61,12 @@ describe('NewApplication Form Validations', () => {
     fireEvent.change(fromDateInput, { target: { value: futureFrom } });
     fireEvent.change(toDateInput, { target: { value: futureTo } });
 
+    const categorySelect = screen.getByLabelText(/Category/i);
+    fireEvent.change(categorySelect, { target: { value: 'Co-curricular' } });
+
+    const typeSelect = await screen.findByLabelText(/Activity Type/i);
+    fireEvent.change(typeSelect, { target: { value: 'Hackathon' } });
+
     const submitBtn = screen.getByRole('button', { name: /Submit Request/i });
     fireEvent.click(submitBtn);
 
