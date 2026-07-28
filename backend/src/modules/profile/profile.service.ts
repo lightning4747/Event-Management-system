@@ -21,80 +21,54 @@ export const getProfile = async (
   userId: string,
   role: string
 ): Promise<UserProfileResponse> => {
+  const [activeUser] = await db
+    .select({
+      userId: users.userId,
+      username: users.username,
+      role: users.role,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(and(eq(users.userId, userId), isNull(users.deletedAt)))
+    .limit(1);
+
+  if (!activeUser) {
+    throw new AppError(404, 'NOT_FOUND', 'User profile not found.');
+  }
+
   if (role === 'Student') {
-    const [studentProfile] = await db
+    const [studentRecord] = await db
       .select({
-        userId: users.userId,
-        username: users.username,
-        role: users.role,
         fullName: students.fullName,
         dateOfBirth: students.dateOfBirth,
         admissionYear: students.admissionYear,
         section: students.section,
-        createdAt: users.createdAt,
       })
-      .from(users)
-      .innerJoin(students, eq(users.userId, students.userId))
-      .where(
-        and(
-          eq(users.userId, userId),
-          isNull(users.deletedAt)
-        )
-      )
+      .from(students)
+      .where(eq(students.userId, userId))
       .limit(1);
 
-    if (!studentProfile) {
+    if (!studentRecord) {
       throw new AppError(404, 'NOT_FOUND', 'Student profile details not found.');
     }
-    return studentProfile;
+    return { ...activeUser, ...studentRecord };
   }
 
-  // Otherwise check if faculty
-  const [facultyProfile] = await db
+  // Check if faculty details exist
+  const [facultyRecord] = await db
     .select({
-      userId: users.userId,
-      username: users.username,
-      role: users.role,
       fullName: faculty.fullName,
       designation: faculty.designation,
-      createdAt: users.createdAt,
     })
-    .from(users)
-    .innerJoin(faculty, eq(users.userId, faculty.userId))
-    .where(
-      and(
-        eq(users.userId, userId),
-        isNull(users.deletedAt)
-      )
-    )
+    .from(faculty)
+    .where(eq(faculty.userId, userId))
     .limit(1);
 
-  if (facultyProfile) {
-    return facultyProfile;
+  if (facultyRecord) {
+    return { ...activeUser, ...facultyRecord };
   }
 
-  // General user profile fallback (e.g. administrator who is not in faculty table)
-  const [userProfile] = await db
-    .select({
-      userId: users.userId,
-      username: users.username,
-      role: users.role,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .where(
-      and(
-        eq(users.userId, userId),
-        isNull(users.deletedAt)
-      )
-    )
-    .limit(1);
-
-  if (!userProfile) {
-    throw new AppError(404, 'NOT_FOUND', 'User profile not found.');
-  }
-
-  return userProfile;
+  return activeUser;
 };
 
 export const updateProfile = async (

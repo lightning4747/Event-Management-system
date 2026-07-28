@@ -8,6 +8,10 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is missing.');
 }
 
+if (process.env.NODE_ENV === 'production' && JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET environment variable must be at least 32 characters long in production.');
+}
+
 export interface JWTPayload {
   userId: string;
   role: string;

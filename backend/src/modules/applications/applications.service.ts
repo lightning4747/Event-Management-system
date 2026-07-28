@@ -71,7 +71,11 @@ export const computeEventTag = (
     if (allVerifiedOrSkipped) return 'Completed';
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
 
   if (today < fromDate) {
     return 'Upcoming';
@@ -261,60 +265,47 @@ export const getDepartmentApplications = async (
     updatedAt: Date;
   }> = [];
 
-  if (role === 'Administrator') {
-    apps = await query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
-  } else if (role === 'Event Coordinator') {
-    apps = await query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
-  } else if (role === 'Mentor') {
-    apps = await query
-      .where(
-        and(
-          eq(students.mentorId, userId),
-          isNull(users.deletedAt),
-          or(
-            inArray(odApplications.status, [
-              'In Progress: Mentor',
-              'In Progress: Program Coordinator',
-              'In Progress: Head of Department',
-              'Approved'
-            ]),
-            hasApprovedPreviousStage('Event Coordinator')
-          )
-        )
-      )
-      .orderBy(desc(odApplications.createdAt));
+  const whereConditions = [isNull(users.deletedAt)];
+
+  if (role === 'Mentor') {
+    whereConditions.push(
+      eq(students.mentorId, userId),
+      or(
+        inArray(odApplications.status, [
+          'In Progress: Mentor',
+          'In Progress: Program Coordinator',
+          'In Progress: Head of Department',
+          'Approved'
+        ]),
+        hasApprovedPreviousStage('Event Coordinator')
+      )!
+    );
   } else if (role === 'Program Coordinator') {
-    apps = await query
-      .where(
-        and(
-          isNull(users.deletedAt),
-          or(
-            inArray(odApplications.status, [
-              'In Progress: Program Coordinator',
-              'In Progress: Head of Department',
-              'Approved'
-            ]),
-            hasApprovedPreviousStage('Mentor')
-          )
-        )
-      )
-      .orderBy(desc(odApplications.createdAt));
+    whereConditions.push(
+      or(
+        inArray(odApplications.status, [
+          'In Progress: Program Coordinator',
+          'In Progress: Head of Department',
+          'Approved'
+        ]),
+        hasApprovedPreviousStage('Mentor')
+      )!
+    );
   } else if (role === 'Head of Department') {
-    apps = await query
-      .where(
-        and(
-          isNull(users.deletedAt),
-          or(
-            inArray(odApplications.status, [
-              'In Progress: Head of Department',
-              'Approved'
-            ]),
-            hasApprovedPreviousStage('Program Coordinator')
-          )
-        )
-      )
-      .orderBy(desc(odApplications.createdAt));
+    whereConditions.push(
+      or(
+        inArray(odApplications.status, [
+          'In Progress: Head of Department',
+          'Approved'
+        ]),
+        hasApprovedPreviousStage('Program Coordinator')
+      )!
+    );
   }
+
+  apps = await query
+    .where(and(...whereConditions))
+    .orderBy(desc(odApplications.createdAt));
 
   const appIds = apps.map((a) => a.applicationId);
   const certMap: Record<string, Array<{ status: string }>> = {};
