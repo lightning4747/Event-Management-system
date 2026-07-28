@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../lib/api';
+import { apiFetch, getMediaUrl } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { DashboardShell } from '../components/DashboardShell';
 import { Input } from '../components/ui/Input';
@@ -562,14 +562,14 @@ export const StudentsDirectory: React.FC = () => {
                                   </span>
                                 </div>
                                 
-                                {cert.fileUrl && (
+                                 {cert.fileUrl && (
                                   <a
-                                    href={cert.fileUrl}
+                                    href={getMediaUrl(cert.fileUrl)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/80 hover:underline pt-1"
                                   >
-                                    <ExternalLink className="w-3 h-3" /> View OneDrive Certificate
+                                    <ExternalLink className="w-3 h-3" /> View Stored Certificate
                                   </a>
                                 )}
 

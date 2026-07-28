@@ -57,3 +57,19 @@ export const apiFetch = async (
 
   return response;
 };
+
+export const getMediaUrl = (url: string | null | undefined): string => {
+  if (!url) return '#';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  const base = import.meta.env.VITE_API_URL || '';
+  if (base.endsWith('/api')) {
+    return `${base.replace(/\/api$/, '')}${cleanPath}`;
+  }
+  if (base.startsWith('http')) {
+    return `${base}${cleanPath}`;
+  }
+  return `http://localhost:8000${cleanPath}`;
+};

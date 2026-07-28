@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../lib/api';
+import { apiFetch, getMediaUrl } from '../lib/api';
 import { DashboardShell } from '../components/DashboardShell';
 import { MenteeRosterDialog } from '../components/dashboard/MenteeRosterDialog';
 import { Button } from '../components/ui/Button';
@@ -1475,7 +1475,7 @@ export const Dashboard: React.FC = () => {
                         {/* Mentor can view uploaded PDF for review before approving */}
                         {cert.fileUrl && (
                           <a
-                            href={cert.fileUrl}
+                            href={getMediaUrl(cert.fileUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold underline"
@@ -1546,7 +1546,7 @@ export const Dashboard: React.FC = () => {
                                 : 'bg-red-600 hover:bg-red-700 text-white'
                             }`}
                           >
-                            {verifyCertMutation.isPending ? 'Submitting...' : verifyType[cert.requirementId] === 'Verified' ? 'Confirm Approval & Store in OneDrive' : 'Confirm Certificate Rejection'}
+                            {verifyCertMutation.isPending ? 'Submitting...' : verifyType[cert.requirementId] === 'Verified' ? 'Confirm Approval & Store in Google Drive' : 'Confirm Certificate Rejection'}
                           </Button>
                         )}
                       </div>
@@ -1640,7 +1640,7 @@ export const Dashboard: React.FC = () => {
                             <StatusBadge status={cert.status} />
                           </div>
                           {cert.fileUrl && (
-                            <a href={cert.fileUrl} target="_blank" rel="noopener noreferrer"
+                            <a href={getMediaUrl(cert.fileUrl)} target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-semibold hover:underline">
                               <ExternalLink className="w-3.5 h-3.5" /> Open Student's Document
                             </a>
