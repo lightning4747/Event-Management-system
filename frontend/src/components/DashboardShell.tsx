@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Home, PlusCircle, User, LogOut, Users } from 'lucide-react';
+import { Home, PlusCircle, User, LogOut, Users, FileSpreadsheet } from 'lucide-react';
 
 export interface DashboardShellProps {
   children: React.ReactNode;
@@ -18,6 +18,7 @@ const getNavLinks = (role: string | undefined) => {
   return [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
     { label: 'Students', path: '/students', icon: Users },
+    { label: 'Export Report', path: '/reports', icon: FileSpreadsheet },
     { label: 'Profile', path: '/profile', icon: User },
   ];
 };

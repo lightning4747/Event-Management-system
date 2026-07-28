@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '.
 import {
   FileText, Clock, CheckCircle, XCircle, PlusCircle,
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList,
-  UserPlus, Calendar, Hourglass, Download, Settings,
+  UserPlus, Calendar, Hourglass, Settings,
   AlertTriangle, Users, Edit2, Search
 } from 'lucide-react';
 
@@ -230,27 +230,9 @@ export const Dashboard: React.FC = () => {
     editPayload?: any;
   } | null>(null);
 
-  const yearOptions = React.useMemo(() => {
-    const current = new Date().getFullYear();
-    const list = [];
-    for (let y = 2026; y <= current; y++) {
-      list.push(y);
-    }
-    return list;
-  }, []);
-
-  // ── CSV Export ──
-  const [filterFromDate, setFilterFromDate] = React.useState('');
-  const [filterToDate, setFilterToDate] = React.useState('');
-  const [filterSection, setFilterSection] = React.useState('');
-  const [filterYear, setFilterYear] = React.useState('');
-  const [filterActivityCategory, setFilterActivityCategory] = React.useState('');
-  const [filterActivityType, setFilterActivityType] = React.useState('');
-
   // ── All Applications Date Range Filter ──
   const [allAppsFromDate, setAllAppsFromDate] = React.useState('');
   const [allAppsToDate, setAllAppsToDate] = React.useState('');
-  const [exportLoading, setExportLoading] = React.useState(false);
 
   // ── Faculty Search Filter (Admin Console) ──
   const [facultySearchQuery, setFacultySearchQuery] = React.useState('');
@@ -576,32 +558,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleExportCSV = async () => {
-    const params = new URLSearchParams();
-    if (filterFromDate) params.append('fromDate', filterFromDate);
-    if (filterToDate) params.append('toDate', filterToDate);
-    if (filterSection) params.append('section', filterSection);
-    if (filterYear) params.append('admissionYear', filterYear);
-    if (filterActivityCategory) params.append('activityCategory', filterActivityCategory);
-    if (filterActivityType) params.append('activityType', filterActivityType);
-    const path = isMentor ? `/reports/cohort?${params}` : `/reports/global?${params}`;
-    try {
-      setExportLoading(true);
-      const res = await apiFetch(path);
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', isMentor ? 'cohort_od_report.csv' : 'global_od_report.csv');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err: any) {
-      alert(err.message || 'Failed to download report.');
-    } finally {
-      setExportLoading(false);
-    }
-  };
+
 
   const requestExtensionMutation = useMutation({
     mutationFn: async (payload: { applicationId: string; requestedDays: number; reason: string }) => {
@@ -1093,73 +1050,7 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* CSV Export Panel */}
-            {isEC && (
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
-                  <Download className="w-4 h-4 text-gray-400" />
-                  <h3 className="text-sm font-bold text-gray-900">Export OD Data Report</h3>
-                </div>
-                <div className="p-5 space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">From Date</Label>
-                      <Input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">To Date</Label>
-                      <Input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">Category</Label>
-                      <Select value={filterActivityCategory} onChange={(e) => setFilterActivityCategory(e.target.value)} className="h-9 text-sm">
-                        <option value="">All Categories</option>
-                        <option value="Co-curricular">Co-curricular</option>
-                        <option value="Extracurricular">Extracurricular</option>
-                        <option value="Others">Others</option>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">Activity Type</Label>
-                      <Input
-                        placeholder="Search type..."
-                        value={filterActivityType}
-                        onChange={(e) => setFilterActivityType(e.target.value)}
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">Section</Label>
-                      <Select value={filterSection} onChange={(e) => setFilterSection(e.target.value)} className="h-9 text-sm">
-                        <option value="">All Sections</option>
-                        <option value="A">Section A</option>
-                        <option value="B">Section B</option>
-                        <option value="C">Section C</option>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">Admission Year</Label>
-                      <Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 text-sm">
-                        <option value="">All Years</option>
-                        {yearOptions.map((y) => (
-                          <option key={y} value={String(y)}>{y}</option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handleExportCSV}
-                      disabled={exportLoading}
-                      className="flex items-center gap-2 text-sm h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                      <Download className="w-4 h-4" />
-                      {exportLoading ? 'Generating...' : 'Download CSV'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {/* Queue Tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
