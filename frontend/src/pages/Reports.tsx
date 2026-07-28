@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
 import { DashboardShell } from '../components/DashboardShell';
@@ -17,7 +18,10 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 export const Reports: React.FC = () => {
   const { user } = useAuth();
-  const isMentor = user?.role === 'Mentor';
+
+  if (user && user.role !== 'Event Coordinator') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const [fromDate, setFromDate] = React.useState('');
   const [toDate, setToDate] = React.useState('');
@@ -67,7 +71,7 @@ export const Reports: React.FC = () => {
     if (category) params.append('activityCategory', category);
     if (activityType) params.append('activityType', activityType);
 
-    const path = isMentor ? `/reports/cohort?${params}` : `/reports/global?${params}`;
+    const path = `/reports/global?${params}`;
     try {
       setLoading(true);
       const res = await apiFetch(path);
@@ -75,7 +79,7 @@ export const Reports: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', isMentor ? 'cohort_od_report.csv' : 'global_od_report.csv');
+      link.setAttribute('download', 'global_od_report.csv');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -99,9 +103,7 @@ export const Reports: React.FC = () => {
               Export On-Duty Reports
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              {isMentor
-                ? 'Generate and download CSV reports for your cohort mentees'
-                : 'Generate custom department-wide On-Duty CSV reports with criteria filters'}
+              Generate custom department-wide On-Duty CSV reports with criteria filters
             </p>
           </div>
         </div>

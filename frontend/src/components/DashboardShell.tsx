@@ -15,12 +15,15 @@ const getNavLinks = (role: string | undefined) => {
       { label: 'Profile', path: '/profile', icon: User },
     ];
   }
-  return [
+  const links = [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
     { label: 'Students', path: '/students', icon: Users },
-    { label: 'Export Report', path: '/reports', icon: FileSpreadsheet },
-    { label: 'Profile', path: '/profile', icon: User },
   ];
+  if (role === 'Event Coordinator') {
+    links.push({ label: 'Export Report', path: '/reports', icon: FileSpreadsheet });
+  }
+  links.push({ label: 'Profile', path: '/profile', icon: User });
+  return links;
 };
 
 export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
