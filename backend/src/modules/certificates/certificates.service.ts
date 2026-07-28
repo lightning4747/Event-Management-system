@@ -40,9 +40,13 @@ export const uploadCertificate = async (
       applicationId: certificateRequirements.applicationId,
       status: certificateRequirements.status,
       submissionDeadline: certificateRequirements.submissionDeadline,
+      reqActivityCategory: certificateRequirements.activityCategory,
+      reqActivityType: certificateRequirements.activityType,
       studentId: odApplications.studentId,
       toDate: odApplications.toDate,
       title: odApplications.title,
+      appActivityCategory: odApplications.activityCategory,
+      appActivityType: odApplications.activityType,
       admissionYear: students.admissionYear,
       section: students.section,
     })
@@ -83,44 +87,41 @@ export const uploadCertificate = async (
     throw new AppError(400, 'DEADLINE_EXPIRED', 'The submission deadline has expired. Contact your mentor for an extension.');
   }
 
-  // 6. Save initial upload to local storage (pending mentor approval before pushing to OneDrive)
   let fileUrl = input.fileUrl || '';
   let fileName: string | undefined;
 
-  if (file) {
-    const existingCerts = await db
-      .select()
-      .from(certificates)
-      .where(eq(certificates.requirementId, reqId));
-
-    const uploadVersion = existingCerts.length + 1;
-    const yearFolder = getAcademicYearName(req.admissionYear);
-    const folderPath = `Certificates/${yearFolder}/${req.section}`;
-    const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
-    fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
-
-    const storageResult = await storageService.uploadFile({
-      fileName,
-      folderPath,
-      mimeType: file.mimetype || 'application/pdf',
-      buffer: file.buffer,
-    });
-
-    fileUrl = storageResult.fileUrl;
-  }
-
-  if (!fileUrl) {
+  if (!file && !fileUrl) {
     throw new AppError(400, 'BAD_REQUEST', 'Please provide a PDF file to upload.');
   }
 
-  // 7. Perform upload inserts in transaction
+  const activeCategory = req.reqActivityCategory || req.appActivityCategory || 'Co-curricular';
+  const activeType = req.reqActivityType || req.appActivityType || 'General';
+  const categoryFolder = activeCategory === 'Co-curricular'
+    ? 'Cocurricular'
+    : activeCategory;
+  const subFolder = activeType.replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
+  const folderPath = `${req.studentId}/${categoryFolder}/${subFolder}`;
+  const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
+
   const result = await db.transaction(async (tx) => {
     const existingCerts = await tx
       .select()
       .from(certificates)
-      .where(eq(certificates.requirementId, reqId));
+      .where(eq(certificates.requirementId, reqId))
+      .for('update');
 
     const uploadVersion = existingCerts.length + 1;
+
+    if (file) {
+      fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
+      const storageResult = await storageService.uploadFile({
+        fileName,
+        folderPath,
+        mimeType: file.mimetype || 'application/pdf',
+        buffer: file.buffer,
+      });
+      fileUrl = storageResult.fileUrl;
+    }
 
     // Reset isCurrent on old files
     await tx
@@ -214,8 +215,13 @@ export const verifyCertificate = async (
         .limit(1);
 
       if (currentCert && currentCert.fileUrl && currentCert.fileUrl.startsWith('/uploads/')) {
-        const relativeFilePath = currentCert.fileUrl.replace(/^\/uploads\//, '');
-        const localFilePath = path.join(process.cwd(), 'uploads', relativeFilePath);
+        const uploadsDir = path.resolve(process.cwd(), 'uploads');
+        const relativeFilePath = path.normalize(currentCert.fileUrl.replace(/^\/uploads\//, '')).replace(/^(\.\.[/\\])+/, '');
+        const localFilePath = path.resolve(uploadsDir, relativeFilePath);
+
+        if (!localFilePath.startsWith(uploadsDir + path.sep) && localFilePath !== uploadsDir) {
+          throw new AppError(400, 'INVALID_PATH', 'Path traversal attempt detected in certificate file path.');
+        }
 
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         if (fs.existsSync(localFilePath)) {

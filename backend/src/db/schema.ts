@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial, foreignKey, index, boolean, check, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, date, smallint, bigint, pgEnum, bigserial, foreignKey, index, boolean, check, unique, uniqueIndex, json } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // 1. Enum Definitions
@@ -34,6 +34,12 @@ export const certStatusEnum = pgEnum('cert_status', [
   'Rejected',
   'Deadline Expired',
   'Skipped'
+]);
+
+export const activityCategoryEnum = pgEnum('activity_category', [
+  'Extracurricular',
+  'Co-curricular',
+  'Others'
 ]);
 
 // 2. Table Definitions
@@ -79,6 +85,9 @@ export const odApplications = pgTable('od_applications', {
   applicationId: bigserial('application_id', { mode: 'bigint' }).primaryKey(),
   studentId: varchar('student_id', { length: 255 }).references(() => students.userId).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
+  activityCategory: activityCategoryEnum('activity_category').default('Co-curricular').notNull(),
+  activityType: varchar('activity_type', { length: 255 }).default('General').notNull(),
+  events: json('events').$type<Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }>>(),
   location: varchar('location', { length: 255 }).notNull(),
   fromDate: date('from_date', { mode: 'string' }).notNull(),
   toDate: date('to_date', { mode: 'string' }).notNull(),
@@ -115,14 +124,18 @@ export const certificateRequirements = pgTable('certificate_requirements', {
   requirementId: bigserial('requirement_id', { mode: 'bigint' }).primaryKey(),
   applicationId: bigint('application_id', { mode: 'bigint' }).references(() => odApplications.applicationId).notNull(),
   sequenceNumber: smallint('sequence_number').notNull(),
+  activityCategory: activityCategoryEnum('activity_category'),
+  activityType: varchar('activity_type', { length: 255 }),
   status: certStatusEnum('status').notNull(),
   submissionDeadline: date('submission_deadline', { mode: 'string' }).notNull(),
   rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  applicationIdIdx: index('cert_requirements_app_id_idx').on(table.applicationId),
+  applicationIdIdx: index('cert_requirements_application_id_idx').on(table.applicationId),
   statusIdx: index('cert_requirements_status_idx').on(table.status),
+  deadlineIdx: index('cert_requirements_deadline_idx').on(table.submissionDeadline),
+  sequenceNumberPositiveCheck: check('sequence_number_positive_check', sql`${table.sequenceNumber} > 0`),
   uniqueAppIdSeqNum: unique('unique_app_id_seq_num').on(table.applicationId, table.sequenceNumber)
 }));
 

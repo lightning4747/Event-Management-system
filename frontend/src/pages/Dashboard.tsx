@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '.
 import {
   FileText, Clock, CheckCircle, XCircle, PlusCircle,
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList,
-  UserPlus, Calendar, Hourglass, Download, Settings,
+  UserPlus, Calendar, Hourglass, Settings,
   AlertTriangle, Users, Edit2, Search
 } from 'lucide-react';
 
@@ -27,6 +27,9 @@ interface ApplicationRow {
   studentId: string;
   studentName: string;
   title: string;
+  activityCategory?: 'Extracurricular' | 'Co-curricular' | 'Others';
+  activityType?: string;
+  events?: Array<{ sequenceNumber: number; activityCategory: string; activityType: string }>;
   location: string;
   fromDate: string;
   toDate: string;
@@ -49,6 +52,8 @@ interface ApplicationDetails {
   certificates: Array<{
     requirementId: string;
     sequenceNumber: number;
+    activityCategory?: string;
+    activityType?: string;
     status: string;
     submissionDeadline: string;
     rejectionReason: string | null;
@@ -225,25 +230,9 @@ export const Dashboard: React.FC = () => {
     editPayload?: any;
   } | null>(null);
 
-  const yearOptions = React.useMemo(() => {
-    const current = new Date().getFullYear();
-    const list = [];
-    for (let y = 2026; y <= current; y++) {
-      list.push(y);
-    }
-    return list;
-  }, []);
-
-  // ── CSV Export ──
-  const [filterFromDate, setFilterFromDate] = React.useState('');
-  const [filterToDate, setFilterToDate] = React.useState('');
-  const [filterSection, setFilterSection] = React.useState('');
-  const [filterYear, setFilterYear] = React.useState('');
-
   // ── All Applications Date Range Filter ──
   const [allAppsFromDate, setAllAppsFromDate] = React.useState('');
   const [allAppsToDate, setAllAppsToDate] = React.useState('');
-  const [exportLoading, setExportLoading] = React.useState(false);
 
   // ── Faculty Search Filter (Admin Console) ──
   const [facultySearchQuery, setFacultySearchQuery] = React.useState('');
@@ -569,30 +558,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleExportCSV = async () => {
-    const params = new URLSearchParams();
-    if (filterFromDate) params.append('fromDate', filterFromDate);
-    if (filterToDate) params.append('toDate', filterToDate);
-    if (filterSection) params.append('section', filterSection);
-    if (filterYear) params.append('admissionYear', filterYear);
-    const path = isMentor ? `/reports/cohort?${params}` : `/reports/global?${params}`;
-    try {
-      setExportLoading(true);
-      const res = await apiFetch(path);
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', isMentor ? 'cohort_od_report.csv' : 'global_od_report.csv');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err: any) {
-      alert(err.message || 'Failed to download report.');
-    } finally {
-      setExportLoading(false);
-    }
-  };
+
 
   const requestExtensionMutation = useMutation({
     mutationFn: async (payload: { applicationId: string; requestedDays: number; reason: string }) => {
@@ -702,29 +668,40 @@ export const Dashboard: React.FC = () => {
 
   // ─── Render Helpers ───────────────────────────────────────────────────────────
 
-  const AppCard = ({ app, onClick }: { app: ApplicationRow; onClick: () => void }) => (
-    <div
-      onClick={onClick}
-      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-[0.99]"
-    >
-      <div className="flex-1 min-w-0">
-        {!isStudent && (
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
-            {app.studentName} · {app.studentId}
+  const AppCard = ({ app, onClick }: { app: ApplicationRow; onClick: () => void }) => {
+    const eventTypesLabel = app.events && app.events.length > 0
+      ? app.events.map((e) => e.activityType).filter(Boolean).join(' · ')
+      : app.activityType || null;
+
+    return (
+      <div
+        onClick={onClick}
+        className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-[0.99]"
+      >
+        <div className="flex-1 min-w-0">
+          {!isStudent && (
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+              {app.studentName} · {app.studentId}
+            </p>
+          )}
+          <h4 className="text-sm font-bold text-gray-900 truncate">{app.title}</h4>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {formatDate(app.fromDate)} → {formatDate(app.toDate)} · {app.numberOfEvents} {app.numberOfEvents === 1 ? 'day' : 'days'}
           </p>
-        )}
-        <h4 className="text-sm font-bold text-gray-900 truncate">{app.title}</h4>
-        <p className="text-xs text-gray-500 mt-0.5">
-          {formatDate(app.fromDate)} → {formatDate(app.toDate)} · {app.numberOfEvents} {app.numberOfEvents === 1 ? 'day' : 'days'}
-        </p>
-        <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <StatusBadge status={app.status} />
-          {app.eventTag && <EventTagBadge tag={app.eventTag} />}
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <StatusBadge status={app.status} />
+            {app.eventTag && <EventTagBadge tag={app.eventTag} />}
+            {eventTypesLabel && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                {eventTypesLabel}
+              </span>
+            )}
+          </div>
         </div>
+        <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
       </div>
-      <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
-    </div>
-  );
+    );
+  };
 
   const EmptyState = ({ message }: { message: string }) => (
     <div className="bg-white border border-dashed border-gray-200 rounded-xl p-10 text-center">
@@ -1084,55 +1061,7 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* CSV Export Panel */}
-            {isEC && (
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
-                  <Download className="w-4 h-4 text-gray-400" />
-                  <h3 className="text-sm font-bold text-gray-900">Export OD Data Report</h3>
-                </div>
-                <div className="p-5 space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">From Date</Label>
-                      <Input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">To Date</Label>
-                      <Input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">Section</Label>
-                      <Select value={filterSection} onChange={(e) => setFilterSection(e.target.value)} className="h-9 text-sm">
-                        <option value="">All Sections</option>
-                        <option value="A">Section A</option>
-                        <option value="B">Section B</option>
-                        <option value="C">Section C</option>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-500">Admission Year</Label>
-                      <Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="h-9 text-sm">
-                        <option value="">All Years</option>
-                        {yearOptions.map((y) => (
-                          <option key={y} value={String(y)}>{y}</option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handleExportCSV}
-                      disabled={exportLoading}
-                      className="flex items-center gap-2 text-sm h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                      <Download className="w-4 h-4" />
-                      {exportLoading ? 'Generating...' : 'Download CSV'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {/* Queue Tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
@@ -1307,6 +1236,33 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
+                {/* ── Events & Activity Types Breakdown ── */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2.5">
+                  <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                    <ClipboardList className="w-4 h-4 text-blue-600" />
+                    Events & Activity Types
+                  </p>
+                  {appDetails.application.events && appDetails.application.events.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {appDetails.application.events.map((evt) => (
+                        <div key={evt.sequenceNumber} className="bg-white border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-gray-500">Event #{evt.sequenceNumber}</span>
+                          <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                            {evt.activityType}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-gray-500">Activity Type</span>
+                      <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                        {appDetails.application.activityType || 'General'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Extension Banner ── */}
                 {appDetails.extension && (
                   <>
@@ -1397,7 +1353,7 @@ export const Dashboard: React.FC = () => {
                         <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-gray-50">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-gray-800">
-                              {appDetails.certificates.length > 1 ? `Certificate #${cert.sequenceNumber}` : 'Certificate'}
+                              {cert.activityType || (appDetails.certificates.length > 1 ? `Event #${cert.sequenceNumber}` : 'Event Certificate')}
                             </span>
                             <div className="flex gap-1.5">
                               <StatusBadge status={cert.status} />
@@ -1422,7 +1378,9 @@ export const Dashboard: React.FC = () => {
                           ) : !isUploaded ? (
                             <div className="space-y-2.5">
                               <div className="flex items-center justify-between">
-                                <Label className="text-xs font-semibold text-gray-700">Upload Participation Certificate (PDF)</Label>
+                                <Label className="text-xs font-semibold text-gray-700">
+                                  Upload {cert.activityType ? `${cert.activityType} ` : ''}Certificate (PDF)
+                                </Label>
                                 <span className="text-[11px] text-gray-400 font-medium">Max: 1 MB</span>
                               </div>
                               <div className="flex flex-col sm:flex-row gap-2">
@@ -1509,7 +1467,7 @@ export const Dashboard: React.FC = () => {
                       <div key={cert.requirementId} className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-3 shadow-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-gray-900">
-                            Certificate #{cert.sequenceNumber} (Uploaded by Student)
+                            {cert.activityType || `Event #${cert.sequenceNumber}`} (Uploaded by Student)
                           </span>
                           <StatusBadge status={cert.status} />
                         </div>
@@ -1677,7 +1635,7 @@ export const Dashboard: React.FC = () => {
                         <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-gray-50">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-gray-800">
-                              {appDetails.certificates.length > 1 ? `Cert #${cert.sequenceNumber}` : 'Certificate'}
+                              {cert.activityType || (appDetails.certificates.length > 1 ? `Event #${cert.sequenceNumber}` : 'Certificate')}
                             </span>
                             <StatusBadge status={cert.status} />
                           </div>

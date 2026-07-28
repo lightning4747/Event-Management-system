@@ -8,6 +8,9 @@ export interface ApplicationRow {
   applicationId: bigint;
   studentId: string;
   title: string;
+  activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+  activityType: string;
+  events?: Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }> | null;
   location: string;
   fromDate: string;
   toDate: string;
@@ -39,6 +42,8 @@ export interface ApprovalHistoryItem {
 export interface CertificateRequirementItem {
   requirementId: bigint;
   sequenceNumber: number;
+  activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others' | null;
+  activityType: string | null;
   status: 'Pending Upload' | 'Uploaded' | 'Verified' | 'Rejected' | 'Deadline Expired' | 'Skipped';
   submissionDeadline: string;
   rejectionReason: string | null;
@@ -58,7 +63,19 @@ export const computeEventTag = (
     return undefined;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  if (certs.length > 0) {
+    const hasUploaded = certs.some((c) => c.status === 'Uploaded');
+    if (hasUploaded) return 'Reviewing';
+
+    const allVerifiedOrSkipped = certs.every((c) => c.status === 'Verified' || c.status === 'Skipped');
+    if (allVerifiedOrSkipped) return 'Completed';
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const today = `${year}-${month}-${day}`;
 
   if (today < fromDate) {
     return 'Upcoming';
@@ -68,24 +85,21 @@ export const computeEventTag = (
     return 'Ongoing';
   }
 
-  // Event concluded (today > toDate)
-  if (certs.length > 0) {
-    const allVerifiedOrSkipped = certs.every((c) => c.status === 'Verified' || c.status === 'Skipped');
-    if (allVerifiedOrSkipped) return 'Completed';
-
-    const hasUploaded = certs.some((c) => c.status === 'Uploaded');
-    if (hasUploaded) return 'Reviewing';
-
-    return 'Action Required';
-  }
-
-  return 'Completed';
+  return certs.length > 0 ? 'Action Required' : 'Completed';
 };
 
 export const createApplication = async (
   input: CreateApplicationInput,
   studentId: string
-): Promise<{ applicationId: bigint; studentId: string; title: string; status: string; createdAt: Date }> => {
+): Promise<{
+  applicationId: bigint;
+  studentId: string;
+  title: string;
+  activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+  activityType: string;
+  status: string;
+  createdAt: Date;
+}> => {
   // Verify student exists in students table
   const [student] = await db
     .select()
@@ -113,11 +127,25 @@ export const createApplication = async (
     throw new AppError(400, 'BAD_REQUEST', 'Event end date must be greater than or equal to the start date.');
   }
 
+  const primaryCategory = input.events?.[0]?.activityCategory || input.activityCategory || 'Co-curricular';
+  const primaryType = input.events?.[0]?.activityType || input.activityType || 'General';
+
+  const defaultEvents = Array.from({ length: input.numberOfEvents }).map((_, idx) => ({
+    sequenceNumber: idx + 1,
+    activityCategory: primaryCategory,
+    activityType: primaryType,
+  }));
+
+  const eventsToSave = input.events && input.events.length === input.numberOfEvents ? input.events : defaultEvents;
+
   const [insertedApp] = await db
     .insert(odApplications)
     .values({
       studentId,
       title: input.title,
+      activityCategory: primaryCategory,
+      activityType: primaryType,
+      events: eventsToSave,
       location: input.location,
       fromDate: input.fromDate,
       toDate: input.toDate,
@@ -128,6 +156,9 @@ export const createApplication = async (
       applicationId: odApplications.applicationId,
       studentId: odApplications.studentId,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
+      events: odApplications.events,
       status: odApplications.status,
       createdAt: odApplications.createdAt,
     });
@@ -195,6 +226,9 @@ export const getDepartmentApplications = async (
       studentName: students.fullName,
       mentorId: students.mentorId,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
+      events: odApplications.events,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
@@ -217,6 +251,9 @@ export const getDepartmentApplications = async (
     studentName: string;
     mentorId: string;
     title: string;
+    activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+    activityType: string;
+    events?: Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }> | null;
     location: string;
     fromDate: string;
     toDate: string;
@@ -228,60 +265,47 @@ export const getDepartmentApplications = async (
     updatedAt: Date;
   }> = [];
 
-  if (role === 'Administrator') {
-    apps = await query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
-  } else if (role === 'Event Coordinator') {
-    apps = await query.where(isNull(users.deletedAt)).orderBy(desc(odApplications.createdAt));
-  } else if (role === 'Mentor') {
-    apps = await query
-      .where(
-        and(
-          eq(students.mentorId, userId),
-          isNull(users.deletedAt),
-          or(
-            inArray(odApplications.status, [
-              'In Progress: Mentor',
-              'In Progress: Program Coordinator',
-              'In Progress: Head of Department',
-              'Approved'
-            ]),
-            hasApprovedPreviousStage('Event Coordinator')
-          )
-        )
-      )
-      .orderBy(desc(odApplications.createdAt));
+  const whereConditions = [isNull(users.deletedAt)];
+
+  if (role === 'Mentor') {
+    whereConditions.push(
+      eq(students.mentorId, userId),
+      or(
+        inArray(odApplications.status, [
+          'In Progress: Mentor',
+          'In Progress: Program Coordinator',
+          'In Progress: Head of Department',
+          'Approved'
+        ]),
+        hasApprovedPreviousStage('Event Coordinator')
+      )!
+    );
   } else if (role === 'Program Coordinator') {
-    apps = await query
-      .where(
-        and(
-          isNull(users.deletedAt),
-          or(
-            inArray(odApplications.status, [
-              'In Progress: Program Coordinator',
-              'In Progress: Head of Department',
-              'Approved'
-            ]),
-            hasApprovedPreviousStage('Mentor')
-          )
-        )
-      )
-      .orderBy(desc(odApplications.createdAt));
+    whereConditions.push(
+      or(
+        inArray(odApplications.status, [
+          'In Progress: Program Coordinator',
+          'In Progress: Head of Department',
+          'Approved'
+        ]),
+        hasApprovedPreviousStage('Mentor')
+      )!
+    );
   } else if (role === 'Head of Department') {
-    apps = await query
-      .where(
-        and(
-          isNull(users.deletedAt),
-          or(
-            inArray(odApplications.status, [
-              'In Progress: Head of Department',
-              'Approved'
-            ]),
-            hasApprovedPreviousStage('Program Coordinator')
-          )
-        )
-      )
-      .orderBy(desc(odApplications.createdAt));
+    whereConditions.push(
+      or(
+        inArray(odApplications.status, [
+          'In Progress: Head of Department',
+          'Approved'
+        ]),
+        hasApprovedPreviousStage('Program Coordinator')
+      )!
+    );
   }
+
+  apps = await query
+    .where(and(...whereConditions))
+    .orderBy(desc(odApplications.createdAt));
 
   const appIds = apps.map((a) => a.applicationId);
   const certMap: Record<string, Array<{ status: string }>> = {};
@@ -327,6 +351,9 @@ export const getApplicationDetails = async (
       studentName: students.fullName,
       mentorId: students.mentorId,
       title: odApplications.title,
+      activityCategory: odApplications.activityCategory,
+      activityType: odApplications.activityType,
+      events: odApplications.events,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
@@ -401,6 +428,8 @@ export const getApplicationDetails = async (
     .select({
       requirementId: certificateRequirements.requirementId,
       sequenceNumber: certificateRequirements.sequenceNumber,
+      activityCategory: certificateRequirements.activityCategory,
+      activityType: certificateRequirements.activityType,
       status: certificateRequirements.status,
       submissionDeadline: certificateRequirements.submissionDeadline,
       rejectionReason: certificateRequirements.rejectionReason,

@@ -25,6 +25,9 @@ export const makeApprovalDecision = async (
         mentorId: students.mentorId,
         numberOfEvents: odApplications.numberOfEvents,
         toDate: odApplications.toDate,
+        activityCategory: odApplications.activityCategory,
+        activityType: odApplications.activityType,
+        events: odApplications.events,
       })
       .from(odApplications)
       .innerJoin(students, eq(odApplications.studentId, students.userId))
@@ -117,12 +120,17 @@ export const makeApprovalDecision = async (
     // C. Trigger certificate requirement generation
     if (newStatus === 'Approved') {
       const deadline = addDays(app.toDate, 7);
-      const requirementsToInsert = Array.from({ length: app.numberOfEvents }).map((_, index) => ({
-        applicationId,
-        sequenceNumber: index + 1,
-        status: 'Pending Upload' as const,
-        submissionDeadline: deadline,
-      }));
+      const requirementsToInsert = Array.from({ length: app.numberOfEvents }).map((_, index) => {
+        const eventData = app.events?.[index];
+        return {
+          applicationId,
+          sequenceNumber: index + 1,
+          activityCategory: eventData?.activityCategory || app.activityCategory || 'Co-curricular',
+          activityType: eventData?.activityType || app.activityType || 'General',
+          status: 'Pending Upload' as const,
+          submissionDeadline: deadline,
+        };
+      });
 
       await tx.insert(certificateRequirements).values(requirementsToInsert);
     }
