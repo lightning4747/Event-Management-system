@@ -668,29 +668,40 @@ export const Dashboard: React.FC = () => {
 
   // ─── Render Helpers ───────────────────────────────────────────────────────────
 
-  const AppCard = ({ app, onClick }: { app: ApplicationRow; onClick: () => void }) => (
-    <div
-      onClick={onClick}
-      className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-[0.99]"
-    >
-      <div className="flex-1 min-w-0">
-        {!isStudent && (
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
-            {app.studentName} · {app.studentId}
+  const AppCard = ({ app, onClick }: { app: ApplicationRow; onClick: () => void }) => {
+    const eventTypesLabel = app.events && app.events.length > 0
+      ? app.events.map((e) => e.activityType).filter(Boolean).join(' · ')
+      : app.activityType || null;
+
+    return (
+      <div
+        onClick={onClick}
+        className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm cursor-pointer hover:border-primary/30 hover:shadow-md transition-all active:scale-[0.99]"
+      >
+        <div className="flex-1 min-w-0">
+          {!isStudent && (
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+              {app.studentName} · {app.studentId}
+            </p>
+          )}
+          <h4 className="text-sm font-bold text-gray-900 truncate">{app.title}</h4>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {formatDate(app.fromDate)} → {formatDate(app.toDate)} · {app.numberOfEvents} {app.numberOfEvents === 1 ? 'day' : 'days'}
           </p>
-        )}
-        <h4 className="text-sm font-bold text-gray-900 truncate">{app.title}</h4>
-        <p className="text-xs text-gray-500 mt-0.5">
-          {formatDate(app.fromDate)} → {formatDate(app.toDate)} · {app.numberOfEvents} {app.numberOfEvents === 1 ? 'day' : 'days'}
-        </p>
-        <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <StatusBadge status={app.status} />
-          {app.eventTag && <EventTagBadge tag={app.eventTag} />}
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <StatusBadge status={app.status} />
+            {app.eventTag && <EventTagBadge tag={app.eventTag} />}
+            {eventTypesLabel && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                {eventTypesLabel}
+              </span>
+            )}
+          </div>
         </div>
+        <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
       </div>
-      <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
-    </div>
-  );
+    );
+  };
 
   const EmptyState = ({ message }: { message: string }) => (
     <div className="bg-white border border-dashed border-gray-200 rounded-xl p-10 text-center">
@@ -1223,6 +1234,33 @@ export const Dashboard: React.FC = () => {
                       <p className="text-xs font-semibold text-gray-900 mt-0.5">{appDetails.application.numberOfEvents}</p>
                     </div>
                   </div>
+                </div>
+
+                {/* ── Events & Activity Types Breakdown ── */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2.5">
+                  <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                    <ClipboardList className="w-4 h-4 text-blue-600" />
+                    Events & Activity Types
+                  </p>
+                  {appDetails.application.events && appDetails.application.events.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {appDetails.application.events.map((evt) => (
+                        <div key={evt.sequenceNumber} className="bg-white border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-gray-500">Event #{evt.sequenceNumber}</span>
+                          <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                            {evt.activityType}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-gray-500">Activity Type</span>
+                      <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                        {appDetails.application.activityType || 'General'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Extension Banner ── */}

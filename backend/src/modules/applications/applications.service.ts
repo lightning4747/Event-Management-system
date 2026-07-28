@@ -224,6 +224,7 @@ export const getDepartmentApplications = async (
       title: odApplications.title,
       activityCategory: odApplications.activityCategory,
       activityType: odApplications.activityType,
+      events: odApplications.events,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
@@ -248,6 +249,7 @@ export const getDepartmentApplications = async (
     title: string;
     activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
     activityType: string;
+    events?: Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }> | null;
     location: string;
     fromDate: string;
     toDate: string;
