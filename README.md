@@ -134,11 +134,9 @@ All secrets are managed via the root `.env` file (see `.env.example`).
 | `POSTGRES_PASSWORD` | Yes | PostgreSQL password |
 | `POSTGRES_DB` | Yes | PostgreSQL database name |
 | `JWT_SECRET` | Yes | Secret for signing JWTs — use a long random string in prod |
-| `STORAGE_PROVIDER` | No | `local` (default) or `onedrive` |
-| `ONEDRIVE_TENANT_ID` | If OneDrive | Azure AD tenant ID |
-| `ONEDRIVE_CLIENT_ID` | If OneDrive | Azure app client ID |
-| `ONEDRIVE_CLIENT_SECRET` | If OneDrive | Azure app client secret |
-| `ONEDRIVE_USER_ID` | If OneDrive | OneDrive account email |
+| `STORAGE_PROVIDER` | No | `gdrive` (default) or `local` |
+| `GOOGLE_APPLICATION_CREDENTIALS` | If Google Drive | Path to service account JSON key file |
+| `GOOGLE_DRIVE_PARENT_FOLDER_ID` | If Google Drive | Root parent folder ID in Google Drive |
 
 ---
 

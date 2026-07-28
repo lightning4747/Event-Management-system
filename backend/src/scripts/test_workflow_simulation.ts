@@ -26,7 +26,7 @@ const { migrate } = await import('drizzle-orm/node-postgres/migrator');
 
 const runSimulation = async () => {
   console.log('\n===============================================================');
-  console.log('🚀 STARTING DEADLINE, EXTENSION & ONEDRIVE VERIFICATION SIMULATION');
+  console.log('🚀 STARTING DEADLINE, EXTENSION & GOOGLE DRIVE VERIFICATION SIMULATION');
   console.log('🔒 ISOLATED TEST DATABASE ACTIVE: od_approval_test_db');
   console.log('===============================================================\n');
 
@@ -168,7 +168,7 @@ const runSimulation = async () => {
     }
     console.log('   ✅ Certificate stored in LOCAL storage only before mentor approval (driveItemId = null).');
 
-    // 8. Event Coordinator Verifies Certificate (Triggers OneDrive Upload Sync)
+    // 8. Event Coordinator Verifies Certificate (Triggers Google Drive Upload Sync)
     console.log('\n8️⃣ Event Coordinator verifying student certificate...');
     const verifyRes = await verifyCertificate(reqId, { status: 'Verified' });
     console.log(`   ✅ Verification complete. Requirement Status: "${verifyRes.status}"`);

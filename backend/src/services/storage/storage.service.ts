@@ -1,15 +1,16 @@
 import { IStorageProvider } from './storage.interface';
-import { OneDriveStorageProvider } from './onedrive.provider';
+import { GoogleDriveStorageProvider } from './gdrive.provider';
 import { LocalStorageProvider } from './local.provider';
 
 class StorageServiceFactory {
   private provider: IStorageProvider;
 
   constructor() {
-    if (process.env.STORAGE_PROVIDER === 'onedrive') {
-      this.provider = new OneDriveStorageProvider();
-    } else {
+    const providerType = process.env.STORAGE_PROVIDER || 'gdrive';
+    if (providerType === 'local') {
       this.provider = new LocalStorageProvider();
+    } else {
+      this.provider = new GoogleDriveStorageProvider();
     }
   }
 

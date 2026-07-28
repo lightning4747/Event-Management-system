@@ -94,13 +94,14 @@ export const uploadCertificate = async (
     throw new AppError(400, 'BAD_REQUEST', 'Please provide a PDF file to upload.');
   }
 
+  const yearFolder = getAcademicYearName(req.admissionYear);
   const activeCategory = req.reqActivityCategory || req.appActivityCategory || 'Co-curricular';
   const activeType = req.reqActivityType || req.appActivityType || 'General';
   const categoryFolder = activeCategory === 'Co-curricular'
     ? 'Cocurricular'
     : activeCategory;
   const subFolder = activeType.replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
-  const folderPath = `${req.studentId}/${categoryFolder}/${subFolder}`;
+  const folderPath = `Certificates/${yearFolder}/${req.section}/${req.studentId}/${categoryFolder}/${subFolder}`;
   const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
 
   const result = await db.transaction(async (tx) => {
@@ -111,6 +112,8 @@ export const uploadCertificate = async (
       .for('update');
 
     const uploadVersion = existingCerts.length + 1;
+    const oldCert = existingCerts.find((c) => c.isCurrent);
+    let driveItemId: string | null = null;
 
     if (file) {
       fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
@@ -121,6 +124,11 @@ export const uploadCertificate = async (
         buffer: file.buffer,
       });
       fileUrl = storageResult.fileUrl;
+      driveItemId = storageResult.fileId;
+
+      if (oldCert && oldCert.driveItemId) {
+        await storageService.deleteFile(oldCert.driveItemId);
+      }
     }
 
     // Reset isCurrent on old files
@@ -129,12 +137,12 @@ export const uploadCertificate = async (
       .set({ isCurrent: false })
       .where(eq(certificates.requirementId, reqId));
 
-    // Insert new certificate record (driveItemId: null until mentor approves)
+    // Insert new certificate record
     const [inserted] = await tx
       .insert(certificates)
       .values({
         requirementId: reqId,
-        driveItemId: null,
+        driveItemId: driveItemId || null,
         fileName: fileName || null,
         fileUrl,
         uploadVersion,
@@ -175,6 +183,10 @@ export const verifyCertificate = async (
       .select({
         requirementId: certificateRequirements.requirementId,
         status: certificateRequirements.status,
+        reqActivityCategory: certificateRequirements.activityCategory,
+        reqActivityType: certificateRequirements.activityType,
+        appActivityCategory: odApplications.activityCategory,
+        appActivityType: odApplications.activityType,
         studentId: odApplications.studentId,
         title: odApplications.title,
         admissionYear: students.admissionYear,
@@ -228,10 +240,16 @@ export const verifyCertificate = async (
           // eslint-disable-next-line security/detect-non-literal-fs-filename
           const fileBuffer = await fs.promises.readFile(localFilePath);
           const yearFolder = getAcademicYearName(req.admissionYear);
-          const folderPath = `Certificates/${yearFolder}/${req.section}`;
-          const fileName = currentCert.fileName || `${req.studentId}_${req.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+          const activeCategory = req.reqActivityCategory || req.appActivityCategory || 'Co-curricular';
+          const activeType = req.reqActivityType || req.appActivityType || 'General';
+          const categoryFolder = activeCategory === 'Co-curricular'
+            ? 'Cocurricular'
+            : activeCategory;
+          const subFolder = activeType.replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
+          const folderPath = `Certificates/${yearFolder}/${req.section}/${req.studentId}/${categoryFolder}/${subFolder}`;
+          const fileName = currentCert.fileName || `${req.studentId}_${req.title.replace(/[^a-zA-Z0-9]/g, '_')}_v${currentCert.uploadVersion || 1}.pdf`;
 
-          // Push verified certificate to Microsoft OneDrive (or local fallback)
+          // Push verified certificate to Google Drive (or local fallback)
           const storageResult = await storageService.uploadFile({
             fileName,
             folderPath,
@@ -239,7 +257,7 @@ export const verifyCertificate = async (
             buffer: fileBuffer,
           });
 
-          // Update certificate record with OneDrive details upon mentor approval
+          // Update certificate record with Google Drive details upon verification
           await tx
             .update(certificates)
             .set({
