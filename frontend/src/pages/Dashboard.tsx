@@ -587,7 +587,7 @@ export const Dashboard: React.FC = () => {
       const data = await res.json();
       return Array.isArray(data) ? data : [];
     },
-    enabled: !!isMentor,
+    enabled: !!isEC,
   });
 
   const decideExtensionMutation = useMutation({
@@ -1014,7 +1014,7 @@ export const Dashboard: React.FC = () => {
                 </div>
               )}
 
-              {isMentor && (
+              {isEC && (
                 <div
                   onClick={() => setActiveTab('extensions')}
                   className={`border rounded-2xl p-4 transition-all flex flex-col justify-between cursor-pointer hover:border-primary/30 hover:shadow-sm ${
@@ -1065,7 +1065,7 @@ export const Dashboard: React.FC = () => {
 
             {/* Queue Tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-              {(['pending', ...(isEC ? ['certificates'] : []), ...(isMentor ? ['extensions'] : []), 'all'] as const).map((tab) => {
+              {(['pending', ...(isEC ? ['certificates', 'extensions'] : []), 'all'] as const).map((tab) => {
                 const labels: Record<string, string> = {
                   pending: 'Pending Review',
                   certificates: 'Certificate Queue',
@@ -1129,9 +1129,9 @@ export const Dashboard: React.FC = () => {
             )}
 
             {/* Queue Content */}
-            {activeTab === 'extensions' && isMentor ? (
+            {activeTab === 'extensions' && isEC ? (
               pendingExtensions.length === 0 ? (
-                <EmptyState message="No pending extension requests from your cohort." />
+                <EmptyState message="No pending extension requests." />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {pendingExtensions.map((req: any) => (
@@ -1296,7 +1296,7 @@ export const Dashboard: React.FC = () => {
                         <div>
                           <p className="text-xs font-bold text-red-900">Extension Request Rejected</p>
                           <p className="text-xs text-red-800 mt-0.5">
-                            Reason: <strong>{appDetails.extension.rejectionReason || 'Extension request rejected by mentor.'}</strong>
+                            Reason: <strong>{appDetails.extension.rejectionReason || 'Extension request rejected by event coordinator.'}</strong>
                           </p>
                         </div>
                       </div>

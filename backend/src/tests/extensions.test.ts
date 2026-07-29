@@ -13,7 +13,7 @@ describe('OD Application Deadline Extension Pipeline Test', () => {
     await seedTestUsers();
   });
 
-  it('should allow student to request an extension, mentor to approve it, and prevent duplicate requests', async () => {
+  it('should allow student to request an extension, EC to approve it, and prevent duplicate requests', async () => {
     // 1. Submit application
     const appResult = await createApplication(
       {
@@ -49,11 +49,11 @@ describe('OD Application Deadline Extension Pipeline Test', () => {
     await expect(
       requestDeadlineExtension('STUDENT_01', requestInput)
     ).rejects.toThrowError(
-      new AppError(400, 'EXTENSION_EXISTS', 'An extension request is already pending mentor review.')
+      new AppError(400, 'EXTENSION_EXISTS', 'An extension request is already pending event coordinator review.')
     );
 
-    // 4. Mentor approves extension
-    const decisionResult = await decideDeadlineExtension('MENTOR_01', firstResult.extensionId, {
+    // 4. Event Coordinator approves extension
+    const decisionResult = await decideDeadlineExtension('EC_01', firstResult.extensionId, {
       decision: 'Approve',
     });
     expect(decisionResult.status).toBe('Approved');

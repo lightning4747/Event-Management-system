@@ -58,7 +58,7 @@ export const requestDeadlineExtension = async (
   if (existingExtension) {
     let message = 'An extension request has already been submitted for this application.';
     if (existingExtension.status === 'Pending') {
-      message = 'An extension request is already pending mentor review.';
+      message = 'An extension request is already pending event coordinator review.';
     } else if (existingExtension.status === 'Approved') {
       message = 'An extension has already been granted for this application.';
     } else if (existingExtension.status === 'Rejected') {
@@ -93,7 +93,7 @@ export const requestDeadlineExtension = async (
 };
 
 export const decideDeadlineExtension = async (
-  mentorUserId: string,
+  ecUserId: string,
   extensionId: bigint,
   input: DecideExtensionInput
 ): Promise<{ extensionId: bigint; status: 'Approved' | 'Rejected'; newDeadline?: string }> => {
@@ -106,11 +106,9 @@ export const decideDeadlineExtension = async (
         requestedDays: certificateDeadlineExtensions.requestedDays,
         newDeadline: certificateDeadlineExtensions.newDeadline,
         status: certificateDeadlineExtensions.status,
-        mentorId: students.mentorId,
       })
       .from(certificateDeadlineExtensions)
       .innerJoin(odApplications, eq(certificateDeadlineExtensions.applicationId, odApplications.applicationId))
-      .innerJoin(students, eq(odApplications.studentId, students.userId))
       .where(eq(certificateDeadlineExtensions.extensionId, extensionId))
       .for('update', { of: certificateDeadlineExtensions })
       .limit(1);
@@ -123,18 +121,13 @@ export const decideDeadlineExtension = async (
       throw new AppError(400, 'INVALID_STATUS', 'This extension request has already been decided.');
     }
 
-    // Verify mentor belongs to student cohort
-    if (ext.mentorId !== mentorUserId) {
-      throw new AppError(403, 'FORBIDDEN', 'Access Denied: You can only decide extensions for your assigned cohort students.');
-    }
-
     if (input.decision === 'Approve') {
       // A. Update extension record
       await tx
         .update(certificateDeadlineExtensions)
         .set({
           status: 'Approved',
-          extendedBy: mentorUserId,
+          extendedBy: ecUserId,
           decidedAt: new Date(),
         })
         .where(eq(certificateDeadlineExtensions.extensionId, extensionId));
@@ -168,8 +161,8 @@ export const decideDeadlineExtension = async (
         .update(certificateDeadlineExtensions)
         .set({
           status: 'Rejected',
-          extendedBy: mentorUserId,
-          rejectionReason: input.comments || 'Extension request rejected by mentor.',
+          extendedBy: ecUserId,
+          rejectionReason: input.comments || 'Extension request rejected by event coordinator.',
           decidedAt: new Date(),
         })
         .where(eq(certificateDeadlineExtensions.extensionId, extensionId));
@@ -184,7 +177,7 @@ export const decideDeadlineExtension = async (
   return result;
 };
 
-export const getPendingExtensionsForMentor = async (mentorUserId: string) => {
+export const getPendingExtensionsForEC = async () => {
   const pendingRequests = await db
     .select({
       extensionId: certificateDeadlineExtensions.extensionId,
@@ -200,12 +193,7 @@ export const getPendingExtensionsForMentor = async (mentorUserId: string) => {
     .from(certificateDeadlineExtensions)
     .innerJoin(odApplications, eq(certificateDeadlineExtensions.applicationId, odApplications.applicationId))
     .innerJoin(students, eq(odApplications.studentId, students.userId))
-    .where(
-      and(
-        eq(students.mentorId, mentorUserId),
-        eq(certificateDeadlineExtensions.status, 'Pending')
-      )
-    );
+    .where(eq(certificateDeadlineExtensions.status, 'Pending'));
 
   return pendingRequests.map((r) => ({
     ...r,

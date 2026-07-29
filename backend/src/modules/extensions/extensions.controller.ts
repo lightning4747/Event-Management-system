@@ -29,12 +29,12 @@ export const handleRequestExtension = async (req: Request, res: Response, next: 
 
 export const handleGetPendingExtensions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const mentorUserId = req.user?.userId;
-    if (!mentorUserId || req.user?.role !== 'Mentor') {
-      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only mentors can view pending extension requests.');
+    const ecUserId = req.user?.userId;
+    if (!ecUserId || req.user?.role !== 'Event Coordinator') {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Event Coordinators can view pending extension requests.');
     }
 
-    const pendingList = await extensionsService.getPendingExtensionsForMentor(mentorUserId);
+    const pendingList = await extensionsService.getPendingExtensionsForEC();
     res.status(200).json(pendingList);
   } catch (error) {
     next(error);
@@ -43,9 +43,9 @@ export const handleGetPendingExtensions = async (req: Request, res: Response, ne
 
 export const handleDecideExtension = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const mentorUserId = req.user?.userId;
-    if (!mentorUserId || req.user?.role !== 'Mentor') {
-      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only mentors can decide deadline extensions.');
+    const ecUserId = req.user?.userId;
+    if (!ecUserId || req.user?.role !== 'Event Coordinator') {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only Event Coordinators can decide deadline extensions.');
     }
 
     const { id } = req.params;
@@ -62,7 +62,7 @@ export const handleDecideExtension = async (req: Request, res: Response, next: N
       throw new AppError(400, 'BAD_REQUEST', errorMsg);
     }
 
-    const result = await extensionsService.decideDeadlineExtension(mentorUserId, extId, parseResult.data);
+    const result = await extensionsService.decideDeadlineExtension(ecUserId, extId, parseResult.data);
 
     res.status(200).json({
       ...result,
