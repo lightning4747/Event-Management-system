@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Extract active local network IP address (e.g., wlan0/eth0)
+IP=$(ip route 2>/dev/null | grep -m 1 'default' | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+
+if [ -z "$IP" ]; then
+    IP=$(ip route 2>/dev/null | grep -v 'docker' | grep -v 'br-' | grep 'src' | head -n 1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+fi
+
+if [ -z "$IP" ]; then
+    IP="127.0.0.1"
+fi
+
+printf "\n"
+printf "==================================================================\n"
+printf "  MCET On-Duty Portal — Local & Network Access URLs\n"
+printf "==================================================================\n"
+printf "\n"
+printf "  ➜ Localhost:          http://localhost\n"
+printf "  ➜ Network Broadcast:  http://%s\n" "$IP"
+printf "\n"
+printf "  Mobile Access: Open 'http://%s' on any phone/tablet\n" "$IP"
+printf "                 connected to the same Wi-Fi network!\n"
+printf "==================================================================\n"
+printf "\n"

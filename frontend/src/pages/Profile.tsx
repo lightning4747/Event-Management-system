@@ -137,8 +137,23 @@ export const Profile: React.FC = () => {
   if (error || !profile) {
     return (
       <DashboardShell>
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-4 rounded-xl font-medium">
-          Failed to load profile. Please sign out and sign in again.
+        <div className="max-w-md mx-auto my-8 bg-white border border-red-200 rounded-2xl p-6 shadow-sm text-center space-y-4">
+          <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Failed to Load Profile</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Your login session may have expired or account credentials were updated. Please sign out and sign in again.
+            </p>
+          </div>
+          <Button
+            onClick={handleLogout}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs h-10 flex items-center justify-center"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out & Re-login
+          </Button>
         </div>
       </DashboardShell>
     );
