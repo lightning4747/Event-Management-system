@@ -173,9 +173,13 @@ export class GoogleDriveStorageProvider implements IStorageProvider {
         path: `${normalizedFolderPath}/${options.fileName}`,
       };
     } catch (err: unknown) {
-      logger.warn(
-        { err: (err as Error)?.message || String(err) },
-        'Google Drive API failed. Falling back to local storage.'
+      logger.error(
+        {
+          err: (err as Error)?.message || String(err),
+          fileName: options.fileName,
+          folderPath: options.folderPath,
+        },
+        'Google Drive API upload failed. Falling back to local /uploads/ storage.'
       );
       return await this.localFallback.uploadFile(options);
     }

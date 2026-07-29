@@ -116,7 +116,7 @@ export const uploadCertificate = async (
     let driveItemId: string | null = null;
 
     if (file) {
-      fileName = `${req.studentId}_${sanitizedTitle}_v${uploadVersion}.pdf`;
+      fileName = `${req.studentId}_App${req.applicationId}_Req${reqId}_v${uploadVersion}_${sanitizedTitle}.pdf`;
       const storageResult = await storageService.uploadFile({
         fileName,
         folderPath,
@@ -266,6 +266,21 @@ export const verifyCertificate = async (
             })
             .where(eq(certificates.certificateId, currentCert.certificateId));
         }
+      }
+    } else if (input.status === 'Rejected') {
+      const [currentCert] = await tx
+        .select()
+        .from(certificates)
+        .where(
+          and(
+            eq(certificates.requirementId, requirementId),
+            eq(certificates.isCurrent, true)
+          )
+        )
+        .limit(1);
+
+      if (currentCert && currentCert.driveItemId) {
+        await storageService.deleteFile(currentCert.driveItemId);
       }
     }
 
