@@ -1303,7 +1303,6 @@ export const Dashboard: React.FC = () => {
                     )}
                   </>
                 )}
-
                 {/* ── Student: Certificate Upload ── */}
                 {isStudent && showUploadSection && appDetails.certificates.length > 0 && (() => {
                   const totalCerts = appDetails.certificates.length;
@@ -1346,32 +1345,31 @@ export const Dashboard: React.FC = () => {
                         </div>
                       )}
 
-                      {appDetails.certificates.map((cert) => {
-                        const deadlineInfo = getDeadlineInfo(cert.submissionDeadline);
-                        const isUploaded = cert.status === 'Uploaded' || cert.status === 'Verified' || cert.status === 'Submitted';
+                    {appDetails.certificates.map((cert) => {
+                      const isUploaded = cert.status === 'Uploaded' || cert.status === 'Verified';
+                      const isSkipped = cert.status === 'Skipped';
+                      const isUploadingThis = uploadCertMutation.isPending && uploadCertMutation.variables?.requirementId === String(cert.requirementId);
+                      const isSkippingThis = skipCertMutation.isPending && String(skipCertMutation.variables) === String(cert.requirementId);
+                      const isAnyPending = uploadCertMutation.isPending || skipCertMutation.isPending;
+
                       return (
-                        <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-gray-50">
+                        <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-white">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-gray-800">
-                              {cert.activityType || (appDetails.certificates.length > 1 ? `Event #${cert.sequenceNumber}` : 'Event Certificate')}
-                            </span>
-                            <div className="flex gap-1.5">
-                              <StatusBadge status={cert.status} />
-                              {!isUploaded && (
-                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${deadlineInfo.badgeColor}`}>
-                                  {deadlineInfo.text}
-                                </span>
+                            <div>
+                              <span className="text-xs font-bold text-gray-800">
+                                {cert.activityType || (appDetails.certificates.length > 1 ? `Event #${cert.sequenceNumber}` : 'Certificate')}
+                              </span>
+                              {cert.submissionDeadline && (
+                                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                                  Deadline: {cert.submissionDeadline}
+                                </p>
                               )}
                             </div>
+                            <StatusBadge status={cert.status} />
                           </div>
-                          {cert.status === 'Rejected' && cert.rejectionReason && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5">
-                              <p className="text-xs font-bold text-red-800">Rejection reason:</p>
-                              <p className="text-xs text-red-700 mt-0.5">{cert.rejectionReason}</p>
-                            </div>
-                          )}
-                          {cert.status === 'Skipped' ? (
-                            <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+
+                          {isSkipped ? (
+                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
                               <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                               Certificate Upload Skipped by Student — Event Marked Complete
                             </div>
@@ -1402,16 +1400,16 @@ export const Dashboard: React.FC = () => {
                                       setCertErrors((prev) => ({ ...prev, [cert.requirementId]: null }));
                                     }
                                   }}
-                                  disabled={uploadCertMutation.isPending || skipCertMutation.isPending}
+                                  disabled={isUploadingThis || isSkippingThis}
                                   className="flex-1 text-xs h-9 py-1 file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-0.5 file:text-xs file:font-semibold"
                                 />
                                 <Button
                                   size="sm"
                                   onClick={() => handleCertSubmit(cert.requirementId)}
-                                  disabled={uploadCertMutation.isPending || skipCertMutation.isPending || (!certFiles[cert.requirementId] && !certUrls[cert.requirementId])}
+                                  disabled={isAnyPending || (!certFiles[cert.requirementId] && !certUrls[cert.requirementId])}
                                   className="h-9 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs shrink-0"
                                 >
-                                  {uploadCertMutation.isPending ? 'Uploading...' : 'Upload & Submit'}
+                                  {isUploadingThis ? 'Uploading...' : 'Upload & Submit'}
                                 </Button>
                                 {isStudent && (
                                   <Button
