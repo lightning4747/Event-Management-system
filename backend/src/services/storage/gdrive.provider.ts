@@ -11,22 +11,54 @@ export class GoogleDriveStorageProvider implements IStorageProvider {
   private localFallback = new LocalStorageProvider();
   private folderIdCache = new Map<string, string>();
 
-  private getCredentialsPath(): string | null {
+  private getCredentials(): Record<string, unknown> | null {
+    // 1. Direct JSON string in env
+    const jsonEnv = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_CREDENTIALS;
+    if (jsonEnv) {
+      try {
+        const jsonStr = jsonEnv.trim().substring(0, jsonEnv.trim().lastIndexOf('}') + 1);
+        return JSON.parse(jsonStr) as Record<string, unknown>;
+      } catch {
+        logger.warn('Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON from environment variable.');
+      }
+    }
+
+    // 2. Direct client_email and private_key in env
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
+      return {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL,
+        private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      };
+    }
+
+    // 3. Fallback to file path if specified
     const envPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH;
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     if (envPath && fs.existsSync(envPath)) {
-      return envPath;
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
+      const content = fs.readFileSync(envPath, 'utf8');
+      const jsonStr = content.substring(0, content.lastIndexOf('}') + 1);
+      return JSON.parse(jsonStr) as Record<string, unknown>;
     }
+
     const specPath = path.resolve(process.cwd(), '../spec/snappy-mission-503816-n1-7fdd055b8f15.json');
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     if (fs.existsSync(specPath)) {
-      return specPath;
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
+      const content = fs.readFileSync(specPath, 'utf8');
+      const jsonStr = content.substring(0, content.lastIndexOf('}') + 1);
+      return JSON.parse(jsonStr) as Record<string, unknown>;
     }
+
     const localSpecPath = path.resolve(process.cwd(), 'spec/snappy-mission-503816-n1-7fdd055b8f15.json');
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     if (fs.existsSync(localSpecPath)) {
-      return localSpecPath;
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
+      const content = fs.readFileSync(localSpecPath, 'utf8');
+      const jsonStr = content.substring(0, content.lastIndexOf('}') + 1);
+      return JSON.parse(jsonStr) as Record<string, unknown>;
     }
+
     return null;
   }
 
@@ -34,34 +66,13 @@ export class GoogleDriveStorageProvider implements IStorageProvider {
     if (process.env.NODE_ENV === 'test') {
       return false;
     }
-
-    const credPath = this.getCredentialsPath();
-    if (credPath) return true;
-
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
-      return true;
-    }
-    return false;
+    return this.getCredentials() !== null;
   }
 
   private getDriveClient(): drive_v3.Drive {
-    if (!this.hasValidCredentials()) {
+    const credentials = this.getCredentials();
+    if (!credentials) {
       throw new AppError(500, 'STORAGE_CONFIG_ERROR', 'Google Drive service account credentials are not configured.');
-    }
-
-    let credentials: Record<string, unknown>;
-    const credPath = this.getCredentialsPath();
-
-    if (credPath) {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename
-      const content = fs.readFileSync(credPath, 'utf8');
-      const jsonStr = content.substring(0, content.lastIndexOf('}') + 1);
-      credentials = JSON.parse(jsonStr) as Record<string, unknown>;
-    } else {
-      credentials = {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      };
     }
 
     const auth = new google.auth.GoogleAuth({
