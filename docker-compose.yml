@@ -44,6 +44,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       STORAGE_PROVIDER: ${STORAGE_PROVIDER:-gdrive}
+      GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL: ${GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL:-}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:-}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
       GOOGLE_DRIVE_PARENT_FOLDER_ID: ${GOOGLE_DRIVE_PARENT_FOLDER_ID:-}
     volumes:
@@ -55,10 +58,10 @@ services:
       - mcet_network
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:8000/api/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   frontend:
     build:

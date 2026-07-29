@@ -11,7 +11,7 @@ export class LocalStorageProvider implements IStorageProvider {
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     if (!fs.existsSync(this.baseDir)) {
       // eslint-disable-next-line security/detect-non-literal-fs-filename
-      fs.mkdirSync(this.baseDir, { recursive: true });
+      fs.mkdirSync(this.baseDir, { recursive: true, mode: 0o777 });
     }
   }
 
@@ -21,7 +21,7 @@ export class LocalStorageProvider implements IStorageProvider {
       // eslint-disable-next-line security/detect-non-literal-fs-filename
       if (!fs.existsSync(targetFolder)) {
         // eslint-disable-next-line security/detect-non-literal-fs-filename
-        fs.mkdirSync(targetFolder, { recursive: true });
+        fs.mkdirSync(targetFolder, { recursive: true, mode: 0o777 });
       }
 
       const filePath = path.join(targetFolder, options.fileName);

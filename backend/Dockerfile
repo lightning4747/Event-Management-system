@@ -2,7 +2,7 @@
 FROM oven/bun:1.3-alpine AS builder
 WORKDIR /app
 COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile
+RUN bun install
 COPY . .
 # Remove local .env so the container only uses injected environment variables
 RUN rm -f .env
@@ -12,8 +12,13 @@ FROM oven/bun:1.3-alpine AS runner
 WORKDIR /app
 COPY --from=builder /app ./
 
-# Run as a non-root user for security
-RUN mkdir -p /app/uploads && addgroup -S appgroup && adduser -S appuser -G appgroup && chown -R appuser:appgroup /app
+# Create uploads directory and ensure write permissions for appuser
+RUN mkdir -p /app/uploads && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app && \
+    chmod -R 777 /app/uploads
+
 USER appuser
 
 ENV NODE_ENV=production
