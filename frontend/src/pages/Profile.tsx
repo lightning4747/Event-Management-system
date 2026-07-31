@@ -286,38 +286,6 @@ export const Profile: React.FC = () => {
                   </div>
                 </>
               )}
-              {isHOD && (
-                <>
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Applications</p>
-                      <p className="text-xl font-bold text-gray-900 leading-none mt-1">{metrics.totalApplications ?? 0}</p>
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                    <div>
-                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Approved Applications</p>
-                      <p className="text-xl font-bold text-emerald-600 leading-none mt-1">{metrics.approvedApplications ?? 0}</p>
-                    </div>
-                  </div>
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-                    <Users className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Active Students</p>
-                      <p className="text-xl font-bold text-primary leading-none mt-1">{metrics.activeStudentsCount ?? 0}</p>
-                    </div>
-                  </div>
-                  <div className="bg-muted/50 border border-border rounded-xl p-4 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Approvals</p>
-                      <p className="text-xl font-bold text-muted-foreground leading-none mt-1">{metrics.pendingHODApprovals ?? 0}</p>
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </div>
         )}

@@ -25,7 +25,6 @@ export interface MentorDashboardMetrics {
 export interface HODDashboardMetrics {
   totalApplications: number;
   approvedApplications: number;
-  activeStudentsCount: number;
   pendingHODApprovals: number;
 }
 
@@ -163,11 +162,10 @@ export const getMentorDashboardMetrics = async (mentorId: string): Promise<Mento
 };
 
 export const getHODDashboardMetrics = async (): Promise<HODDashboardMetrics> => {
-  // 1. Total, Approved and HOD queue count
   const statusCounts = await db
     .select({
       status: odApplications.status,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`count(${odApplications.applicationId})::int`,
     })
     .from(odApplications)
     .groupBy(odApplications.status);
@@ -187,17 +185,9 @@ export const getHODDashboardMetrics = async (): Promise<HODDashboardMetrics> => 
     }
   }
 
-  // 2. Active students count (distinct studentId)
-  const [activeCount] = await db
-    .select({
-      count: sql<number>`count(distinct ${odApplications.studentId})::int`,
-    })
-    .from(odApplications);
-
   return {
     totalApplications,
     approvedApplications,
-    activeStudentsCount: activeCount ? Number(activeCount.count) : 0,
     pendingHODApprovals,
   };
 };
