@@ -42,6 +42,8 @@ app.get('/api/health', (_req, res) => {
 // Apply global rate limiting to all api endpoints (skipping health check above)
 app.use('/api', globalLimiter);
 
+import { analyticsRoutes } from './modules/analytics/analytics.routes';
+
 // App Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -53,6 +55,7 @@ app.use('/api/extensions', extensionsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/dashboards', dashboardsRoutes);
 app.use('/api/students', studentsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 import { runMigrations } from './db/migrate';
 

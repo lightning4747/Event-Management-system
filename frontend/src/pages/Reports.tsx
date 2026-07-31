@@ -19,7 +19,9 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 export const Reports: React.FC = () => {
   const { user } = useAuth();
 
-  if (user && user.role !== 'Event Coordinator') {
+  const isAllowedRole = ['Event Coordinator', 'Program Coordinator', 'Head of Department'].includes(user?.role || '');
+
+  if (user && !isAllowedRole) {
     return <Navigate to="/dashboard" replace />;
   }
 

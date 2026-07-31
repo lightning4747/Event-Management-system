@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Home, PlusCircle, User, LogOut, Users, FileSpreadsheet } from 'lucide-react';
+import { Home, PlusCircle, User, LogOut, Users, FileSpreadsheet, BarChart3 } from 'lucide-react';
 
 export interface DashboardShellProps {
   children: React.ReactNode;
@@ -19,7 +19,10 @@ const getNavLinks = (role: string | undefined) => {
     { label: 'Dashboard', path: '/dashboard', icon: Home },
     { label: 'Students', path: '/students', icon: Users },
   ];
-  if (role === 'Event Coordinator') {
+  if (['Event Coordinator', 'Program Coordinator', 'Head of Department', 'Administrator'].includes(role || '')) {
+    links.push({ label: 'Analytics', path: '/analytics', icon: BarChart3 });
+  }
+  if (['Event Coordinator', 'Head of Department'].includes(role || '')) {
     links.push({ label: 'Export Report', path: '/reports', icon: FileSpreadsheet });
   }
   links.push({ label: 'Profile', path: '/profile', icon: User });

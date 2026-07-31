@@ -6,7 +6,18 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/global', requireRole(['Event Coordinator']), reportsController.downloadGlobalReport);
-router.get('/cohort', requireRole(['Event Coordinator']), reportsController.downloadCohortReport);
+// Global Department On-Duty CSV Report (Department-wide)
+router.get(
+  '/global',
+  requireRole(['Event Coordinator', 'Program Coordinator', 'Head of Department']),
+  reportsController.downloadGlobalReport
+);
+
+// Cohort-specific On-Duty CSV Report (Mentors for their assigned mentees)
+router.get(
+  '/cohort',
+  requireRole(['Mentor']),
+  reportsController.downloadCohortReport
+);
 
 export const reportsRoutes = router;

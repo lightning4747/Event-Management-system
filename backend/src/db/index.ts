@@ -3,11 +3,19 @@ import pg from 'pg';
 import * as schema from './schema';
 import { logger } from '../utils/logger';
 
-const databaseUrl = process.env.DATABASE_URL;
+let databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
   logger.error('DATABASE_URL environment variable is missing.');
   throw new Error('DATABASE_URL environment variable is missing.');
+}
+
+// In test mode, enforce isolating connections to test database to safeguard development data
+if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+  databaseUrl = databaseUrl.replace(
+    /\/od_approval_db(\?|$)/,
+    '/od_approval_test_db$1'
+  );
 }
 
 export const pool = new pg.Pool({

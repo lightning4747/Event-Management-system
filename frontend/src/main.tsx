@@ -10,6 +10,7 @@ import { Profile } from './pages/Profile';
 import { NewApplication } from './pages/NewApplication';
 import { StudentsDirectory } from './pages/StudentsDirectory';
 import { Reports } from './pages/Reports';
+import { Analytics } from './pages/Analytics';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -70,6 +71,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedRoute>
                   <Reports />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <Analytics />
                 </ProtectedRoute>
               }
             />
