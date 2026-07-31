@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Home, PlusCircle, User, LogOut, Users, FileSpreadsheet, BarChart3 } from 'lucide-react';
+import { Navbar } from './Navbar';
+import { Home, PlusCircle, User, Users, FileSpreadsheet, BarChart3 } from 'lucide-react';
 
 export interface DashboardShellProps {
   children: React.ReactNode;
@@ -30,47 +31,14 @@ const getNavLinks = (role: string | undefined) => {
 };
 
 export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const location = useLocation();
   const navLinks = getNavLinks(user?.role);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-
-
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans pb-16 md:pb-0">
-      {/* Top Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link to="/dashboard" className="flex items-center gap-2.5">
-            <img src="/mcet_logo.jpg" alt="MCET Logo" className="h-9 w-16 object-contain"/>
-            <div className="block">
-              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">Department of AI&DS</p>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex flex-col items-end">
-              <p className="text-xs font-bold text-gray-900">{user?.userId}</p>
-              <p className="text-[10px] font-medium text-gray-500">{user?.role}</p>
-            </div>
-            <div className="w-px h-6 bg-gray-200 hidden sm:block" />
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium"
-              title="Sign Out"
-            >
-              <LogOut className="w-4 h-4 text-red-500 sm:text-gray-500" />
-              <span className="text-xs font-semibold">Sign Out</span>
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex flex-col font-sans pt-14 pb-16 md:pb-0">
+      {/* Standalone Fixed Top Navbar */}
+      <Navbar />
 
       {/* Desktop Sidebar */}
       <div className="hidden md:block fixed left-0 top-14 bottom-0 w-52 border-r border-gray-200 bg-white shadow-sm z-30">
@@ -80,7 +48,8 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
           </p>
           {navLinks.map((link) => {
             const IconComponent = link.icon;
-            const isActive = location.pathname === link.path || 
+            const isActive =
+              location.pathname === link.path ||
               (link.path !== '/dashboard' && location.pathname.startsWith(link.path));
             return (
               <Link
@@ -92,7 +61,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
                     : 'text-gray-600 hover:bg-muted hover:text-gray-900'
                 }`}
               >
-                <IconComponent className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                <IconComponent
+                  className={`w-4 h-4 flex-shrink-0 ${
+                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                />
                 {link.label}
               </Link>
             );
@@ -107,7 +80,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <main className="flex-1 md:ml-52">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           {children}
@@ -119,7 +92,8 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children }) => {
         <div className="flex items-center justify-around h-16">
           {navLinks.map((link) => {
             const IconComponent = link.icon;
-            const isActive = location.pathname === link.path ||
+            const isActive =
+              location.pathname === link.path ||
               (link.path !== '/dashboard' && location.pathname.startsWith(link.path));
             return (
               <Link

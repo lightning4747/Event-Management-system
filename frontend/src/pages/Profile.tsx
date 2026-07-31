@@ -190,7 +190,7 @@ export const Profile: React.FC = () => {
         </div>
 
         {/* Statistics Section */}
-        {metrics && (
+        {metrics && !isHOD && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-gray-400" />
