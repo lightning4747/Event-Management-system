@@ -50,12 +50,16 @@ export const errorHandler = (
         if (typeof pgErr.constraint === 'string') {
           if (pgErr.constraint === 'from_date_less_to_date_check') {
             message = 'The start date must be less than or equal to the end date.';
-          } else if (pgErr.constraint === 'number_of_events_positive_check') {
-            message = 'The number of events must be greater than 0.';
+          } else if (pgErr.constraint === 'number_of_events_positive_check' || pgErr.constraint === 'number_of_events_range_check') {
+            message = 'Number of events must be between 1 and 4.';
           } else {
             message = `Check constraint violation: ${pgErr.constraint}`;
           }
         }
+      } else if (pgErr.code === 'P0001' || (typeof pgErr.message === 'string' && pgErr.message.includes('DAILY_LIMIT_EXCEEDED'))) {
+        code = 'DAILY_LIMIT_EXCEEDED';
+        statusCode = 400;
+        message = 'Daily application limit reached. You can create a maximum of 3 applications per day.';
       } else if (pgErr.code === '23503') {
         code = 'BAD_REQUEST';
         statusCode = 400;

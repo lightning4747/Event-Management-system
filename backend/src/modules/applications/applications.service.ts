@@ -117,6 +117,10 @@ export const createApplication = async (
     throw new AppError(404, 'NOT_FOUND', 'Student record not found in system.');
   }
 
+  if (input.numberOfEvents < 1 || input.numberOfEvents > 4) {
+    throw new AppError(400, 'BAD_REQUEST', 'Number of events must be between 1 and 4.');
+  }
+
   const currentDateStr = new Date().toISOString().split('T')[0];
 
   if (input.fromDate < currentDateStr) {
@@ -125,6 +129,10 @@ export const createApplication = async (
 
   if (input.toDate < input.fromDate) {
     throw new AppError(400, 'BAD_REQUEST', 'Event end date must be greater than or equal to the start date.');
+  }
+
+  if (input.events && input.events.length !== input.numberOfEvents) {
+    throw new AppError(400, 'BAD_REQUEST', `Events array length (${input.events.length}) must match Number of Events (${input.numberOfEvents}).`);
   }
 
   const primaryCategory = input.events?.[0]?.activityCategory || input.activityCategory || 'Co-curricular';
@@ -138,32 +146,52 @@ export const createApplication = async (
 
   const eventsToSave = input.events && input.events.length === input.numberOfEvents ? input.events : defaultEvents;
 
-  const [insertedApp] = await db
-    .insert(odApplications)
-    .values({
-      studentId,
-      title: input.title,
-      activityCategory: primaryCategory,
-      activityType: primaryType,
-      events: eventsToSave,
-      location: input.location,
-      fromDate: input.fromDate,
-      toDate: input.toDate,
-      numberOfEvents: input.numberOfEvents,
-      status: 'In Progress: Event Coordinator',
-    })
-    .returning({
-      applicationId: odApplications.applicationId,
-      studentId: odApplications.studentId,
-      title: odApplications.title,
-      activityCategory: odApplications.activityCategory,
-      activityType: odApplications.activityType,
-      events: odApplications.events,
-      status: odApplications.status,
-      createdAt: odApplications.createdAt,
-    });
+  return await db.transaction(async (tx) => {
+    // Acquire transactional advisory lock for this student to prevent race conditions
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('od_app_' || ${studentId}))`);
 
-  return insertedApp;
+    // SARGABLE index-friendly daily application count check
+    const [countRow] = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(odApplications)
+      .where(
+        and(
+          eq(odApplications.studentId, studentId),
+          sql`${odApplications.createdAt} >= CURRENT_DATE AND ${odApplications.createdAt} < CURRENT_DATE + INTERVAL '1 day'`
+        )
+      );
+
+    if (countRow && Number(countRow.count) >= 3) {
+      throw new AppError(400, 'DAILY_LIMIT_EXCEEDED', 'Daily application limit reached. You can create a maximum of 3 applications per day.');
+    }
+
+    const [insertedApp] = await tx
+      .insert(odApplications)
+      .values({
+        studentId,
+        title: input.title,
+        activityCategory: primaryCategory,
+        activityType: primaryType,
+        events: eventsToSave,
+        location: input.location,
+        fromDate: input.fromDate,
+        toDate: input.toDate,
+        numberOfEvents: input.numberOfEvents,
+        status: 'In Progress: Event Coordinator',
+      })
+      .returning({
+        applicationId: odApplications.applicationId,
+        studentId: odApplications.studentId,
+        title: odApplications.title,
+        activityCategory: odApplications.activityCategory,
+        activityType: odApplications.activityType,
+        events: odApplications.events,
+        status: odApplications.status,
+        createdAt: odApplications.createdAt,
+      });
+
+    return insertedApp;
+  });
 };
 
 export const getStudentApplications = async (

@@ -59,10 +59,10 @@ describe('Error Handler Middleware - Postgres Code Translation', () => {
     });
   });
 
-  it('should translate 23514 check constraint error for number_of_events_positive_check to 400 BAD_REQUEST', () => {
+  it('should translate 23514 check constraint error for number_of_events_range_check to 400 BAD_REQUEST', () => {
     const dbError = new Error('new row violates check constraint') as PgError;
     dbError.code = '23514';
-    dbError.constraint = 'number_of_events_positive_check';
+    dbError.constraint = 'number_of_events_range_check';
 
     const res = createMockResponse();
 
@@ -72,7 +72,7 @@ describe('Error Handler Middleware - Postgres Code Translation', () => {
     expect(res.json).toHaveBeenCalledWith({
       error: {
         code: 'BAD_REQUEST',
-        message: 'The number of events must be greater than 0.'
+        message: 'Number of events must be between 1 and 4.'
       }
     });
   });

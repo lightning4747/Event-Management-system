@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
 import { DashboardShell } from '../components/DashboardShell';
 import { Button } from '../components/ui/Button';
@@ -30,7 +30,11 @@ const newAppSchema = z
     location: z.string().min(1, 'Event location is required.'),
     fromDate: z.string().min(1, 'Start date is required.'),
     toDate: z.string().min(1, 'End date is required.'),
-    numberOfEvents: z.coerce.number().int().min(1, 'Number of events must be at least 1.'),
+    numberOfEvents: z.coerce
+      .number({ invalid_type_error: 'Number of events must be an integer.' })
+      .int('Number of events must be an integer.')
+      .min(1, 'Number of events must be between 1 and 4.')
+      .max(4, 'Number of events must be between 1 and 4.'),
     events: z.array(eventSchema),
   })
   .refine(
@@ -48,6 +52,16 @@ export const NewApplication: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
+  const { data: studentMetrics } = useQuery({
+    queryKey: ['studentMetrics'],
+    queryFn: async () => {
+      const res = await apiFetch('/dashboards/student');
+      return res.json();
+    },
+  });
+
+  const isDailyLimitReached = Boolean(studentMetrics && (studentMetrics.dailyLimitReached || studentMetrics.applicationsRemainingToday === 0));
 
   const {
     register,
@@ -154,6 +168,13 @@ export const NewApplication: React.FC = () => {
           </div>
 
           <div className="p-6 space-y-5">
+            {isDailyLimitReached && (
+              <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm p-3.5 rounded-xl font-medium">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                Daily application limit reached. You can create a maximum of 3 applications per day. The limit resets at midnight.
+              </div>
+            )}
+
             {errorMsg && (
               <div className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-800 text-sm p-3.5 rounded-xl font-medium">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -168,7 +189,7 @@ export const NewApplication: React.FC = () => {
                   id="title"
                   placeholder="e.g. Smart India Hackathon 2026"
                   {...register('title')}
-                  disabled={submitMutation.isPending}
+                  disabled={submitMutation.isPending || isDailyLimitReached}
                   className="h-10"
                 />
                 {errors.title && <p className="text-xs text-red-600 font-medium">{errors.title.message}</p>}
@@ -180,7 +201,7 @@ export const NewApplication: React.FC = () => {
                   id="location"
                   placeholder="e.g. PSG College of Technology, Coimbatore"
                   {...register('location')}
-                  disabled={submitMutation.isPending}
+                  disabled={submitMutation.isPending || isDailyLimitReached}
                   className="h-10"
                 />
                 {errors.location && <p className="text-xs text-red-600 font-medium">{errors.location.message}</p>}
@@ -194,7 +215,7 @@ export const NewApplication: React.FC = () => {
                     type="date"
                     min={todayStr}
                     {...register('fromDate')}
-                    disabled={submitMutation.isPending}
+                    disabled={submitMutation.isPending || isDailyLimitReached}
                     className="h-10"
                   />
                   {errors.fromDate && <p className="text-xs text-red-600 font-medium">{errors.fromDate.message}</p>}
@@ -205,7 +226,7 @@ export const NewApplication: React.FC = () => {
                     id="toDate"
                     type="date"
                     {...register('toDate')}
-                    disabled={submitMutation.isPending}
+                    disabled={submitMutation.isPending || isDailyLimitReached}
                     className="h-10"
                   />
                   {errors.toDate && <p className="text-xs text-red-600 font-medium">{errors.toDate.message}</p>}
@@ -217,9 +238,19 @@ export const NewApplication: React.FC = () => {
                 <Input
                   id="numberOfEvents"
                   type="number"
-                  min="1"
-                  {...register('numberOfEvents')}
-                  disabled={submitMutation.isPending}
+                  min={1}
+                  max={4}
+                  step={1}
+                  placeholder="4 events max"
+                  {...register('numberOfEvents', {
+                    setValueAs: (val) => {
+                      if (val === '' || val === null || val === undefined) return val;
+                      const num = parseInt(val, 10);
+                      if (isNaN(num)) return val;
+                      return Math.min(4, Math.max(1, num));
+                    },
+                  })}
+                  disabled={submitMutation.isPending || isDailyLimitReached}
                   className="h-10"
                 />
                 {errors.numberOfEvents && <p className="text-xs text-red-600 font-medium">{errors.numberOfEvents.message}</p>}
@@ -241,7 +272,7 @@ export const NewApplication: React.FC = () => {
                           id={`category_${idx}`}
                           value={evt.activityCategory || ''}
                           onChange={(e) => handleCategoryChange(idx, e.target.value as any)}
-                          disabled={submitMutation.isPending}
+                          disabled={submitMutation.isPending || isDailyLimitReached}
                           className="h-9 text-xs"
                         >
                           <option value="" disabled>Select Category...</option>
@@ -262,7 +293,7 @@ export const NewApplication: React.FC = () => {
                             id={`type_${idx}`}
                             value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
-                            disabled={submitMutation.isPending}
+                            disabled={submitMutation.isPending || isDailyLimitReached}
                             className="h-9 text-xs"
                           >
                             <option value="" disabled>Select Activity Type...</option>
@@ -275,7 +306,7 @@ export const NewApplication: React.FC = () => {
                             id={`type_${idx}`}
                             value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
-                            disabled={submitMutation.isPending}
+                            disabled={submitMutation.isPending || isDailyLimitReached}
                             className="h-9 text-xs"
                           >
                             <option value="" disabled>Select Activity Type...</option>
@@ -289,7 +320,7 @@ export const NewApplication: React.FC = () => {
                             placeholder="Specify custom activity name..."
                             value={evt.activityType || ''}
                             onChange={(e) => handleTypeChange(idx, e.target.value)}
-                            disabled={submitMutation.isPending}
+                            disabled={submitMutation.isPending || isDailyLimitReached}
                             className="h-9 text-xs"
                           />
                         )}
@@ -308,7 +339,7 @@ export const NewApplication: React.FC = () => {
                 <Button
                   type="submit"
                   className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-                  disabled={submitMutation.isPending}
+                  disabled={submitMutation.isPending || isDailyLimitReached}
                 >
                   {submitMutation.isPending ? 'Submitting...' : 'Submit Request'}
                 </Button>

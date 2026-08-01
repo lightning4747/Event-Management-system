@@ -256,7 +256,7 @@ export const Dashboard: React.FC = () => {
 
   // ─── Queries ──────────────────────────────────────────────────────────────────
 
-  const { data: _studentMetrics } = useQuery({
+  const { data: studentMetrics } = useQuery({
     queryKey: ['studentMetrics'],
     queryFn: async () => { const res = await apiFetch('/dashboards/student'); return res.json(); },
     enabled: isStudent,
@@ -945,7 +945,16 @@ export const Dashboard: React.FC = () => {
 
             {/* Applications */}
             <div id="applications-section" className="space-y-3 pt-2">
-              <h3 className="text-sm font-bold text-gray-900">Your Applications</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-900">Your Applications</h3>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                  (studentMetrics?.applicationsRemainingToday ?? 3) === 0
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                }`}>
+                  Applications remaining today: {studentMetrics?.applicationsRemainingToday ?? 3} / {studentMetrics?.maxDailyApplications ?? 3}
+                </span>
+              </div>
               {studentAppsLoading ? <LoadingState /> : studentApps.length === 0 ? (
                 <EmptyState message='No On-Duty requests yet. Click "New Request" to submit one.' />
               ) : (

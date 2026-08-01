@@ -101,8 +101,9 @@ export const odApplications = pgTable('od_applications', {
   studentIdIdx: index('od_applications_student_id_idx').on(table.studentId),
   statusIdx: index('od_applications_status_idx').on(table.status),
   dateRangeIdx: index('od_applications_date_range_idx').on(table.fromDate, table.toDate),
+  studentCreatedAtIdx: index('od_applications_student_created_at_idx').on(table.studentId, table.createdAt),
   fromDateLessToDateCheck: check('from_date_less_to_date_check', sql`${table.fromDate} <= ${table.toDate}`),
-  numberOfEventsPositiveCheck: check('number_of_events_positive_check', sql`${table.numberOfEvents} > 0`)
+  numberOfEventsRangeCheck: check('number_of_events_range_check', sql`${table.numberOfEvents} >= 1 AND ${table.numberOfEvents} <= 4`)
 }));
 
 // APPLICATION_APPROVAL_HISTORY Table

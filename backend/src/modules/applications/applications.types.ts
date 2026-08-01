@@ -14,8 +14,20 @@ export const createApplicationSchema = z.object({
   location: z.string().min(1, 'Location is required.').max(255, 'Location must not exceed 255 characters.'),
   fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'From Date must be in YYYY-MM-DD format.'),
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'To Date must be in YYYY-MM-DD format.'),
-  numberOfEvents: z.number().int().positive('Number of events must be greater than 0.'),
+  numberOfEvents: z.coerce
+    .number({ invalid_type_error: 'Number of events must be an integer.' })
+    .int('Number of events must be an integer.')
+    .min(1, 'Number of events must be between 1 and 4.')
+    .max(4, 'Number of events must be between 1 and 4.'),
 }).superRefine((data, ctx) => {
+  if (data.events && data.events.length !== data.numberOfEvents) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Events array length (${data.events.length}) must exactly match Number of Events (${data.numberOfEvents}).`,
+      path: ['events'],
+    });
+  }
+
   const currentDateStr = new Date().toISOString().split('T')[0];
   if (data.fromDate < currentDateStr) {
     ctx.addIssue({

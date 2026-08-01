@@ -8,6 +8,9 @@ export interface StudentDashboardMetrics {
   approvedCount: number;
   rejectedCount: number;
   certificatesActionCount: number;
+  applicationsRemainingToday: number;
+  maxDailyApplications: number;
+  dailyLimitReached: boolean;
 }
 
 export interface ECDashboardMetrics {
@@ -72,12 +75,32 @@ export const getStudentDashboardMetrics = async (studentId: string): Promise<Stu
       )
     );
 
+  const [todayCountRow] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(odApplications)
+    .where(
+      and(
+        eq(odApplications.studentId, studentId),
+        sql`${odApplications.createdAt} >= CURRENT_DATE AND ${odApplications.createdAt} < CURRENT_DATE + INTERVAL '1 day'`
+      )
+    );
+
+  const usedToday = todayCountRow ? Number(todayCountRow.count) : 0;
+  const maxDailyApplications = 3;
+  const applicationsRemainingToday = Math.max(0, maxDailyApplications - usedToday);
+  const dailyLimitReached = applicationsRemainingToday === 0;
+
   return {
     totalSubmitted,
     pendingCount,
     approvedCount,
     rejectedCount,
     certificatesActionCount: certsCount ? Number(certsCount.count) : 0,
+    applicationsRemainingToday,
+    maxDailyApplications,
+    dailyLimitReached,
   };
 };
 
