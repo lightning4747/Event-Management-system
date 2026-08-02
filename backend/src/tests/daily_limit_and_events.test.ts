@@ -103,6 +103,7 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
   });
 
   it('should allow creating up to 3 valid applications per day', async () => {
+    await db.delete(odApplications).where(eq(odApplications.studentId, studentId));
     for (let i = 1; i <= 3; i++) {
       const inserted = await createApplication(
         {

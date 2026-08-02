@@ -15,8 +15,18 @@ import {
   FileText, Clock, CheckCircle, XCircle, PlusCircle,
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList,
   UserPlus, Calendar, Hourglass, Settings,
-  AlertTriangle, Users, Edit2, Search
+  AlertTriangle, Users, Edit2, Search, Award
 } from 'lucide-react';
+
+const isAchievementEligible = (category?: string, type?: string): boolean => {
+  if (category === 'Co-curricular' && (type === 'Hackathon' || type === 'Symposium')) {
+    return true;
+  }
+  if (category === 'Extracurricular' && type === 'Sports') {
+    return true;
+  }
+  return false;
+};
 
 import { EventTagBadge } from '../components/EventTagBadge';
 
@@ -29,7 +39,8 @@ interface ApplicationRow {
   title: string;
   activityCategory?: 'Extracurricular' | 'Co-curricular' | 'Others';
   activityType?: string;
-  events?: Array<{ sequenceNumber: number; activityCategory: string; activityType: string }>;
+  achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize';
+  events?: Array<{ sequenceNumber: number; activityCategory: string; activityType: string; achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize' }>;
   location: string;
   fromDate: string;
   toDate: string;
@@ -181,6 +192,7 @@ export const Dashboard: React.FC = () => {
   // ── Certificate upload (student) ──
   const [certFiles, setCertFiles] = React.useState<Record<string, File>>({});
   const [certUrls, setCertUrls] = React.useState<Record<string, string>>({});
+  const [certAchievements, setCertAchievements] = React.useState<Record<string, string>>({});
   const [certErrors, setCertErrors] = React.useState<Record<string, string | null>>({});
 
   // ── Extension request (student) ──
@@ -335,11 +347,14 @@ export const Dashboard: React.FC = () => {
   });
 
   const uploadCertMutation = useMutation({
-    mutationFn: async (payload: { requirementId: string; file?: File; fileUrl?: string }) => {
+    mutationFn: async (payload: { requirementId: string; file?: File; fileUrl?: string; achievement?: string }) => {
       if (payload.file) {
         const formData = new FormData();
         formData.append('requirementId', payload.requirementId);
         formData.append('file', payload.file);
+        if (payload.achievement) {
+          formData.append('achievement', payload.achievement);
+        }
         const res = await apiFetch('/certificates', { method: 'POST', body: formData });
         return res.json();
       } else {
@@ -520,7 +535,8 @@ export const Dashboard: React.FC = () => {
 
     setCertErrors((prev) => ({ ...prev, [reqId]: null }));
     try {
-      await uploadCertMutation.mutateAsync({ requirementId: reqId, file: selectedFile, fileUrl: url });
+      const achievement = certAchievements[reqId] || 'Participation';
+      await uploadCertMutation.mutateAsync({ requirementId: reqId, file: selectedFile, fileUrl: url, achievement });
       setCertUrls((prev) => ({ ...prev, [reqId]: '' }));
     } catch (err: any) {
       setCertErrors((prev) => ({ ...prev, [reqId]: err.message || 'Submission failed.' }));
@@ -1256,18 +1272,32 @@ export const Dashboard: React.FC = () => {
                       {appDetails.application.events.map((evt) => (
                         <div key={evt.sequenceNumber} className="bg-white border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
                           <span className="font-semibold text-gray-500">Event #{evt.sequenceNumber}</span>
-                          <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
-                            {evt.activityType}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                              {evt.activityType}
+                            </span>
+                            {evt.achievement && evt.achievement !== 'Participation' && (
+                              <span className="font-bold text-amber-800 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-md">
+                                {evt.achievement === 'First Prize' ? '🏆 1st Prize' : evt.achievement === 'Second Prize' ? '🥈 2nd Prize' : '🥉 3rd Prize'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="bg-white border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
                       <span className="font-semibold text-gray-500">Activity Type</span>
-                      <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
-                        {appDetails.application.activityType || 'General'}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-gray-900 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                          {appDetails.application.activityType || 'General'}
+                        </span>
+                        {appDetails.application.achievement && appDetails.application.achievement !== 'Participation' && (
+                          <span className="font-bold text-amber-800 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-md">
+                            {appDetails.application.achievement === 'First Prize' ? '🏆 1st Prize' : appDetails.application.achievement === 'Second Prize' ? '🥈 2nd Prize' : '🥉 3rd Prize'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1443,6 +1473,28 @@ export const Dashboard: React.FC = () => {
                                 <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
                                   Selected: {certFiles[cert.requirementId].name} ({Math.round(certFiles[cert.requirementId].size / 1024)} KB)
                                 </p>
+                              )}
+
+                              {/* Render Achievement Position dropdown ONLY for eligible activity types below upload certificate */}
+                              {isAchievementEligible(cert.activityCategory || appDetails.application.activityCategory, cert.activityType || appDetails.application.activityType) && (
+                                <div className="space-y-1.5 pt-2.5 border-t border-gray-100 mt-2">
+                                  <Label htmlFor={`achievement_${cert.requirementId}`} className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                    <Award className="w-3.5 h-3.5 text-amber-500" />
+                                    Achievement Position
+                                  </Label>
+                                  <Select
+                                    id={`achievement_${cert.requirementId}`}
+                                    value={certAchievements[cert.requirementId] || appDetails.application.achievement || 'Participation'}
+                                    onChange={(e) => setCertAchievements((prev) => ({ ...prev, [cert.requirementId]: e.target.value }))}
+                                    disabled={isUploadingThis || isSkippingThis}
+                                    className="h-9 text-xs bg-amber-50/40 border-amber-200 focus:border-amber-400"
+                                  >
+                                    <option value="Participation">Participation (Default)</option>
+                                    <option value="First Prize">🏆 First Prize</option>
+                                    <option value="Second Prize">🥈 Second Prize</option>
+                                    <option value="Third Prize">🥉 Third Prize</option>
+                                  </Select>
+                                </div>
                               )}
                               {certErrors[cert.requirementId] && (
                                 <p className="text-xs text-red-600 font-medium">{certErrors[cert.requirementId]}</p>

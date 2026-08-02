@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { db } from '../db';
-import { users, faculty, students, odApplications } from '../db/schema';
+import { users, faculty, students, odApplications, certificateRequirements } from '../db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { generateGlobalReport, generateCohortReport } from '../modules/reports/reports.service';
 
@@ -10,7 +10,12 @@ const TEST_MENTOR_ID = 'TEST_CSV_MENTOR';
 describe('CSV Export Column Format & Security Integration Tests', () => {
   beforeAll(async () => {
     // Cleanup any leftovers
-    await db.delete(odApplications).where(eq(odApplications.studentId, TEST_STUDENT_ID));
+    const apps = await db.select({ id: odApplications.applicationId }).from(odApplications).where(eq(odApplications.studentId, TEST_STUDENT_ID));
+    const appIds = apps.map((a) => a.id);
+    if (appIds.length > 0) {
+      await db.delete(certificateRequirements).where(inArray(certificateRequirements.applicationId, appIds));
+      await db.delete(odApplications).where(inArray(odApplications.applicationId, appIds));
+    }
     await db.delete(students).where(eq(students.userId, TEST_STUDENT_ID));
     await db.delete(faculty).where(eq(faculty.userId, TEST_MENTOR_ID));
     await db.delete(users).where(inArray(users.userId, [TEST_STUDENT_ID, TEST_MENTOR_ID]));
@@ -46,27 +51,44 @@ describe('CSV Export Column Format & Security Integration Tests', () => {
       section: 'A',
     });
 
-    await db.insert(odApplications).values({
-      studentId: TEST_STUDENT_ID,
-      title: '=DANGEROUS_FORMULA()',
+    const [app] = await db
+      .insert(odApplications)
+      .values({
+        studentId: TEST_STUDENT_ID,
+        title: '=DANGEROUS_FORMULA()',
+        activityCategory: 'Co-curricular',
+        activityType: 'Hackathon',
+        location: 'Tech Park Auditorium',
+        fromDate: '2026-08-15',
+        toDate: '2026-08-17',
+        numberOfEvents: 1,
+        status: 'Approved',
+      })
+      .returning();
+
+    await db.insert(certificateRequirements).values({
+      applicationId: app.applicationId,
+      sequenceNumber: 1,
       activityCategory: 'Co-curricular',
       activityType: 'Hackathon',
-      location: 'Tech Park Auditorium',
-      fromDate: '2026-08-15',
-      toDate: '2026-08-17',
-      numberOfEvents: 1,
-      status: 'Approved',
+      status: 'Verified',
+      submissionDeadline: '2026-12-31',
     });
   });
 
   afterAll(async () => {
-    await db.delete(odApplications).where(eq(odApplications.studentId, TEST_STUDENT_ID));
+    const apps = await db.select({ id: odApplications.applicationId }).from(odApplications).where(eq(odApplications.studentId, TEST_STUDENT_ID));
+    const appIds = apps.map((a) => a.id);
+    if (appIds.length > 0) {
+      await db.delete(certificateRequirements).where(inArray(certificateRequirements.applicationId, appIds));
+      await db.delete(odApplications).where(inArray(odApplications.applicationId, appIds));
+    }
     await db.delete(students).where(eq(students.userId, TEST_STUDENT_ID));
     await db.delete(faculty).where(eq(faculty.userId, TEST_MENTOR_ID));
     await db.delete(users).where(inArray(users.userId, [TEST_STUDENT_ID, TEST_MENTOR_ID]));
   });
 
-  it('generates global report with exact required 8 columns in order', async () => {
+  it('generates global report with exact required 8 columns in order for finished events', async () => {
     const csv = await generateGlobalReport({});
     const lines = csv.split('\n');
     expect(lines.length).toBeGreaterThan(1);
@@ -90,7 +112,7 @@ describe('CSV Export Column Format & Security Integration Tests', () => {
     }
   });
 
-  it('generates cohort report for assigned mentor with correct columns and data', async () => {
+  it('generates cohort report for assigned mentor with correct columns and data for finished events', async () => {
     const csv = await generateCohortReport(TEST_MENTOR_ID, {});
     const lines = csv.split('\n');
     expect(lines.length).toBeGreaterThan(1);

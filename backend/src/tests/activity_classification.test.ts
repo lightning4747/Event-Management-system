@@ -115,6 +115,9 @@ describe('Activity Type Classification Feature', () => {
     expect(app.title).toBe('Dance Performance Fest');
     expect(app.activityCategory).toBe('Extracurricular');
     expect(app.activityType).toBe('Dance');
+
+    // Update status to Approved for finished export test
+    await db.update(odApplications).set({ status: 'Approved' }).where(eq(odApplications.applicationId, app.applicationId));
   });
 
   it('filters global CSV report by activityCategory and activityType', async () => {

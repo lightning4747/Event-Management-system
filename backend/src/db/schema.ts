@@ -42,6 +42,13 @@ export const activityCategoryEnum = pgEnum('activity_category', [
   'Others'
 ]);
 
+export const achievementEnum = pgEnum('achievement_position', [
+  'Participation',
+  'First Prize',
+  'Second Prize',
+  'Third Prize'
+]);
+
 // 2. Table Definitions
 
 // USERS Table
@@ -87,7 +94,13 @@ export const odApplications = pgTable('od_applications', {
   title: varchar('title', { length: 150 }).notNull(),
   activityCategory: activityCategoryEnum('activity_category').default('Co-curricular').notNull(),
   activityType: varchar('activity_type', { length: 100 }).default('General').notNull(),
-  events: json('events').$type<Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }>>(),
+  achievement: achievementEnum('achievement').default('Participation').notNull(),
+  events: json('events').$type<Array<{
+    sequenceNumber: number;
+    activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+    activityType: string;
+    achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize';
+  }>>(),
   location: varchar('location', { length: 150 }).notNull(),
   fromDate: date('from_date', { mode: 'string' }).notNull(),
   toDate: date('to_date', { mode: 'string' }).notNull(),

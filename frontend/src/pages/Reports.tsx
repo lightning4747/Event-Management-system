@@ -116,11 +116,6 @@ export const Reports: React.FC = () => {
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-blue-600" />
               <h2 className="text-sm font-bold text-gray-900">Report Filter Criteria</h2>
-              {activeFiltersCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
-                  {activeFiltersCount} active
-                </span>
-              )}
             </div>
             {activeFiltersCount > 0 && (
               <button

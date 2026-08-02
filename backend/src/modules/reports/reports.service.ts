@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { odApplications, students } from '../../db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { odApplications, students, certificateRequirements } from '../../db/schema';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { convertToCSV } from '../../utils/csv';
 import { ExportFilterInput } from './reports.types';
 
@@ -38,7 +38,15 @@ const formatParticipationDate = (fromDate: string, toDate: string): string => {
 };
 
 export const generateGlobalReport = async (filters: ExportFilterInput): Promise<string> => {
-  const whereClauses = [];
+  // Only export completely finished applications (Approved AND all certificates Verified/Skipped)
+  const whereClauses = [
+    eq(odApplications.status, 'Approved'),
+    sql`NOT EXISTS (
+      SELECT 1 FROM ${certificateRequirements} cr 
+      WHERE cr.application_id = ${odApplications.applicationId} 
+      AND cr.status NOT IN ('Verified', 'Skipped')
+    )`,
+  ];
 
   if (filters.fromDate) {
     whereClauses.push(gte(odApplications.fromDate, filters.fromDate));
@@ -92,7 +100,16 @@ export const generateCohortReport = async (
   mentorUserId: string,
   filters: ExportFilterInput
 ): Promise<string> => {
-  const whereClauses = [eq(students.mentorId, mentorUserId)];
+  // Only export completely finished applications (Approved AND all certificates Verified/Skipped) for mentor's cohort
+  const whereClauses = [
+    eq(students.mentorId, mentorUserId),
+    eq(odApplications.status, 'Approved'),
+    sql`NOT EXISTS (
+      SELECT 1 FROM ${certificateRequirements} cr 
+      WHERE cr.application_id = ${odApplications.applicationId} 
+      AND cr.status NOT IN ('Verified', 'Skipped')
+    )`,
+  ];
 
   if (filters.fromDate) {
     whereClauses.push(gte(odApplications.fromDate, filters.fromDate));

@@ -2,7 +2,7 @@ import { db } from '../../db';
 import { odApplications, students, users, applicationApprovalHistory, certificateRequirements, certificates, certificateDeadlineExtensions } from '../../db/schema';
 import { eq, desc, or, and, inArray, sql, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
-import { CreateApplicationInput, EventTag } from './applications.types';
+import { CreateApplicationInput, EventTag, isAchievementEligible, AchievementPosition } from './applications.types';
 
 export interface ApplicationRow {
   applicationId: bigint;
@@ -10,7 +10,13 @@ export interface ApplicationRow {
   title: string;
   activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
   activityType: string;
-  events?: Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }> | null;
+  achievement: AchievementPosition;
+  events?: Array<{
+    sequenceNumber: number;
+    activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+    activityType: string;
+    achievement?: AchievementPosition;
+  }> | null;
   location: string;
   fromDate: string;
   toDate: string;
@@ -97,6 +103,7 @@ export const createApplication = async (
   title: string;
   activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
   activityType: string;
+  achievement: AchievementPosition;
   status: string;
   createdAt: Date;
 }> => {
@@ -142,9 +149,22 @@ export const createApplication = async (
     sequenceNumber: idx + 1,
     activityCategory: primaryCategory,
     activityType: primaryType,
+    achievement: (isAchievementEligible(primaryCategory, primaryType) && input.achievement ? input.achievement : 'Participation') as AchievementPosition,
   }));
 
-  const eventsToSave = input.events && input.events.length === input.numberOfEvents ? input.events : defaultEvents;
+  const rawEvents = input.events && input.events.length === input.numberOfEvents ? input.events : defaultEvents;
+
+  const eventsToSave = rawEvents.map((evt) => {
+    const isEligible = isAchievementEligible(evt.activityCategory, evt.activityType);
+    return {
+      ...evt,
+      achievement: (isEligible && evt.achievement ? evt.achievement : 'Participation') as AchievementPosition,
+    };
+  });
+
+  const primaryAchievement = (isAchievementEligible(primaryCategory, primaryType)
+    ? (eventsToSave[0]?.achievement || input.achievement || 'Participation')
+    : 'Participation') as AchievementPosition;
 
   return await db.transaction(async (tx) => {
     // Acquire transactional advisory lock for this student to prevent race conditions
@@ -172,6 +192,7 @@ export const createApplication = async (
         title: input.title,
         activityCategory: primaryCategory,
         activityType: primaryType,
+        achievement: primaryAchievement,
         events: eventsToSave,
         location: input.location,
         fromDate: input.fromDate,
@@ -185,6 +206,7 @@ export const createApplication = async (
         title: odApplications.title,
         activityCategory: odApplications.activityCategory,
         activityType: odApplications.activityType,
+        achievement: odApplications.achievement,
         events: odApplications.events,
         status: odApplications.status,
         createdAt: odApplications.createdAt,
@@ -256,6 +278,7 @@ export const getDepartmentApplications = async (
       title: odApplications.title,
       activityCategory: odApplications.activityCategory,
       activityType: odApplications.activityType,
+      achievement: odApplications.achievement,
       events: odApplications.events,
       location: odApplications.location,
       fromDate: odApplications.fromDate,
@@ -281,7 +304,13 @@ export const getDepartmentApplications = async (
     title: string;
     activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
     activityType: string;
-    events?: Array<{ sequenceNumber: number; activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others'; activityType: string }> | null;
+    achievement: AchievementPosition;
+    events?: Array<{
+      sequenceNumber: number;
+      activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
+      activityType: string;
+      achievement?: AchievementPosition;
+    }> | null;
     location: string;
     fromDate: string;
     toDate: string;
@@ -381,6 +410,7 @@ export const getApplicationDetails = async (
       title: odApplications.title,
       activityCategory: odApplications.activityCategory,
       activityType: odApplications.activityType,
+      achievement: odApplications.achievement,
       events: odApplications.events,
       location: odApplications.location,
       fromDate: odApplications.fromDate,

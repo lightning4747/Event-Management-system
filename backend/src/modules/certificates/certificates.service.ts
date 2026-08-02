@@ -3,6 +3,7 @@ import { odApplications, certificateRequirements, certificates, users, students 
 import { eq, lt, and, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
+import { isAchievementEligible } from '../applications/applications.types';
 import { storageService } from '../../services/storage/storage.service';
 import fs from 'fs';
 import path from 'path';
@@ -138,7 +139,7 @@ export const uploadCertificate = async (
       .where(eq(certificates.requirementId, reqId));
 
     // Insert new certificate record
-    const [inserted] = await tx
+    const [newCert] = await tx
       .insert(certificates)
       .values({
         requirementId: reqId,
@@ -148,14 +149,9 @@ export const uploadCertificate = async (
         uploadVersion,
         isCurrent: true,
       })
-      .returning({
-        certificateId: certificates.certificateId,
-        requirementId: certificates.requirementId,
-        fileUrl: certificates.fileUrl,
-        uploadVersion: certificates.uploadVersion,
-      });
+      .returning();
 
-    // Update requirement status to Uploaded
+    // Update certificate requirement status to 'Uploaded'
     await tx
       .update(certificateRequirements)
       .set({
@@ -165,7 +161,25 @@ export const uploadCertificate = async (
       })
       .where(eq(certificateRequirements.requirementId, reqId));
 
-    return inserted;
+    // Update achievement position on odApplications if provided and eligible
+    if (input.achievement) {
+      const activeCategory = req.reqActivityCategory || req.appActivityCategory || 'Co-curricular';
+      const activeType = req.reqActivityType || req.appActivityType || 'General';
+      const isEligible = isAchievementEligible(activeCategory, activeType);
+      const finalAchievement = isEligible ? input.achievement : 'Participation';
+
+      await tx
+        .update(odApplications)
+        .set({ achievement: finalAchievement })
+        .where(eq(odApplications.applicationId, req.applicationId));
+    }
+
+    return {
+      certificateId: newCert.certificateId,
+      requirementId: newCert.requirementId,
+      fileUrl: newCert.fileUrl,
+      uploadVersion: newCert.uploadVersion,
+    };
   });
 
   return {
