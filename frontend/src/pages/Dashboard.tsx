@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, getMediaUrl } from '../lib/api';
 import { DashboardShell } from '../components/DashboardShell';
@@ -15,7 +14,7 @@ import {
   FileText, Clock, CheckCircle, XCircle, PlusCircle,
   ChevronRight, ExternalLink, Shield, Check, X, ClipboardList,
   UserPlus, Calendar, Hourglass, Settings,
-  AlertTriangle, Users, Edit2, Search, Award
+  AlertTriangle, Users, Edit2, Search, Award, Upload
 } from 'lucide-react';
 
 const isAchievementEligible = (category?: string, type?: string): boolean => {
@@ -92,11 +91,6 @@ interface FacultyRow {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const oneDriveSchema = z
-  .string()
-  .url('Please enter a valid URL.')
-  .regex(/(onedrive\.live\.com|sharepoint\.com)/, 'URL must be a valid Microsoft OneDrive or SharePoint link.');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -191,9 +185,10 @@ export const Dashboard: React.FC = () => {
 
   // ── Certificate upload (student) ──
   const [certFiles, setCertFiles] = React.useState<Record<string, File>>({});
-  const [certUrls, setCertUrls] = React.useState<Record<string, string>>({});
   const [certAchievements, setCertAchievements] = React.useState<Record<string, string>>({});
   const [certErrors, setCertErrors] = React.useState<Record<string, string | null>>({});
+  const [isBatchUploading, setIsBatchUploading] = React.useState(false);
+  const [batchUploadStatus, setBatchUploadStatus] = React.useState<string | null>(null);
 
   // ── Extension request (student) ──
   const [requestExtensionOpen, setRequestExtensionOpen] = React.useState(false);
@@ -507,39 +502,85 @@ export const Dashboard: React.FC = () => {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
 
-  const handleCertSubmit = async (reqId: string) => {
-    const selectedFile = certFiles[reqId];
-    const url = certUrls[reqId] || '';
+  const handleBatchCertSubmit = async () => {
+    if (!appDetails?.certificates) return;
 
-    if (!selectedFile && !url) {
-      setCertErrors((prev) => ({ ...prev, [reqId]: 'Please choose a PDF file to upload.' }));
+    // Find all pending certificate requirements that have a browsed file
+    const requirementsToUpload = appDetails.certificates.filter((cert) => {
+      const isUploaded = cert.status === 'Uploaded' || cert.status === 'Verified';
+      const isSkipped = cert.status === 'Skipped';
+      return !isUploaded && !isSkipped && certFiles[String(cert.requirementId)];
+    });
+
+    if (requirementsToUpload.length === 0) {
+      setBatchUploadStatus('No certificate files selected. Please browse a PDF file for at least one event.');
       return;
     }
 
-    if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf' && !selectedFile.name.toLowerCase().endsWith('.pdf')) {
-        setCertErrors((prev) => ({ ...prev, [reqId]: 'Only PDF files are accepted.' }));
-        return;
-      }
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setCertErrors((prev) => ({ ...prev, [reqId]: 'File size must be 10MB or less.' }));
-        return;
-      }
-    } else {
-      const validation = oneDriveSchema.safeParse(url);
-      if (!validation.success) {
-        setCertErrors((prev) => ({ ...prev, [reqId]: validation.error.errors[0].message }));
-        return;
+    // Validate all selected files first
+    let hasValidationError = false;
+    const newErrors: Record<string, string | null> = {};
+
+    for (const cert of requirementsToUpload) {
+      const reqId = String(cert.requirementId);
+      const file = certFiles[reqId];
+      if (file) {
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+          newErrors[reqId] = 'Only PDF files are accepted.';
+          hasValidationError = true;
+        } else if (file.size > 1 * 1024 * 1024) {
+          newErrors[reqId] = 'Certificate file size must not exceed 1 MB.';
+          hasValidationError = true;
+        }
       }
     }
 
-    setCertErrors((prev) => ({ ...prev, [reqId]: null }));
-    try {
+    if (hasValidationError) {
+      setCertErrors((prev) => ({ ...prev, ...newErrors }));
+      return;
+    }
+
+    setIsBatchUploading(true);
+    setBatchUploadStatus(null);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < requirementsToUpload.length; i++) {
+      const cert = requirementsToUpload[i];
+      const reqId = String(cert.requirementId);
+      const file = certFiles[reqId];
       const achievement = certAchievements[reqId] || 'Participation';
-      await uploadCertMutation.mutateAsync({ requirementId: reqId, file: selectedFile, fileUrl: url, achievement });
-      setCertUrls((prev) => ({ ...prev, [reqId]: '' }));
-    } catch (err: any) {
-      setCertErrors((prev) => ({ ...prev, [reqId]: err.message || 'Submission failed.' }));
+
+      setBatchUploadStatus(`Uploading certificate ${i + 1} of ${requirementsToUpload.length}...`);
+
+      try {
+        await uploadCertMutation.mutateAsync({
+          requirementId: reqId,
+          file,
+          achievement,
+        });
+        successCount++;
+        setCertFiles((prev) => {
+          const next = { ...prev };
+          delete next[reqId];
+          return next;
+        });
+        setCertErrors((prev) => ({ ...prev, [reqId]: null }));
+      } catch (err: any) {
+        failCount++;
+        setCertErrors((prev) => ({
+          ...prev,
+          [reqId]: err.message || 'Failed to upload certificate.',
+        }));
+      }
+    }
+
+    setIsBatchUploading(false);
+    if (failCount === 0) {
+      setBatchUploadStatus(`Successfully uploaded ${successCount} certificate(s)!`);
+      setTimeout(() => setBatchUploadStatus(null), 3500);
+    } else {
+      setBatchUploadStatus(`Uploaded ${successCount} certificate(s), ${failCount} failed. Please check errors above.`);
     }
   };
 
@@ -1389,7 +1430,6 @@ export const Dashboard: React.FC = () => {
                       const isSkipped = cert.status === 'Skipped';
                       const isUploadingThis = uploadCertMutation.isPending && uploadCertMutation.variables?.requirementId === String(cert.requirementId);
                       const isSkippingThis = skipCertMutation.isPending && String(skipCertMutation.variables) === String(cert.requirementId);
-                      const isAnyPending = uploadCertMutation.isPending || skipCertMutation.isPending;
 
                       return (
                         <div key={cert.requirementId} className="border border-gray-200 rounded-xl p-3.5 space-y-3 bg-white">
@@ -1439,17 +1479,9 @@ export const Dashboard: React.FC = () => {
                                       setCertErrors((prev) => ({ ...prev, [cert.requirementId]: null }));
                                     }
                                   }}
-                                  disabled={isUploadingThis || isSkippingThis}
+                                  disabled={isBatchUploading || isUploadingThis || isSkippingThis}
                                   className="flex-1 text-xs h-9 py-1 file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:px-2 file:py-0.5 file:text-xs file:font-semibold"
                                 />
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleCertSubmit(cert.requirementId)}
-                                  disabled={isAnyPending || (!certFiles[cert.requirementId] && !certUrls[cert.requirementId])}
-                                  className="h-9 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs shrink-0"
-                                >
-                                  {isUploadingThis ? 'Uploading...' : 'Upload & Submit'}
-                                </Button>
                                 {isStudent && (
                                   <Button
                                     size="sm"
@@ -1459,10 +1491,10 @@ export const Dashboard: React.FC = () => {
                                         skipCertMutation.mutate(cert.requirementId);
                                       }
                                     }}
-                                    disabled={uploadCertMutation.isPending || skipCertMutation.isPending}
-                                    className="h-9 px-3 text-xs shrink-0 border-gray-300 text-gray-700 hover:bg-gray-50"
+                                    disabled={isBatchUploading || uploadCertMutation.isPending || skipCertMutation.isPending}
+                                    className="h-9 px-3 text-xs shrink-0 border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
                                   >
-                                    {skipCertMutation.isPending ? 'Skipping...' : 'Skip (No Cert)'}
+                                    {isSkippingThis ? 'Skipping...' : 'Skip (No Cert)'}
                                   </Button>
                                 )}
                               </div>
@@ -1509,6 +1541,51 @@ export const Dashboard: React.FC = () => {
                         </div>
                       );
                     })}
+
+                    {/* Single Upload All Selected Certificates Button */}
+                    {isStudent && (
+                      <div className="pt-3 border-t border-gray-200 space-y-3">
+                        {batchUploadStatus && (
+                          <div className={`p-3 rounded-xl text-xs font-semibold ${
+                            batchUploadStatus.includes('Successfully')
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : batchUploadStatus.includes('failed') || batchUploadStatus.includes('No certificate')
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-blue-50 text-blue-800 border border-blue-200'
+                          }`}>
+                            {batchUploadStatus}
+                          </div>
+                        )}
+
+                        {(() => {
+                          const selectedCount = appDetails.certificates.filter((cert) => {
+                            const isUploaded = cert.status === 'Uploaded' || cert.status === 'Verified';
+                            const isSkipped = cert.status === 'Skipped';
+                            return !isUploaded && !isSkipped && certFiles[String(cert.requirementId)];
+                          }).length;
+
+                          return (
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50 border border-gray-200 rounded-xl p-3.5">
+                              <p className="text-xs text-gray-600 font-medium">
+                                {selectedCount > 0
+                                  ? `${selectedCount} certificate file(s) ready to upload`
+                                  : 'Browse PDF files for your events above, then click Upload All'}
+                              </p>
+                              <Button
+                                onClick={handleBatchCertSubmit}
+                                disabled={isBatchUploading || uploadCertMutation.isPending || skipCertMutation.isPending || selectedCount === 0}
+                                className="w-full sm:w-auto h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm flex items-center justify-center gap-2"
+                              >
+                                <Upload className="w-4 h-4" />
+                                {isBatchUploading
+                                  ? 'Uploading Certificates...'
+                                  : `Upload All Selected Certificates${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
+                              </Button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                     </div>
                   );
                 })()}
