@@ -161,16 +161,20 @@ export const uploadCertificate = async (
       })
       .where(eq(certificateRequirements.requirementId, reqId));
 
-    // Update achievement position on odApplications if provided and eligible
-    if (input.achievement) {
+    // Update achievement position and award name on odApplications if provided and eligible
+    if (input.achievement || input.awardName !== undefined) {
       const activeCategory = req.reqActivityCategory || req.appActivityCategory || 'Co-curricular';
       const activeType = req.reqActivityType || req.appActivityType || 'General';
       const isEligible = isAchievementEligible(activeCategory, activeType);
-      const finalAchievement = isEligible ? input.achievement : 'Participation';
+      const finalAchievement = isEligible && input.achievement ? input.achievement : 'Participation';
+      const finalAwardName = isEligible && input.awardName ? input.awardName.trim() : null;
 
       await tx
         .update(odApplications)
-        .set({ achievement: finalAchievement })
+        .set({
+          achievement: finalAchievement,
+          awardName: finalAwardName,
+        })
         .where(eq(odApplications.applicationId, req.applicationId));
     }
 

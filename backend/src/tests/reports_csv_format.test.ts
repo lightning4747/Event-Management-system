@@ -94,7 +94,7 @@ describe('CSV Export Column Format & Security Integration Tests', () => {
     expect(lines.length).toBeGreaterThan(1);
 
     const header = lines[0];
-    expect(header).toBe('"S.No","Department","Academic Year","Name of the Student","Roll No","Name of the Event","Type of the Event","Date of Participation (DD-MM-YYYY)"');
+    expect(header).toBe('"S.No","Department","Academic Year","Name of the Student","Roll No","Name of the Event","Type of the Event","Date of Participation (DD-MM-YYYY)","Participation/achievement","Name of the award/ medal"');
 
     // Find row for TEST_STUDENT_ID
     const studentRow = lines.find((l) => l.includes('CSV Test Student'));
@@ -107,6 +107,8 @@ describe('CSV Export Column Format & Security Integration Tests', () => {
       expect(studentRow).toContain('"TEST_CSV_STUDENT"');
       expect(studentRow).toContain('"Hackathon"');
       expect(studentRow).toContain('"15-08-2026 to 17-08-2026"');
+      expect(studentRow).toContain('"Participation"');
+      expect(studentRow).toContain('"Participation certificate"');
       // Verify CSV formula injection prevention (escaped with single quote)
       expect(studentRow).toContain('\'=DANGEROUS_FORMULA()');
     }
@@ -118,7 +120,7 @@ describe('CSV Export Column Format & Security Integration Tests', () => {
     expect(lines.length).toBeGreaterThan(1);
 
     const header = lines[0];
-    expect(header).toBe('"S.No","Department","Academic Year","Name of the Student","Roll No","Name of the Event","Type of the Event","Date of Participation (DD-MM-YYYY)"');
+    expect(header).toBe('"S.No","Department","Academic Year","Name of the Student","Roll No","Name of the Event","Type of the Event","Date of Participation (DD-MM-YYYY)","Participation/achievement","Name of the award/ medal"');
     expect(csv).toContain('CSV Test Student');
   });
 });

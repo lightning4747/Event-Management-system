@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../db';
-import { users, students, faculty, odApplications } from '../db/schema';
+import { users, students, faculty, odApplications, certificateRequirements } from '../db/schema';
 import { createApplication } from '../modules/applications/applications.service';
 import { getStudentDashboardMetrics } from '../modules/dashboards/dashboards.service';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { AppError } from '../lib/errors';
 
 describe('Daily Application Limit & Number of Events Range Validation', () => {
@@ -12,7 +12,12 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
 
   beforeEach(async () => {
     // Clean existing test data
-    await db.delete(odApplications).where(eq(odApplications.studentId, studentId));
+    const apps = await db.select({ id: odApplications.applicationId }).from(odApplications).where(eq(odApplications.studentId, studentId));
+    const appIds = apps.map((a) => a.id);
+    if (appIds.length > 0) {
+      await db.delete(certificateRequirements).where(inArray(certificateRequirements.applicationId, appIds));
+      await db.delete(odApplications).where(inArray(odApplications.applicationId, appIds));
+    }
     await db.delete(students).where(eq(students.userId, studentId));
     await db.delete(faculty).where(eq(faculty.userId, mentorId));
     await db.delete(users).where(eq(users.userId, mentorId));

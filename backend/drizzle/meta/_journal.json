@@ -78,6 +78,13 @@
       "when": 1785400000000,
       "tag": "0010_achievement_position_enum",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785500000000,
+      "tag": "0011_award_name_column",
+      "breakpoints": true
     }
   ]
 }

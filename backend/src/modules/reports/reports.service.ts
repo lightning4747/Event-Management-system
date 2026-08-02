@@ -1,6 +1,6 @@
 import { db } from '../../db';
-import { odApplications, students, certificateRequirements } from '../../db/schema';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
+import { odApplications, students } from '../../db/schema';
+import { eq, and, gte, lte } from 'drizzle-orm';
 import { convertToCSV } from '../../utils/csv';
 import { ExportFilterInput } from './reports.types';
 
@@ -13,6 +13,8 @@ const CSV_HEADERS = [
   { label: 'Name of the Event', key: 'eventName' },
   { label: 'Type of the Event', key: 'eventType' },
   { label: 'Date of Participation (DD-MM-YYYY)', key: 'dateOfParticipation' },
+  { label: 'Participation/achievement', key: 'participationOrAchievement' },
+  { label: 'Name of the award/ medal', key: 'awardName' },
 ];
 
 const formatDateDDMMYYYY = (dateStr: string): string => {
@@ -37,16 +39,25 @@ const formatParticipationDate = (fromDate: string, toDate: string): string => {
   return `${formattedFrom} to ${formattedTo}`;
 };
 
+const getParticipationOrAchievement = (achievement?: string | null): string => {
+  if (achievement && achievement !== 'Participation') {
+    return 'Achievement';
+  }
+  return 'Participation';
+};
+
+const getAwardMedalName = (achievement?: string | null, awardName?: string | null): string => {
+  if (awardName && awardName.trim()) {
+    return awardName.trim();
+  }
+  if (achievement && achievement !== 'Participation') {
+    return achievement;
+  }
+  return 'Participation certificate';
+};
+
 export const generateGlobalReport = async (filters: ExportFilterInput): Promise<string> => {
-  // Only export completely finished applications (Approved AND all certificates Verified/Skipped)
-  const whereClauses = [
-    eq(odApplications.status, 'Approved'),
-    sql`NOT EXISTS (
-      SELECT 1 FROM ${certificateRequirements} cr 
-      WHERE cr.application_id = ${odApplications.applicationId} 
-      AND cr.status NOT IN ('Verified', 'Skipped')
-    )`,
-  ];
+  const whereClauses = [eq(odApplications.status, 'Approved')];
 
   if (filters.fromDate) {
     whereClauses.push(gte(odApplications.fromDate, filters.fromDate));
@@ -74,6 +85,8 @@ export const generateGlobalReport = async (filters: ExportFilterInput): Promise<
       admissionYear: students.admissionYear,
       title: odApplications.title,
       activityType: odApplications.activityType,
+      achievement: odApplications.achievement,
+      awardName: odApplications.awardName,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
     })
@@ -91,6 +104,8 @@ export const generateGlobalReport = async (filters: ExportFilterInput): Promise<
     eventName: r.title,
     eventType: r.activityType,
     dateOfParticipation: formatParticipationDate(r.fromDate, r.toDate),
+    participationOrAchievement: getParticipationOrAchievement(r.achievement),
+    awardName: getAwardMedalName(r.achievement, r.awardName),
   }));
 
   return convertToCSV(formattedRows, CSV_HEADERS);
@@ -100,15 +115,9 @@ export const generateCohortReport = async (
   mentorUserId: string,
   filters: ExportFilterInput
 ): Promise<string> => {
-  // Only export completely finished applications (Approved AND all certificates Verified/Skipped) for mentor's cohort
   const whereClauses = [
     eq(students.mentorId, mentorUserId),
     eq(odApplications.status, 'Approved'),
-    sql`NOT EXISTS (
-      SELECT 1 FROM ${certificateRequirements} cr 
-      WHERE cr.application_id = ${odApplications.applicationId} 
-      AND cr.status NOT IN ('Verified', 'Skipped')
-    )`,
   ];
 
   if (filters.fromDate) {
@@ -137,6 +146,8 @@ export const generateCohortReport = async (
       admissionYear: students.admissionYear,
       title: odApplications.title,
       activityType: odApplications.activityType,
+      achievement: odApplications.achievement,
+      awardName: odApplications.awardName,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
     })
@@ -154,6 +165,8 @@ export const generateCohortReport = async (
     eventName: r.title,
     eventType: r.activityType,
     dateOfParticipation: formatParticipationDate(r.fromDate, r.toDate),
+    participationOrAchievement: getParticipationOrAchievement(r.achievement),
+    awardName: getAwardMedalName(r.achievement, r.awardName),
   }));
 
   return convertToCSV(formattedRows, CSV_HEADERS);

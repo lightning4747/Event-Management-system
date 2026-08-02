@@ -4,6 +4,7 @@ export const uploadCertificateSchema = z.object({
   requirementId: z.string().min(1, 'Requirement ID is required.'),
   fileUrl: z.string().optional(),
   achievement: z.enum(['Participation', 'First Prize', 'Second Prize', 'Third Prize']).optional(),
+  awardName: z.string().max(150).optional(),
 });
 
 export type UploadCertificateInput = z.infer<typeof uploadCertificateSchema>;

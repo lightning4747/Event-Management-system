@@ -39,7 +39,8 @@ interface ApplicationRow {
   activityCategory?: 'Extracurricular' | 'Co-curricular' | 'Others';
   activityType?: string;
   achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize';
-  events?: Array<{ sequenceNumber: number; activityCategory: string; activityType: string; achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize' }>;
+  awardName?: string;
+  events?: Array<{ sequenceNumber: number; activityCategory: string; activityType: string; achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize'; awardName?: string }>;
   location: string;
   fromDate: string;
   toDate: string;
@@ -186,6 +187,7 @@ export const Dashboard: React.FC = () => {
   // ── Certificate upload (student) ──
   const [certFiles, setCertFiles] = React.useState<Record<string, File>>({});
   const [certAchievements, setCertAchievements] = React.useState<Record<string, string>>({});
+  const [certAwardNames, setCertAwardNames] = React.useState<Record<string, string>>({});
   const [certErrors, setCertErrors] = React.useState<Record<string, string | null>>({});
   const [isBatchUploading, setIsBatchUploading] = React.useState(false);
   const [batchUploadStatus, setBatchUploadStatus] = React.useState<string | null>(null);
@@ -342,13 +344,16 @@ export const Dashboard: React.FC = () => {
   });
 
   const uploadCertMutation = useMutation({
-    mutationFn: async (payload: { requirementId: string; file?: File; fileUrl?: string; achievement?: string }) => {
+    mutationFn: async (payload: { requirementId: string; file?: File; fileUrl?: string; achievement?: string; awardName?: string }) => {
       if (payload.file) {
         const formData = new FormData();
         formData.append('requirementId', payload.requirementId);
         formData.append('file', payload.file);
         if (payload.achievement) {
           formData.append('achievement', payload.achievement);
+        }
+        if (payload.awardName) {
+          formData.append('awardName', payload.awardName);
         }
         const res = await apiFetch('/certificates', { method: 'POST', body: formData });
         return res.json();
@@ -550,6 +555,7 @@ export const Dashboard: React.FC = () => {
       const reqId = String(cert.requirementId);
       const file = certFiles[reqId];
       const achievement = certAchievements[reqId] || 'Participation';
+      const awardName = certAwardNames[reqId] || undefined;
 
       setBatchUploadStatus(`Uploading certificate ${i + 1} of ${requirementsToUpload.length}...`);
 
@@ -558,6 +564,7 @@ export const Dashboard: React.FC = () => {
           requirementId: reqId,
           file,
           achievement,
+          awardName,
         });
         successCount++;
         setCertFiles((prev) => {
@@ -1336,6 +1343,12 @@ export const Dashboard: React.FC = () => {
                         {appDetails.application.achievement && appDetails.application.achievement !== 'Participation' && (
                           <span className="font-bold text-amber-800 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-md">
                             {appDetails.application.achievement === 'First Prize' ? '🏆 1st Prize' : appDetails.application.achievement === 'Second Prize' ? '🥈 2nd Prize' : '🥉 3rd Prize'}
+                            {appDetails.application.awardName ? ` (${appDetails.application.awardName})` : ''}
+                          </span>
+                        )}
+                        {appDetails.application.achievement === 'Participation' && appDetails.application.awardName && (
+                          <span className="font-bold text-blue-800 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-md">
+                            📜 {appDetails.application.awardName}
                           </span>
                         )}
                       </div>
@@ -1507,25 +1520,42 @@ export const Dashboard: React.FC = () => {
                                 </p>
                               )}
 
-                              {/* Render Achievement Position dropdown ONLY for eligible activity types below upload certificate */}
+                              {/* Render Achievement Position & Award Name ONLY for eligible activity types below upload certificate */}
                               {isAchievementEligible(cert.activityCategory || appDetails.application.activityCategory, cert.activityType || appDetails.application.activityType) && (
-                                <div className="space-y-1.5 pt-2.5 border-t border-gray-100 mt-2">
-                                  <Label htmlFor={`achievement_${cert.requirementId}`} className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                                    <Award className="w-3.5 h-3.5 text-amber-500" />
-                                    Achievement Position
-                                  </Label>
-                                  <Select
-                                    id={`achievement_${cert.requirementId}`}
-                                    value={certAchievements[cert.requirementId] || appDetails.application.achievement || 'Participation'}
-                                    onChange={(e) => setCertAchievements((prev) => ({ ...prev, [cert.requirementId]: e.target.value }))}
-                                    disabled={isUploadingThis || isSkippingThis}
-                                    className="h-9 text-xs bg-amber-50/40 border-amber-200 focus:border-amber-400"
-                                  >
-                                    <option value="Participation">Participation (Default)</option>
-                                    <option value="First Prize">🏆 First Prize</option>
-                                    <option value="Second Prize">🥈 Second Prize</option>
-                                    <option value="Third Prize">🥉 Third Prize</option>
-                                  </Select>
+                                <div className="space-y-3 pt-2.5 border-t border-gray-100 mt-2">
+                                  <div className="space-y-1.5">
+                                    <Label htmlFor={`achievement_${cert.requirementId}`} className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                      <Award className="w-3.5 h-3.5 text-amber-500" />
+                                      Achievement Position
+                                    </Label>
+                                    <Select
+                                      id={`achievement_${cert.requirementId}`}
+                                      value={certAchievements[cert.requirementId] || appDetails.application.achievement || 'Participation'}
+                                      onChange={(e) => setCertAchievements((prev) => ({ ...prev, [cert.requirementId]: e.target.value }))}
+                                      disabled={isBatchUploading || isSkippingThis}
+                                      className="h-9 text-xs bg-amber-50/40 border-amber-200 focus:border-amber-400"
+                                    >
+                                      <option value="Participation">Participation (Default)</option>
+                                      <option value="First Prize">🏆 First Prize</option>
+                                      <option value="Second Prize">🥈 Second Prize</option>
+                                      <option value="Third Prize">🥉 Third Prize</option>
+                                    </Select>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <Label htmlFor={`award_${cert.requirementId}`} className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                      <Award className="w-3.5 h-3.5 text-blue-500" />
+                                      Name of Award / Medal
+                                    </Label>
+                                    <Input
+                                      id={`award_${cert.requirementId}`}
+                                      placeholder="e.g. First Prize Gold Medal, Best Project Award, Participation Certificate"
+                                      value={certAwardNames[cert.requirementId] || appDetails.application.awardName || ''}
+                                      onChange={(e) => setCertAwardNames((prev) => ({ ...prev, [cert.requirementId]: e.target.value }))}
+                                      disabled={isBatchUploading || isSkippingThis}
+                                      className="h-9 text-xs bg-gray-50 border-gray-200 focus:border-blue-500"
+                                    />
+                                  </div>
                                 </div>
                               )}
                               {certErrors[cert.requirementId] && (

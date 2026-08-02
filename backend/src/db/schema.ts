@@ -95,11 +95,13 @@ export const odApplications = pgTable('od_applications', {
   activityCategory: activityCategoryEnum('activity_category').default('Co-curricular').notNull(),
   activityType: varchar('activity_type', { length: 100 }).default('General').notNull(),
   achievement: achievementEnum('achievement').default('Participation').notNull(),
+  awardName: varchar('award_name', { length: 150 }),
   events: json('events').$type<Array<{
     sequenceNumber: number;
     activityCategory: 'Extracurricular' | 'Co-curricular' | 'Others';
     activityType: string;
     achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize';
+    awardName?: string;
   }>>(),
   location: varchar('location', { length: 150 }).notNull(),
   fromDate: date('from_date', { mode: 'string' }).notNull(),
