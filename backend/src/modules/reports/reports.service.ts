@@ -5,20 +5,37 @@ import { convertToCSV } from '../../utils/csv';
 import { ExportFilterInput } from './reports.types';
 
 const CSV_HEADERS = [
-  { label: 'Register Number', key: 'userId' },
-  { label: 'Student Name', key: 'studentName' },
-  { label: 'Admission Year', key: 'admissionYear' },
-  { label: 'Section', key: 'section' },
-  { label: 'OD Title', key: 'title' },
-  { label: 'Activity Category', key: 'activityCategory' },
-  { label: 'Activity Type', key: 'activityType' },
-  { label: 'Location', key: 'location' },
-  { label: 'From Date', key: 'fromDate' },
-  { label: 'To Date', key: 'toDate' },
-  { label: 'Events Count', key: 'numberOfEvents' },
-  { label: 'Status', key: 'status' },
-  { label: 'Submitted At', key: 'createdAt' },
+  { label: 'S.No', key: 'sNo' },
+  { label: 'Department', key: 'department' },
+  { label: 'Academic Year', key: 'academicYear' },
+  { label: 'Name of the Student', key: 'studentName' },
+  { label: 'Roll No', key: 'rollNo' },
+  { label: 'Name of the Event', key: 'eventName' },
+  { label: 'Type of the Event', key: 'eventType' },
+  { label: 'Date of Participation (DD-MM-YYYY)', key: 'dateOfParticipation' },
 ];
+
+const formatDateDDMMYYYY = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return dateStr;
+};
+
+const formatAcademicYear = (admissionYear: number): string => {
+  if (!admissionYear) return '';
+  return `${admissionYear}-${admissionYear + 1}`;
+};
+
+const formatParticipationDate = (fromDate: string, toDate: string): string => {
+  const formattedFrom = formatDateDDMMYYYY(fromDate);
+  const formattedTo = formatDateDDMMYYYY(toDate);
+  if (!formattedFrom) return '';
+  if (!formattedTo || formattedFrom === formattedTo) return formattedFrom;
+  return `${formattedFrom} to ${formattedTo}`;
+};
 
 export const generateGlobalReport = async (filters: ExportFilterInput): Promise<string> => {
   const whereClauses = [];
@@ -47,25 +64,25 @@ export const generateGlobalReport = async (filters: ExportFilterInput): Promise<
       userId: students.userId,
       studentName: students.fullName,
       admissionYear: students.admissionYear,
-      section: students.section,
       title: odApplications.title,
-      activityCategory: odApplications.activityCategory,
       activityType: odApplications.activityType,
-      location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
-      numberOfEvents: odApplications.numberOfEvents,
-      status: odApplications.status,
-      createdAt: odApplications.createdAt,
     })
     .from(odApplications)
     .innerJoin(students, eq(odApplications.studentId, students.userId))
     .where(and(...whereClauses))
     .orderBy(odApplications.createdAt);
 
-  const formattedRows = rows.map(r => ({
-    ...r,
-    createdAt: r.createdAt.toISOString(),
+  const formattedRows = rows.map((r, index) => ({
+    sNo: index + 1,
+    department: 'AI&DS',
+    academicYear: formatAcademicYear(r.admissionYear),
+    studentName: r.studentName,
+    rollNo: r.userId,
+    eventName: r.title,
+    eventType: r.activityType,
+    dateOfParticipation: formatParticipationDate(r.fromDate, r.toDate),
   }));
 
   return convertToCSV(formattedRows, CSV_HEADERS);
@@ -101,25 +118,25 @@ export const generateCohortReport = async (
       userId: students.userId,
       studentName: students.fullName,
       admissionYear: students.admissionYear,
-      section: students.section,
       title: odApplications.title,
-      activityCategory: odApplications.activityCategory,
       activityType: odApplications.activityType,
-      location: odApplications.location,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
-      numberOfEvents: odApplications.numberOfEvents,
-      status: odApplications.status,
-      createdAt: odApplications.createdAt,
     })
     .from(odApplications)
     .innerJoin(students, eq(odApplications.studentId, students.userId))
     .where(and(...whereClauses))
     .orderBy(odApplications.createdAt);
 
-  const formattedRows = rows.map(r => ({
-    ...r,
-    createdAt: r.createdAt.toISOString(),
+  const formattedRows = rows.map((r, index) => ({
+    sNo: index + 1,
+    department: 'AI&DS',
+    academicYear: formatAcademicYear(r.admissionYear),
+    studentName: r.studentName,
+    rollNo: r.userId,
+    eventName: r.title,
+    eventType: r.activityType,
+    dateOfParticipation: formatParticipationDate(r.fromDate, r.toDate),
   }));
 
   return convertToCSV(formattedRows, CSV_HEADERS);

@@ -67,8 +67,8 @@ describe('Activity Type Classification Feature', () => {
       activityCategory: 'Extracurricular',
       activityType: 'Sports',
       location: 'Main Stadium',
-      fromDate: '2026-08-01',
-      toDate: '2026-08-03',
+      fromDate: '2026-08-10',
+      toDate: '2026-08-12',
       numberOfEvents: 1,
     });
     expect(valid.success).toBe(true);
@@ -78,8 +78,8 @@ describe('Activity Type Classification Feature', () => {
       activityCategory: 'Extracurricular',
       activityType: 'InvalidType',
       location: 'Main Hall',
-      fromDate: '2026-08-01',
-      toDate: '2026-08-03',
+      fromDate: '2026-08-10',
+      toDate: '2026-08-12',
       numberOfEvents: 1,
     });
     expect(invalid.success).toBe(false);
@@ -123,9 +123,7 @@ describe('Activity Type Classification Feature', () => {
       activityType: 'Dance',
     });
 
-    expect(csv).toContain('Activity Category');
-    expect(csv).toContain('Activity Type');
-    expect(csv).toContain('Extracurricular');
+    expect(csv).toContain('Type of the Event');
     expect(csv).toContain('Dance');
   });
 });
