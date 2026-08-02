@@ -8,7 +8,7 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { Select } from '../components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../components/ui/Dialog';
-import { FileSpreadsheet, Download, RefreshCw, Filter, AlertCircle, Calendar } from 'lucide-react';
+import { FileSpreadsheet, Download, RefreshCw, Filter, AlertCircle, Calendar, Sheet } from 'lucide-react';
 
 const extracurricularTypes = ['Sports', 'NCC', 'NSS', 'Dance'];
 const cocurricularTypes = ['Hackathon', 'Seminar', 'Workshop', 'Symposium', 'Conference'];
@@ -32,6 +32,7 @@ export const Reports: React.FC = () => {
   const [section, setSection] = React.useState('');
   const [admissionYear, setAdmissionYear] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [loadingExcel, setLoadingExcel] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = React.useState(false);
 
@@ -89,6 +90,44 @@ export const Reports: React.FC = () => {
       alert(err.message || 'Failed to download report.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExcelExport = async () => {
+    setErrorMsg(null);
+    if (!fromDate || !toDate) {
+      setErrorMsg('Please select both From Date and To Date before exporting the Excel report.');
+      return;
+    }
+    if (fromDate > toDate) {
+      setErrorMsg('From Date cannot be later than To Date.');
+      return;
+    }
+    const params = new URLSearchParams();
+    if (fromDate) params.append('fromDate', fromDate);
+    if (toDate) params.append('toDate', toDate);
+    if (section) params.append('section', section);
+    if (admissionYear) params.append('admissionYear', admissionYear);
+    if (category) params.append('activityCategory', category);
+    if (activityType) params.append('activityType', activityType);
+
+    const path = `/reports/global-excel?${params}`;
+    try {
+      setLoadingExcel(true);
+      const res = await apiFetch(path);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Master_OD_Report.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to download Excel report.');
+    } finally {
+      setLoadingExcel(false);
     }
   };
 
@@ -248,16 +287,28 @@ export const Reports: React.FC = () => {
 
           <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-gray-500">
-              <span className="text-red-500 font-bold">*</span> Select both From Date and To Date to generate the CSV report.
+              <span className="text-red-500 font-bold">*</span> Select both From Date and To Date to generate a report.
             </p>
-            <Button
-              onClick={handleInitiateExport}
-              disabled={loading}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm h-10 px-6 gap-2 shrink-0 shadow-sm"
-            >
-              <Download className="w-4 h-4" />
-              {loading ? 'Generating CSV...' : 'Download CSV Report'}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                id="btn-download-csv"
+                onClick={handleInitiateExport}
+                disabled={loading || loadingExcel}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm h-10 px-5 gap-2 shrink-0 shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                {loading ? 'Generating CSV...' : 'Download CSV'}
+              </Button>
+              <Button
+                id="btn-download-excel"
+                onClick={handleExcelExport}
+                disabled={loading || loadingExcel}
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm h-10 px-5 gap-2 shrink-0 shadow-sm"
+              >
+                <Sheet className="w-4 h-4" />
+                {loadingExcel ? 'Generating Excel...' : 'Download Excel (.xlsx)'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -20,4 +20,18 @@ router.get(
   reportsController.downloadCohortReport
 );
 
+// Global Department On-Duty Excel Report — multi-sheet, per-sub-event rows (Department-wide)
+router.get(
+  '/global-excel',
+  requireRole(['Event Coordinator', 'Program Coordinator', 'Head of Department']),
+  reportsController.downloadGlobalExcel
+);
+
+// Cohort-specific On-Duty Excel Report — multi-sheet, per-sub-event rows (Mentor cohort)
+router.get(
+  '/cohort-excel',
+  requireRole(['Mentor']),
+  reportsController.downloadCohortExcel
+);
+
 export const reportsRoutes = router;

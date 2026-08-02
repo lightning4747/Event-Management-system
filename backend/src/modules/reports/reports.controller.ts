@@ -50,3 +50,51 @@ export const downloadCohortReport = async (req: Request, res: Response, next: Ne
     next(error);
   }
 };
+
+export const downloadGlobalExcel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const role = req.user?.role;
+    const allowedRoles = ['Event Coordinator', 'Program Coordinator', 'Head of Department'];
+    if (!role || !allowedRoles.includes(role)) {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: You do not have permissions to download global reports.');
+    }
+
+    const parseResult = exportFilterSchema.safeParse(req.query);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.errors.map(e => e.message).join(' ');
+      throw new AppError(400, 'BAD_REQUEST', errorMsg);
+    }
+
+    const xlsxBuffer = await reportsService.generateExcelReport(parseResult.data);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=Master_OD_Report.xlsx');
+    res.status(200).send(xlsxBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const downloadCohortExcel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const mentorUserId = req.user?.userId;
+    const role = req.user?.role;
+    if (!mentorUserId || role !== 'Mentor') {
+      throw new AppError(403, 'FORBIDDEN', 'Access Denied: Only cohort mentors can download cohort reports.');
+    }
+
+    const parseResult = exportFilterSchema.safeParse(req.query);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.errors.map(e => e.message).join(' ');
+      throw new AppError(400, 'BAD_REQUEST', errorMsg);
+    }
+
+    const xlsxBuffer = await reportsService.generateExcelReport(parseResult.data, mentorUserId);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=Cohort_OD_Report.xlsx');
+    res.status(200).send(xlsxBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
