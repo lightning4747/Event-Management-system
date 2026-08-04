@@ -9,7 +9,7 @@ import { DashboardShell } from '../components/DashboardShell';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
-import { ArrowLeft, AlertCircle, FileText } from 'lucide-react';
+import { ArrowLeft, AlertCircle, FileText, Upload } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 
 const todayStr = new Date().toISOString().split('T')[0];
@@ -51,6 +51,8 @@ export const NewApplication: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [proofFile, setProofFile] = React.useState<File | null>(null);
+  const [proofError, setProofError] = React.useState<string | null>(null);
 
   const { data: studentMetrics } = useQuery({
     queryKey: ['studentMetrics'],
@@ -101,14 +103,23 @@ export const NewApplication: React.FC = () => {
 
   const submitMutation = useMutation({
     mutationFn: async (values: NewAppValues) => {
-      const payload = {
-        ...values,
-        activityCategory: values.events[0]?.activityCategory || 'Co-curricular',
-        activityType: values.events[0]?.activityType || 'General',
-      };
+      const formData = new FormData();
+      formData.append('title', values.title);
+      formData.append('institutionName', values.institutionName);
+      formData.append('fromDate', values.fromDate);
+      formData.append('toDate', values.toDate);
+      formData.append('numberOfEvents', String(values.numberOfEvents));
+      formData.append('activityCategory', values.events[0]?.activityCategory || 'Co-curricular');
+      formData.append('activityType', values.events[0]?.activityType || 'General');
+      formData.append('events', JSON.stringify(values.events));
+
+      if (proofFile) {
+        formData.append('proofFile', proofFile);
+      }
+
       const res = await apiFetch('/applications', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: formData,
       });
       return res.json();
     },
@@ -122,6 +133,13 @@ export const NewApplication: React.FC = () => {
 
   const onSubmit = (values: NewAppValues) => {
     setErrorMsg(null);
+    setProofError(null);
+
+    if (!proofFile) {
+      setProofError('Event proof / permission document is required.');
+      return;
+    }
+
     submitMutation.mutate(values);
   };
 
@@ -204,6 +222,41 @@ export const NewApplication: React.FC = () => {
                   className="h-10"
                 />
                 {errors.institutionName && <p className="text-xs text-red-600 font-medium">{errors.institutionName.message}</p>}
+              </div>
+
+              {/* Event Proof Document Upload */}
+              <div className="space-y-1.5 p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl">
+                <Label htmlFor="proofFile" className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                  <Upload className="w-4 h-4 text-blue-600" />
+                  Event Proof / Permission Document <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-[11px] text-gray-500">PDF, JPG, PNG - Max 5MB</p>
+                <Input
+                  id="proofFile"
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        setProofError('Proof file size must not exceed 5 MB.');
+                        setProofFile(null);
+                        e.target.value = '';
+                      } else {
+                        setProofError(null);
+                        setProofFile(file);
+                      }
+                    }
+                  }}
+                  disabled={submitMutation.isPending || isDailyLimitReached}
+                  className="h-10 text-xs bg-white cursor-pointer file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                />
+                {proofError && <p className="text-xs text-red-600 font-medium">{proofError}</p>}
+                {proofFile && (
+                  <p className="text-xs text-emerald-700 font-medium flex items-center gap-1">
+                    ✓ Attached: {proofFile.name} ({(proofFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

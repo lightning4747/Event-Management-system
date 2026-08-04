@@ -45,6 +45,8 @@ interface ApplicationRow {
   fromDate: string;
   toDate: string;
   numberOfEvents: number;
+  proofFileUrl?: string | null;
+  proofFileName?: string | null;
   status: string;
   eventTag?: string;
   createdAt: string;
@@ -1307,6 +1309,26 @@ export const Dashboard: React.FC = () => {
                       <p className="text-xs font-semibold text-gray-900 mt-0.5">{appDetails.application.numberOfEvents}</p>
                     </div>
                   </div>
+
+                  {/* Uploaded Event Proof Link */}
+                  {appDetails.application.proofFileUrl && (
+                    <div className="pt-3 border-t border-gray-200 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Attached Event Proof</p>
+                        <p className="text-xs text-gray-600 font-medium truncate max-w-[240px]">
+                          {appDetails.application.proofFileName || 'Proof Document'}
+                        </p>
+                      </div>
+                      <a
+                        href={getMediaUrl(appDetails.application.proofFileUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors border border-blue-200 shrink-0"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> View Proof
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Events & Activity Types Breakdown ── */}

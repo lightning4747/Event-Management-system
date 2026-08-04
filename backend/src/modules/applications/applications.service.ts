@@ -21,6 +21,8 @@ export interface ApplicationRow {
   fromDate: string;
   toDate: string;
   numberOfEvents: number;
+  proofFileUrl?: string | null;
+  proofFileName?: string | null;
   status: 'In Progress: Event Coordinator' | 'In Progress: Mentor' | 'In Progress: Program Coordinator' | 'In Progress: Head of Department' | 'Approved' | 'Rejected' | 'Withdrawn';
   eventTag?: EventTag;
   finalApprovedAt: Date | null;
@@ -198,6 +200,8 @@ export const createApplication = async (
         fromDate: input.fromDate,
         toDate: input.toDate,
         numberOfEvents: input.numberOfEvents,
+        proofFileUrl: input.proofFileUrl || null,
+        proofFileName: input.proofFileName || null,
         status: 'In Progress: Event Coordinator',
       })
       .returning({
@@ -208,6 +212,8 @@ export const createApplication = async (
         activityType: odApplications.activityType,
         achievement: odApplications.achievement,
         events: odApplications.events,
+        proofFileUrl: odApplications.proofFileUrl,
+        proofFileName: odApplications.proofFileName,
         status: odApplications.status,
         createdAt: odApplications.createdAt,
       });
@@ -284,6 +290,8 @@ export const getDepartmentApplications = async (
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
       numberOfEvents: odApplications.numberOfEvents,
+      proofFileUrl: odApplications.proofFileUrl,
+      proofFileName: odApplications.proofFileName,
       status: odApplications.status,
       finalApprovedAt: odApplications.finalApprovedAt,
       withdrawnAt: odApplications.withdrawnAt,
@@ -416,6 +424,8 @@ export const getApplicationDetails = async (
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
       numberOfEvents: odApplications.numberOfEvents,
+      proofFileUrl: odApplications.proofFileUrl,
+      proofFileName: odApplications.proofFileName,
       status: odApplications.status,
       finalApprovedAt: odApplications.finalApprovedAt,
       withdrawnAt: odApplications.withdrawnAt,

@@ -35,6 +35,7 @@ describe('NewApplication Form Validations', () => {
     expect(await screen.findByText(/Institution name is required./i)).toBeInTheDocument();
     expect(await screen.findByText(/Start date is required./i)).toBeInTheDocument();
     expect(await screen.findByText(/End date is required./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Event proof \/ permission document/i)).toBeInTheDocument();
   });
 
   it('triggers error validation when end date is before start date', async () => {
@@ -66,6 +67,10 @@ describe('NewApplication Form Validations', () => {
 
     const typeSelect = await screen.findByLabelText(/Activity Type/i);
     fireEvent.change(typeSelect, { target: { value: 'Hackathon' } });
+
+    const proofInput = screen.getByLabelText(/Event Proof \/ Permission Document/i);
+    const mockFile = new File(['proof content'], 'permission.pdf', { type: 'application/pdf' });
+    fireEvent.change(proofInput, { target: { files: [mockFile] } });
 
     const submitBtn = screen.getByRole('button', { name: /Submit Request/i });
     fireEvent.click(submitBtn);

@@ -135,6 +135,8 @@ export type CreateApplicationInput = {
   fromDate: string;
   toDate: string;
   numberOfEvents: number;
+  proofFileUrl?: string;
+  proofFileName?: string;
 };
 
 export type EventTag = 'Upcoming' | 'Ongoing' | 'Action Required' | 'Reviewing' | 'Completed';

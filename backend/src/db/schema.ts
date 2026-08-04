@@ -107,6 +107,8 @@ export const odApplications = pgTable('od_applications', {
   fromDate: date('from_date', { mode: 'string' }).notNull(),
   toDate: date('to_date', { mode: 'string' }).notNull(),
   numberOfEvents: smallint('number_of_events').notNull(),
+  proofFileUrl: text('proof_file_url'),
+  proofFileName: varchar('proof_file_name', { length: 255 }),
   status: statusEnum('status').notNull(),
   finalApprovedAt: timestamp('final_approved_at', { withTimezone: true }),
   withdrawnAt: timestamp('withdrawn_at', { withTimezone: true }),
