@@ -32,7 +32,7 @@ export const createApplicationSchema = z.object({
   activityType: z.string().optional().default('General'),
   achievement: achievementPositionSchema.optional().default('Participation'),
   events: z.array(eventItemSchema).optional(),
-  location: z.string().min(1, 'Location is required.').max(255, 'Location must not exceed 255 characters.'),
+  institutionName: z.string().min(1, 'Institution name is required.').max(100, 'Institution name must not exceed 100 characters.'),
   fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'From Date must be in YYYY-MM-DD format.'),
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'To Date must be in YYYY-MM-DD format.'),
   numberOfEvents: z.coerce
@@ -131,7 +131,7 @@ export type CreateApplicationInput = {
     activityType: string;
     achievement?: AchievementPosition;
   }>;
-  location: string;
+  institutionName: string;
   fromDate: string;
   toDate: string;
   numberOfEvents: number;

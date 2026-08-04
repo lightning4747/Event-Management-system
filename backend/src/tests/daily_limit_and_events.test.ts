@@ -58,7 +58,7 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
       createApplication(
         {
           title: 'Invalid 0 Events',
-          location: 'College Campus',
+          institutionName: 'College Campus',
           fromDate: '2026-08-10',
           toDate: '2026-08-12',
           numberOfEvents: 0,
@@ -74,7 +74,7 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
       createApplication(
         {
           title: 'Invalid 5 Events',
-          location: 'College Campus',
+          institutionName: 'College Campus',
           fromDate: '2026-08-10',
           toDate: '2026-08-12',
           numberOfEvents: 5,
@@ -94,7 +94,7 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
       createApplication(
         {
           title: 'Mismatched Events Length',
-          location: 'College Campus',
+          institutionName: 'College Campus',
           fromDate: '2026-08-10',
           toDate: '2026-08-12',
           numberOfEvents: 3,
@@ -113,7 +113,7 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
       const inserted = await createApplication(
         {
           title: `Daily App ${i}`,
-          location: 'Main Auditorium',
+          institutionName: 'Main Auditorium',
           fromDate: '2026-08-15',
           toDate: '2026-08-16',
           numberOfEvents: 2,
@@ -138,7 +138,7 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
       await createApplication(
         {
           title: `Daily App ${i}`,
-          location: 'Main Auditorium',
+          institutionName: 'Main Auditorium',
           fromDate: '2026-08-15',
           toDate: '2026-08-16',
           numberOfEvents: 1,
@@ -154,7 +154,7 @@ describe('Daily Application Limit & Number of Events Range Validation', () => {
       await createApplication(
         {
           title: 'Excess 4th Application',
-          location: 'Main Auditorium',
+          institutionName: 'Main Auditorium',
           fromDate: '2026-08-15',
           toDate: '2026-08-16',
           numberOfEvents: 1,

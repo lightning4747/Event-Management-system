@@ -103,7 +103,7 @@ export const odApplications = pgTable('od_applications', {
     achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize';
     awardName?: string;
   }>>(),
-  location: varchar('location', { length: 150 }).notNull(),
+  institutionName: varchar('institution_name', { length: 100 }).notNull(),
   fromDate: date('from_date', { mode: 'string' }).notNull(),
   toDate: date('to_date', { mode: 'string' }).notNull(),
   numberOfEvents: smallint('number_of_events').notNull(),

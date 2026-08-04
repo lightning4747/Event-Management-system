@@ -26,7 +26,7 @@ const eventSchema = z.object({
 const newAppSchema = z
   .object({
     title: z.string().min(1, 'Event title is required.'),
-    location: z.string().min(1, 'Event location is required.'),
+    institutionName: z.string().min(1, 'Institution name is required.').max(100, 'Institution name must not exceed 100 characters.'),
     fromDate: z.string().min(1, 'Start date is required.'),
     toDate: z.string().min(1, 'End date is required.'),
     numberOfEvents: z.coerce
@@ -73,7 +73,7 @@ export const NewApplication: React.FC = () => {
     resolver: zodResolver(newAppSchema),
     defaultValues: {
       title: '',
-      location: '',
+      institutionName: '',
       fromDate: '',
       toDate: '',
       numberOfEvents: 1,
@@ -195,15 +195,15 @@ export const NewApplication: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="location" className="text-sm font-semibold text-gray-700">Location</Label>
+                <Label htmlFor="institutionName" className="text-sm font-semibold text-gray-700">Name of the Institution</Label>
                 <Input
-                  id="location"
-                  placeholder="e.g. PSG College of Technology, Coimbatore"
-                  {...register('location')}
+                  id="institutionName"
+                  placeholder="e.g. PSG College of Technology"
+                  {...register('institutionName')}
                   disabled={submitMutation.isPending || isDailyLimitReached}
                   className="h-10"
                 />
-                {errors.location && <p className="text-xs text-red-600 font-medium">{errors.location.message}</p>}
+                {errors.institutionName && <p className="text-xs text-red-600 font-medium">{errors.institutionName.message}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

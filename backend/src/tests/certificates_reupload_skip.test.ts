@@ -31,7 +31,7 @@ describe('Certificates Re-upload & Skip Integration Tests', () => {
       .values({
         studentId,
         title: 'Skip Test Event',
-        location: 'Hall A',
+        institutionName: 'Hall A',
         fromDate: '2020-01-01',
         toDate: '2020-01-02',
         numberOfEvents: 1,
@@ -87,7 +87,7 @@ describe('Certificates Re-upload & Skip Integration Tests', () => {
       .values({
         studentId,
         title: 'Reupload Test Event',
-        location: 'Hall B',
+        institutionName: 'Hall B',
         fromDate: '2020-01-01',
         toDate: '2020-01-02',
         numberOfEvents: 1,

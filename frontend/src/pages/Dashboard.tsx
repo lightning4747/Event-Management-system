@@ -41,7 +41,7 @@ interface ApplicationRow {
   achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize';
   awardName?: string;
   events?: Array<{ sequenceNumber: number; activityCategory: string; activityType: string; achievement?: 'Participation' | 'First Prize' | 'Second Prize' | 'Third Prize'; awardName?: string }>;
-  location: string;
+  institutionName: string;
   fromDate: string;
   toDate: string;
   numberOfEvents: number;
@@ -1277,7 +1277,7 @@ export const Dashboard: React.FC = () => {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h4 className="text-sm font-bold text-gray-900">{appDetails.application.title}</h4>
-                      <p className="text-xs text-gray-500 mt-0.5">{appDetails.application.location}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{appDetails.application.institutionName}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <StatusBadge status={appDetails.application.status} />

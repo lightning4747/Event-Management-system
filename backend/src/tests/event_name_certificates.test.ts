@@ -65,7 +65,7 @@ describe('Event-Named Certificates & Faculty Event Type Visibility', () => {
         numberOfEvents: 2,
         fromDate: today,
         toDate: today,
-        location: 'Campus',
+        institutionName: 'Campus',
         events: [
           { sequenceNumber: 1, activityCategory: 'Co-curricular', activityType: 'Hackathon' },
           { sequenceNumber: 2, activityCategory: 'Extracurricular', activityType: 'Sports' },

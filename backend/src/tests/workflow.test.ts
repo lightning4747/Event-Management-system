@@ -16,7 +16,7 @@ describe('OD Application Workflow Lifecycle Integration Test', () => {
     // 1. Student submits application
     const appInput = {
       title: 'Vibrant Gujarat Hackathon',
-      location: 'Gujarat',
+      institutionName: 'Gujarat',
       fromDate: '2026-09-01',
       toDate: '2026-09-03',
       numberOfEvents: 2,
@@ -152,7 +152,7 @@ describe('OD Application Workflow Lifecycle Integration Test', () => {
   it('should reject application creation when fromDate is in the past', async () => {
     const invalidInput = {
       title: 'Past Event Hackathon',
-      location: 'Block A',
+      institutionName: 'Block A',
       fromDate: '2020-01-01',
       toDate: '2020-01-02',
       numberOfEvents: 1,
@@ -166,7 +166,7 @@ describe('OD Application Workflow Lifecycle Integration Test', () => {
   it('should reject application creation when toDate is before fromDate', async () => {
     const invalidInput = {
       title: 'Invalid Date Range Event',
-      location: 'Block B',
+      institutionName: 'Block B',
       fromDate: '2026-10-10',
       toDate: '2026-10-05',
       numberOfEvents: 1,

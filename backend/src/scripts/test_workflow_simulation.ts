@@ -81,7 +81,7 @@ const runSimulation = async () => {
         title: 'IEEE Hackathon Simulation 2026',
         activityCategory: 'Co-curricular',
         activityType: 'Hackathon',
-        location: 'Coimbatore',
+        institutionName: 'Coimbatore',
         fromDate: todayStr,
         toDate: todayStr,
         numberOfEvents: 1,

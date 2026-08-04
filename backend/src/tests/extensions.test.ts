@@ -18,7 +18,7 @@ describe('OD Application Deadline Extension Pipeline Test', () => {
     const appResult = await createApplication(
       {
         title: 'National SIH Hackathon 2026',
-        location: 'Trichy',
+        institutionName: 'Trichy',
         fromDate: '2026-10-15',
         toDate: '2026-10-17',
         numberOfEvents: 1,

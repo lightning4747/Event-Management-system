@@ -26,7 +26,7 @@ interface ApplicationRow {
   applicationId: string;
   studentId: string;
   title: string;
-  location: string;
+  institutionName: string;
   fromDate: string;
   toDate: string;
   numberOfEvents: number;
@@ -507,7 +507,7 @@ export const StudentsDirectory: React.FC = () => {
                                   <p className="text-[10px] text-gray-500 font-medium">
                                     {formatDate(app.fromDate)} → {formatDate(app.toDate)} · {app.numberOfEvents} {app.numberOfEvents === 1 ? 'day' : 'days'}
                                   </p>
-                                  <p className="text-[10px] text-gray-400">{app.location}</p>
+                                  <p className="text-[10px] text-gray-400">{app.institutionName}</p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap shrink-0">
                                   <span className={`text-[9px] font-bold px-2 py-0.5 border rounded-full ${getStatusColor(app.status)}`}>

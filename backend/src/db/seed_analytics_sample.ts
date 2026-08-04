@@ -73,7 +73,7 @@ const seedAnalyticsSampleData = async () => {
           fromDate,
           toDate,
           numberOfEvents: 1,
-          location: event.location,
+          institutionName: event.location,
           status,
           activityCategory: category,
           activityType: type,

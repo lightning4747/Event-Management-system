@@ -17,7 +17,7 @@ export interface ApplicationRow {
     activityType: string;
     achievement?: AchievementPosition;
   }> | null;
-  location: string;
+  institutionName: string;
   fromDate: string;
   toDate: string;
   numberOfEvents: number;
@@ -194,7 +194,7 @@ export const createApplication = async (
         activityType: primaryType,
         achievement: primaryAchievement,
         events: eventsToSave,
-        location: input.location,
+        institutionName: input.institutionName,
         fromDate: input.fromDate,
         toDate: input.toDate,
         numberOfEvents: input.numberOfEvents,
@@ -280,7 +280,7 @@ export const getDepartmentApplications = async (
       activityType: odApplications.activityType,
       achievement: odApplications.achievement,
       events: odApplications.events,
-      location: odApplications.location,
+      institutionName: odApplications.institutionName,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
       numberOfEvents: odApplications.numberOfEvents,
@@ -311,7 +311,7 @@ export const getDepartmentApplications = async (
       activityType: string;
       achievement?: AchievementPosition;
     }> | null;
-    location: string;
+    institutionName: string;
     fromDate: string;
     toDate: string;
     numberOfEvents: number;
@@ -412,7 +412,7 @@ export const getApplicationDetails = async (
       activityType: odApplications.activityType,
       achievement: odApplications.achievement,
       events: odApplications.events,
-      location: odApplications.location,
+      institutionName: odApplications.institutionName,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
       numberOfEvents: odApplications.numberOfEvents,

@@ -33,7 +33,7 @@ describe('Event Tag & Department Applications Integration Tests', () => {
       .values({
         studentId,
         title: 'Past Event for EC Tag Verification',
-        location: 'Chennai',
+        institutionName: 'Chennai',
         fromDate: '2026-01-01',
         toDate: '2026-01-02',
         numberOfEvents: 1,

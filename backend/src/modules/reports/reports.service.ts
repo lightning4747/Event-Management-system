@@ -366,7 +366,7 @@ export const generateExcelReport = async (
       achievement: odApplications.achievement,
       awardName: odApplications.awardName,
       events: odApplications.events,
-      location: odApplications.location,
+      institutionName: odApplications.institutionName,
       fromDate: odApplications.fromDate,
       toDate: odApplications.toDate,
     })
@@ -418,13 +418,13 @@ export const generateExcelReport = async (
         academicYear,
         studentName: app.studentName,
         rollNo: app.userId,
-        level: app.location ?? '',              // "Inter-university / State / National / International"
+        level: app.institutionName ?? '',              // "Inter-university / State / National / International"
         eventName: app.title,
         eventType: evtType,
         internalExternal: '',                   // not stored in schema
         participationOrAchievement,
         dateOfParticipation,
-        organisingInstitute: app.location ?? '', // "Name of the organising institute/ College"
+        organisingInstitute: app.institutionName ?? '', // "Name of the organising institute/ College"
         clubCell: '',                            // not stored in schema
         awardMedalName,
         teamIndividual: '',                      // not stored in schema
@@ -433,8 +433,8 @@ export const generateExcelReport = async (
         publicationThrough: '',
         titlePaper: '',
         participationType: participationOrAchievement,
-        levelConference: app.location ?? '',
-        venue: app.location ?? '',
+        levelConference: app.institutionName ?? '',
+        venue: app.institutionName ?? '',
         organisedBy: '',
       };
 

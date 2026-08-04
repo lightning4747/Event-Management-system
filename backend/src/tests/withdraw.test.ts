@@ -15,7 +15,7 @@ describe('OD Application Withdrawal Integration Tests', () => {
   it('should successfully allow a student to withdraw their own pending application and record history log', async () => {
     const appInput = {
       title: 'Vibrant Gujarat Hackathon',
-      location: 'Gujarat',
+      institutionName: 'Gujarat',
       fromDate: '2026-09-01',
       toDate: '2026-09-03',
       numberOfEvents: 2,
@@ -55,7 +55,7 @@ describe('OD Application Withdrawal Integration Tests', () => {
   it('should block withdrawal if the application is already approved/rejected (immutable)', async () => {
     const appInput = {
       title: 'Vibrant Gujarat Hackathon',
-      location: 'Gujarat',
+      institutionName: 'Gujarat',
       fromDate: '2026-09-01',
       toDate: '2026-09-03',
       numberOfEvents: 2,
@@ -77,7 +77,7 @@ describe('OD Application Withdrawal Integration Tests', () => {
   it('should prevent other students from withdrawing an application they do not own', async () => {
     const appInput = {
       title: 'Vibrant Gujarat Hackathon',
-      location: 'Gujarat',
+      institutionName: 'Gujarat',
       fromDate: '2026-09-01',
       toDate: '2026-09-03',
       numberOfEvents: 2,

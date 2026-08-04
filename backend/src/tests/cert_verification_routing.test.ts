@@ -71,7 +71,7 @@ describe('Certificate Verification Routing Integration Tests', () => {
         numberOfEvents: 1,
         fromDate: today,
         toDate: today,
-        location: 'Main Block',
+        institutionName: 'Main Block',
         events: [{ sequenceNumber: 1, activityCategory: 'Co-curricular', activityType: 'Hackathon' }],
       },
       TEST_STU

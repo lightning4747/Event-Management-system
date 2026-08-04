@@ -27,7 +27,7 @@ describe('Google Drive Certificate Isolation & Rejection Lifecycle Tests', () =>
       .values({
         studentId,
         title: 'Technical Symposium',
-        location: 'Coimbatore',
+        institutionName: 'Coimbatore',
         fromDate: '2026-01-10',
         toDate: '2026-01-12',
         numberOfEvents: 1,
@@ -58,7 +58,7 @@ describe('Google Drive Certificate Isolation & Rejection Lifecycle Tests', () =>
       .values({
         studentId,
         title: 'Technical Symposium',
-        location: 'Coimbatore',
+        institutionName: 'Coimbatore',
         fromDate: '2026-01-15',
         toDate: '2026-01-17',
         numberOfEvents: 1,

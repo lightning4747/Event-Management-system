@@ -68,7 +68,7 @@ describe('Faculty Event Types Integration Tests', () => {
         numberOfEvents: 2,
         fromDate: today,
         toDate: today,
-        location: 'Auditorium',
+        institutionName: 'Auditorium',
         events: [
           { sequenceNumber: 1, activityCategory: 'Co-curricular', activityType: 'Symposium' },
           { sequenceNumber: 2, activityCategory: 'Extracurricular', activityType: 'Sports' },

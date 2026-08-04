@@ -17,7 +17,7 @@ describe('OD Application Immutability Enforcement Test', () => {
     const appResult = await createApplication(
       {
         title: 'Smart India Hackathon 2026',
-        location: 'Coimbatore',
+        institutionName: 'Coimbatore',
         fromDate: '2026-10-01',
         toDate: '2026-10-03',
         numberOfEvents: 1,

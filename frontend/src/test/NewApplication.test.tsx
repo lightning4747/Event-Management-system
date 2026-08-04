@@ -32,7 +32,7 @@ describe('NewApplication Form Validations', () => {
     fireEvent.click(submitBtn);
 
     expect(await screen.findByText(/Event title is required./i)).toBeInTheDocument();
-    expect(await screen.findByText(/Event location is required./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Institution name is required./i)).toBeInTheDocument();
     expect(await screen.findByText(/Start date is required./i)).toBeInTheDocument();
     expect(await screen.findByText(/End date is required./i)).toBeInTheDocument();
   });
@@ -47,7 +47,7 @@ describe('NewApplication Form Validations', () => {
     );
 
     const titleInput = screen.getByLabelText(/Event Title/i);
-    const locationInput = screen.getByLabelText(/Location/i);
+    const locationInput = screen.getByLabelText(/Name of the Institution/i);
     const fromDateInput = screen.getByLabelText(/Start Date/i);
     const toDateInput = screen.getByLabelText(/End Date/i);
 
