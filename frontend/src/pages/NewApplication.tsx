@@ -11,6 +11,7 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { ArrowLeft, AlertCircle, FileText, Upload } from 'lucide-react';
 import { Select } from '../components/ui/Select';
+import { Loader } from '../components/ui/Loader';
 
 const todayStr = new Date().toISOString().split('T')[0];
 
@@ -165,6 +166,9 @@ export const NewApplication: React.FC = () => {
 
   return (
     <DashboardShell>
+      {submitMutation.isPending && (
+        <Loader fullScreen size="lg" text="Submitting On-Duty application..." />
+      )}
       <div className="max-w-xl mx-auto space-y-5">
         <Link
           to="/dashboard"
@@ -390,10 +394,17 @@ export const NewApplication: React.FC = () => {
                 </Link>
                 <Button
                   type="submit"
-                  className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                  className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-2"
                   disabled={submitMutation.isPending || isDailyLimitReached}
                 >
-                  {submitMutation.isPending ? 'Submitting...' : 'Submit Request'}
+                  {submitMutation.isPending ? (
+                    <>
+                      <Loader size="sm" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    'Submit Request'
+                  )}
                 </Button>
               </div>
             </form>
