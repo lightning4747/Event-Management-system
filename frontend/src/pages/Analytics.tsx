@@ -451,17 +451,43 @@ export const Analytics: React.FC = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-around gap-6 pt-2 h-60">
                     <div className="relative w-44 h-44 flex items-center justify-center">
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" fill="transparent" r="15.915" stroke="#F1F5F9" strokeWidth="3.5" />
-                        <circle
-                          cx="18"
-                          cy="18"
-                          fill="transparent"
-                          r="15.915"
-                          stroke="#2563EB"
-                          strokeWidth="3.5"
-                          strokeDasharray={`${approvedRate} ${100 - approvedRate}`}
-                          strokeDashoffset="0"
-                        />
+                        {/* Base background circle */}
+                        <circle cx="18" cy="18" fill="transparent" r="15.915" stroke="#F1F5F9" strokeWidth="3.8" />
+                        
+                        {/* Multi-segment Donut rendering */}
+                        {(() => {
+                          const statusColors: Record<string, string> = {
+                            Approved: '#2563EB',  // Blue-600
+                            Rejected: '#EF4444',  // Red-500
+                            Pending: '#F59E0B',   // Amber-500
+                            Withdrawn: '#64748B', // Slate-500
+                          };
+
+                          let cumulativeOffset = 0;
+
+                          return data?.statusDistribution.map((item) => {
+                            if (!item.percentage || item.percentage <= 0 || !totalApps) return null;
+                            const segmentPct = (item.count / totalApps) * 100;
+                            const strokeDasharray = `${segmentPct} ${100 - segmentPct}`;
+                            const strokeDashoffset = -cumulativeOffset;
+                            cumulativeOffset += segmentPct;
+
+                            return (
+                              <circle
+                                key={item.status}
+                                cx="18"
+                                cy="18"
+                                fill="transparent"
+                                r="15.915"
+                                stroke={statusColors[item.status] || '#94A3B8'}
+                                strokeWidth="3.8"
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={strokeDashoffset}
+                                className="transition-all duration-500"
+                              />
+                            );
+                          });
+                        })()}
                       </svg>
                       <div className="absolute text-center">
                         <span className="block text-2xl font-bold text-slate-900">{totalApps}</span>
@@ -480,8 +506,8 @@ export const Analytics: React.FC = () => {
                                   : item.status === 'Rejected'
                                   ? 'bg-red-500'
                                   : item.status === 'Pending'
-                                  ? 'bg-slate-500'
-                                  : 'bg-slate-300'
+                                  ? 'bg-amber-500'
+                                  : 'bg-slate-500'
                               }`}
                             />
                             <span className="font-medium text-slate-700">{item.status}</span>
