@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
 import { DashboardShell } from '../components/DashboardShell';
 import { Button } from '../components/ui/Button';
@@ -49,11 +50,22 @@ const newAppSchema = z
 type NewAppValues = z.infer<typeof newAppSchema>;
 
 export const NewApplication: React.FC = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [proofFile, setProofFile] = React.useState<File | null>(null);
   const [proofError, setProofError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (user && user.role !== 'Student') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
+  if (user && user.role !== 'Student') {
+    return null;
+  }
 
   const { data: studentMetrics } = useQuery({
     queryKey: ['studentMetrics'],
