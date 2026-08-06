@@ -11,6 +11,10 @@ jobs:
   backend-ci:
     name: Backend — Lint, Typecheck & Test
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://postgres:password123@localhost:5432/od_approval_db
+      JWT_SECRET: ci_test_secret_not_for_production
+      STORAGE_PROVIDER: local
 
     services:
       postgres:
@@ -40,6 +44,9 @@ jobs:
         working-directory: ./backend
         run: bun install --frozen-lockfile
 
+      - name: Create Test Database
+        run: PGPASSWORD=password123 psql -h localhost -U postgres -c "CREATE DATABASE od_approval_test_db;" || true
+
       - name: Code Quality & Security Linting
         working-directory: ./backend
         run: bun run lint
@@ -48,13 +55,13 @@ jobs:
         working-directory: ./backend
         run: bunx tsc --noEmit
 
+      - name: Run Database Migrations
+        working-directory: ./backend
+        run: bun run src/db/migrate.ts
+
       - name: Run Tests
         working-directory: ./backend
         run: bun run test
-        env:
-          DATABASE_URL: postgres://postgres:password123@localhost:5432/od_approval_db
-          JWT_SECRET: ci_test_secret_not_for_production
-          STORAGE_PROVIDER: local
 
   # ── Frontend ──────────────────────────────────────────────
   frontend-ci:

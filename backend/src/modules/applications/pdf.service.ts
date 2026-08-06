@@ -110,7 +110,7 @@ export const generateApplicationPdf = async (
   const studentFields: Field[] = [
     { text: app.studentName || 'N/A', y: 1169.7 },
     { text: app.studentId || 'N/A', y: 1091.7 },
-    { text: 'Artificial Intelligence and Data Science', y: 1013.7, size: 20 }, // long text, kept slightly smaller to avoid overflow
+    { text: 'Artificial Intelligence and Data Science', y: 1013.7}, // long text, kept slightly smaller to avoid overflow
     { text: yearStr, y: 935.8 },
     { text: sectionStr, y: 857.8 },
   ];

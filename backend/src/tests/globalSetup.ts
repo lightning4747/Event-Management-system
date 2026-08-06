@@ -1,10 +1,8 @@
 import pg from 'pg';
 
 export default async function setup() {
-  const originalUrl = process.env.DATABASE_URL;
-  if (!originalUrl) {
-    throw new Error('DATABASE_URL environment variable is missing.');
-  }
+  const originalUrl = process.env.DATABASE_URL || 'postgres://postgres:password123@localhost:5432/od_approval_db';
+  process.env.DATABASE_URL = originalUrl;
 
   const testDbName = 'od_approval_test_db';
   const connectionUrlObj = new URL(originalUrl);
