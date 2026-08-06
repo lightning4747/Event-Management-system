@@ -12,6 +12,7 @@ import { extensionsRoutes } from './modules/extensions/extensions.routes';
 import { reportsRoutes } from './modules/reports/reports.routes';
 import { dashboardsRoutes } from './modules/dashboards/dashboards.routes';
 import { studentsRoutes } from './modules/students/students.routes';
+import filesRouter from './modules/files/files.routes';
 import { checkCertificateDeadlines } from './modules/certificates/certificates.service';
 import { errorHandler } from './middleware/error';
 import { globalLimiter } from './middleware/rateLimiter';
@@ -56,6 +57,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/dashboards', dashboardsRoutes);
 app.use('/api/students', studentsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/files', filesRouter);
 
 import { runMigrations } from './db/migrate';
 

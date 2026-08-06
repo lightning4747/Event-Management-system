@@ -4,6 +4,24 @@ import * as applicationsService from './applications.service';
 import { generateApplicationPdf } from './pdf.service';
 import { AppError } from '../../lib/errors';
 import { storageService } from '../../services/storage/storage.service';
+import { buildProofKey, slugify, splitKey } from '../../services/storage/key-builder';
+import { db } from '../../db';
+import { students } from '../../db/schema';
+import { eq } from 'drizzle-orm';
+
+const getAcademicYearName = (admissionYear: number): string => {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const academicStartYear = currentMonth >= 5 ? currentYear : currentYear - 1;
+  const diff = academicStartYear - admissionYear;
+  switch (diff) {
+    case 0: return 'First Year';
+    case 1: return 'Second Year';
+    case 2: return 'Third Year';
+    case 3: return 'Fourth Year';
+    default: return `${diff + 1}th Year`;
+  }
+};
 
 export const submitApplication = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -28,38 +46,64 @@ export const submitApplication = async (req: Request, res: Response, next: NextF
       throw new AppError(400, 'BAD_REQUEST', errorMsg);
     }
 
-    let proofFileUrl: string | undefined;
-    let proofFileName: string | undefined;
+    // Step 1: Create the application row (without proof URL — we need the applicationId first)
+    const applicationData = await applicationsService.createApplication(
+      { ...parseResult.data },
+      studentId
+    );
+
+    // Step 2: If a proof file was provided, upload it to storage using the real applicationId
+    let uploadedProofFileUrl: string | undefined;
+    let uploadedProofFileName: string | undefined;
 
     if (req.file) {
-      proofFileName = req.file.originalname;
-      const sanitizeSegment = (str: string): string => str.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const filename = `${Date.now()}_${sanitizeSegment(req.file.originalname)}`;
-      const folderPath = `Proofs/${studentId}`;
+      const proofFileName = req.file.originalname;
+
+      // Fetch student's year/section to build a structured key
+      const [studentRecord] = await db
+        .select({ admissionYear: students.admissionYear, section: students.section })
+        .from(students)
+        .where(eq(students.userId, studentId))
+        .limit(1);
+
+      const yearFolder = studentRecord ? getAcademicYearName(studentRecord.admissionYear) : 'Unknown Year';
+      const section = studentRecord?.section ?? 'Unknown';
+      const rawExt = req.file.originalname.split('.').pop()?.toLowerCase() ?? 'pdf';
+
+      const proofKey = buildProofKey({
+        yearFolder,
+        section,
+        studentId,
+        eventSlug: slugify(parseResult.data.title),
+        applicationId: applicationData.applicationId,
+        extension: rawExt,
+      });
+      const { folderPath, fileName } = splitKey(proofKey);
 
       const uploadResult = await storageService.uploadFile({
-        fileName: filename,
+        fileName,
         folderPath,
         mimeType: req.file.mimetype,
         buffer: req.file.buffer,
       });
 
-      proofFileUrl = uploadResult.fileUrl;
-    }
+      // Step 3: Attach proof URL to the application row
+      await applicationsService.updateProofUrl(
+        applicationData.applicationId,
+        uploadResult.fileUrl,
+        proofFileName
+      );
 
-    const applicationData = await applicationsService.createApplication(
-      {
-        ...parseResult.data,
-        proofFileUrl,
-        proofFileName,
-      },
-      studentId
-    );
+      uploadedProofFileUrl = uploadResult.fileUrl;
+      uploadedProofFileName = proofFileName;
+    }
 
     // Explicitly cast BigInt fields to string to prevent JSON serialization errors
     const serializedData = {
       ...applicationData,
       applicationId: applicationData.applicationId.toString(),
+      proofFileUrl: uploadedProofFileUrl ?? null,
+      proofFileName: uploadedProofFileName ?? null,
     };
 
     res.status(201).json(serializedData);
@@ -67,6 +111,8 @@ export const submitApplication = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+
 
 export const getStudentHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

@@ -1,3 +1,13 @@
+/**
+ * S3 Certificate Isolation & Rejection Lifecycle Tests.
+ *
+ * Originally "gdrive_isolation_lifecycle.test.ts" — updated to match the
+ * new S3 key-builder naming convention.
+ *
+ * Key naming format (via buildCertificateKey):
+ *   Certificates/<Year>/<Section>/<StudentId>/<Category>/<Type>/<eventSlug>_req<reqId>_v<version>.pdf
+ */
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../db';
 import { odApplications, certificateRequirements, certificates } from '../db/schema';
@@ -7,8 +17,9 @@ import { eq } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import { Readable } from 'stream';
+import { slugify } from '../services/storage/key-builder';
 
-describe('Google Drive Certificate Isolation & Rejection Lifecycle Tests', () => {
+describe('S3 Certificate Isolation & Rejection Lifecycle Tests', () => {
   let studentId: string;
   let appId1: bigint;
   let appId2: bigint;
@@ -84,7 +95,7 @@ describe('Google Drive Certificate Isolation & Rejection Lifecycle Tests', () =>
     reqId2 = req2.requirementId;
   });
 
-  it('should generate strictly isolated filenames for separate applications with identical titles', async () => {
+  it('should generate strictly isolated S3 keys for separate applications with identical titles', async () => {
     const mockFile1: Express.Multer.File = {
       fieldname: 'file',
       originalname: 'cert1.pdf',
@@ -120,9 +131,17 @@ describe('Google Drive Certificate Isolation & Rejection Lifecycle Tests', () =>
     const [cert1] = await db.select().from(certificates).where(eq(certificates.requirementId, reqId1));
     const [cert2] = await db.select().from(certificates).where(eq(certificates.requirementId, reqId2));
 
-    expect(cert1.fileName).toContain(`App${appId1}_Req${reqId1}`);
-    expect(cert2.fileName).toContain(`App${appId2}_Req${reqId2}`);
+    // New format: <eventSlug>_req<reqId>_v<version>.pdf
+    const eventSlug = slugify('Technical Symposium');
+    expect(cert1.fileName).toContain(`${eventSlug}_req${reqId1}_v1`);
+    expect(cert2.fileName).toContain(`${eventSlug}_req${reqId2}_v1`);
+
+    // Different requirementIds guarantee different keys even for identical titles
     expect(cert1.fileName).not.toEqual(cert2.fileName);
+
+    // Sanity: no longer uses the old App/Req naming
+    expect(cert1.fileName).not.toContain(`App${appId1}`);
+    expect(cert2.fileName).not.toContain(`App${appId2}`);
   });
 
   it('should delete temporary certificate file from storage when EC rejects the certificate', async () => {

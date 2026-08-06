@@ -5,8 +5,7 @@ import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
 import { isAchievementEligible } from '../applications/applications.types';
 import { storageService } from '../../services/storage/storage.service';
-import fs from 'fs';
-import path from 'path';
+import { buildCertificateKey, slugify, splitKey } from '../../services/storage/key-builder';
 
 const getAcademicYearName = (admissionYear: number): string => {
   const currentYear = new Date().getFullYear();
@@ -89,7 +88,6 @@ export const uploadCertificate = async (
   }
 
   let fileUrl = input.fileUrl || '';
-  let fileName: string | undefined;
 
   if (!file && !fileUrl) {
     throw new AppError(400, 'BAD_REQUEST', 'Please provide a PDF file to upload.');
@@ -102,8 +100,7 @@ export const uploadCertificate = async (
     ? 'Cocurricular'
     : activeCategory;
   const subFolder = activeType.replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
-  const folderPath = `Certificates/${yearFolder}/${req.section}/${req.studentId}/${categoryFolder}/${subFolder}`;
-  const sanitizedTitle = req.title.replace(/[^a-zA-Z0-9]/g, '_');
+
 
   const result = await db.transaction(async (tx) => {
     const existingCerts = await tx
@@ -115,17 +112,32 @@ export const uploadCertificate = async (
     const uploadVersion = existingCerts.length + 1;
     const oldCert = existingCerts.find((c) => c.isCurrent);
     let driveItemId: string | null = null;
+    let fileName: string | null = null;
+
 
     if (file) {
-      fileName = `${req.studentId}_App${req.applicationId}_Req${reqId}_v${uploadVersion}_${sanitizedTitle}.pdf`;
+      const eventSlug = slugify(req.title);
+      const s3Key = buildCertificateKey({
+        yearFolder,
+        section: req.section,
+        studentId: req.studentId,
+        categoryFolder,
+        subFolder,
+        eventSlug,
+        requirementId: reqId,
+        version: uploadVersion,
+      });
+      const { folderPath: certFolderPath, fileName: certFileName } = splitKey(s3Key);
+
       const storageResult = await storageService.uploadFile({
-        fileName,
-        folderPath,
+        fileName: certFileName,
+        folderPath: certFolderPath,
         mimeType: file.mimetype || 'application/pdf',
         buffer: file.buffer,
       });
       fileUrl = storageResult.fileUrl;
       driveItemId = storageResult.fileId;
+      fileName = certFileName;
 
       if (oldCert && oldCert.driveItemId) {
         await storageService.deleteFile(oldCert.driveItemId);
@@ -232,60 +244,10 @@ export const verifyCertificate = async (
     }
 
     if (input.status === 'Verified') {
-      // Find current active certificate record
-      const [currentCert] = await tx
-        .select()
-        .from(certificates)
-        .where(
-          and(
-            eq(certificates.requirementId, requirementId),
-            eq(certificates.isCurrent, true)
-          )
-        )
-        .limit(1);
-
-      if (currentCert && currentCert.fileUrl && currentCert.fileUrl.startsWith('/uploads/')) {
-        const uploadsDir = path.resolve(process.cwd(), 'uploads');
-        const relativeFilePath = path.normalize(currentCert.fileUrl.replace(/^\/uploads\//, '')).replace(/^(\.\.[/\\])+/, '');
-        const localFilePath = path.resolve(uploadsDir, relativeFilePath);
-
-        if (!localFilePath.startsWith(uploadsDir + path.sep) && localFilePath !== uploadsDir) {
-          throw new AppError(400, 'INVALID_PATH', 'Path traversal attempt detected in certificate file path.');
-        }
-
-        // eslint-disable-next-line security/detect-non-literal-fs-filename
-        if (fs.existsSync(localFilePath)) {
-          // eslint-disable-next-line security/detect-non-literal-fs-filename
-          const fileBuffer = await fs.promises.readFile(localFilePath);
-          const yearFolder = getAcademicYearName(req.admissionYear);
-          const activeCategory = req.reqActivityCategory || req.appActivityCategory || 'Co-curricular';
-          const activeType = req.reqActivityType || req.appActivityType || 'General';
-          const categoryFolder = activeCategory === 'Co-curricular'
-            ? 'Cocurricular'
-            : activeCategory;
-          const subFolder = activeType.replace(/[^a-zA-Z0-9 _-]/g, '_').trim();
-          const folderPath = `Certificates/${yearFolder}/${req.section}/${req.studentId}/${categoryFolder}/${subFolder}`;
-          const fileName = currentCert.fileName || `${req.studentId}_${req.title.replace(/[^a-zA-Z0-9]/g, '_')}_v${currentCert.uploadVersion || 1}.pdf`;
-
-          // Push verified certificate to Google Drive (or local fallback)
-          const storageResult = await storageService.uploadFile({
-            fileName,
-            folderPath,
-            mimeType: 'application/pdf',
-            buffer: fileBuffer,
-          });
-
-          // Update certificate record with Google Drive details upon verification
-          await tx
-            .update(certificates)
-            .set({
-              driveItemId: storageResult.fileId,
-              fileUrl: storageResult.fileUrl,
-            })
-            .where(eq(certificates.certificateId, currentCert.certificateId));
-        }
-      }
+      // Certificate is already in S3 from when the student uploaded it — no re-upload needed.
+      // The stored fileId (driveItemId) is the S3 key; it remains intact.
     } else if (input.status === 'Rejected') {
+      // On rejection, delete the uploaded file from storage so the student re-uploads fresh
       const [currentCert] = await tx
         .select()
         .from(certificates)

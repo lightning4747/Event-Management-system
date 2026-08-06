@@ -3,6 +3,8 @@ import { odApplications, students, users, applicationApprovalHistory, certificat
 import { eq, and, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { MakeDecisionInput } from './decisions.types';
+import { storageService } from '../../services/storage/storage.service';
+import { logger } from '../../utils/logger';
 
 const addDays = (dateStr: string, days: number): string => {
   const date = new Date(dateStr);
@@ -28,6 +30,7 @@ export const makeApprovalDecision = async (
         activityCategory: odApplications.activityCategory,
         activityType: odApplications.activityType,
         events: odApplications.events,
+        proofFileUrl: odApplications.proofFileUrl,
       })
       .from(odApplications)
       .innerJoin(students, eq(odApplications.studentId, students.userId))
@@ -133,6 +136,14 @@ export const makeApprovalDecision = async (
       });
 
       await tx.insert(certificateRequirements).values(requirementsToInsert);
+    }
+
+    // D. Delete proof from storage if the application was rejected — best-effort
+    if (newStatus === 'Rejected' && app.proofFileUrl) {
+      const proofKey = decodeURIComponent(app.proofFileUrl.replace('/api/files/', ''));
+      await storageService.deleteFile(proofKey).catch((e: unknown) =>
+        logger.warn({ proofKey, err: (e as Error)?.message }, 'Failed to delete proof on rejection')
+      );
     }
 
     return { newStatus };

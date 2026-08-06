@@ -3,6 +3,8 @@ import { odApplications, students, users, applicationApprovalHistory, certificat
 import { eq, desc, or, and, inArray, sql, isNull } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { CreateApplicationInput, EventTag, isAchievementEligible, AchievementPosition } from './applications.types';
+import { storageService } from '../../services/storage/storage.service';
+import { logger } from '../../utils/logger';
 
 export interface ApplicationRow {
   applicationId: bigint;
@@ -221,6 +223,23 @@ export const createApplication = async (
     return insertedApp;
   });
 };
+
+/**
+ * Attach proof file details to an existing application row.
+ * Called after upload so we have the real applicationId for key construction.
+ */
+export const updateProofUrl = async (
+  applicationId: bigint,
+  proofFileUrl: string,
+  proofFileName: string
+): Promise<void> => {
+  await db
+    .update(odApplications)
+    .set({ proofFileUrl, proofFileName })
+    .where(eq(odApplications.applicationId, applicationId));
+};
+
+
 
 export const getStudentApplications = async (
   studentId: string,
@@ -569,6 +588,7 @@ export const withdrawApplication = async (
       .select({
         status: odApplications.status,
         studentId: odApplications.studentId,
+        proofFileUrl: odApplications.proofFileUrl,
       })
       .from(odApplications)
       .innerJoin(students, eq(odApplications.studentId, students.userId))
@@ -611,6 +631,14 @@ export const withdrawApplication = async (
       decision: 'Withdraw',
       comments: 'Withdrawn by student',
     });
+
+    // Clean up proof from storage — best-effort, does not affect the withdraw outcome
+    if (app.proofFileUrl) {
+      const proofKey = decodeURIComponent(app.proofFileUrl.replace('/api/files/', ''));
+      await storageService.deleteFile(proofKey).catch((e: unknown) =>
+        logger.warn({ proofKey, err: (e as Error)?.message }, 'Failed to delete proof on withdraw')
+      );
+    }
 
     return { newStatus: 'Withdrawn' };
   });
