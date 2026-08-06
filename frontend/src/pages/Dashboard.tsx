@@ -624,6 +624,34 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const [isExportingPdf, setIsExportingPdf] = React.useState(false);
+  const [pdfExportError, setPdfExportError] = React.useState<string | null>(null);
+
+  const handleExportPdf = async (appId: string) => {
+    setIsExportingPdf(true);
+    setPdfExportError(null);
+    try {
+      const res = await apiFetch(`/applications/${appId}/export-pdf`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || errJson.message || 'Failed to export application PDF.');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OD_Application_${appId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setPdfExportError(err.message || 'Error downloading PDF report.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
 
 
   const requestExtensionMutation = useMutation({
@@ -1329,6 +1357,37 @@ export const Dashboard: React.FC = () => {
                       </a>
                     </div>
                   )}
+
+                  {/* ── Export PDF Action (Only for Approved status) ── */}
+                  <div className="pt-3 border-t border-gray-200 flex flex-col gap-2">
+                    {pdfExportError && (
+                      <p className="text-xs font-semibold text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                        {pdfExportError}
+                      </p>
+                    )}
+                    {appDetails.application.status === 'Approved' ? (
+                      isStudent ? (
+                        <Button
+                          onClick={() => handleExportPdf(appDetails.application.applicationId)}
+                          disabled={isExportingPdf}
+                          className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          {isExportingPdf ? 'Generating Official PDF...' : 'Export Approved OD Application as PDF'}
+                        </Button>
+                      ) : (
+                        <p className="text-xs font-medium text-emerald-700 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                          Application Fully Approved. Student can export official PDF.
+                        </p>
+                      )
+                    ) : (
+                      <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200 flex items-center gap-2 font-medium">
+                        <Hourglass className="w-4 h-4 text-amber-600 shrink-0" />
+                        PDF Export is available only after full approval. Current status: <strong>{appDetails.application.status}</strong>
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* ── Events & Activity Types Breakdown ── */}

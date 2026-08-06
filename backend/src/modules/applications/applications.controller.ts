@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createApplicationSchema } from './applications.types';
 import * as applicationsService from './applications.service';
+import { generateApplicationPdf } from './pdf.service';
 import { AppError } from '../../lib/errors';
 import { storageService } from '../../services/storage/storage.service';
 
@@ -196,6 +197,33 @@ export const withdrawApplication = async (req: Request, res: Response, next: Nex
     res.status(200).json({
       newStatus: result.newStatus,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportApplicationPdf = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const studentId = req.user?.userId;
+    if (!studentId) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Missing authenticated student details.');
+    }
+
+    const { id } = req.params;
+    let appId: bigint;
+    try {
+      appId = BigInt(id);
+    } catch {
+      throw new AppError(400, 'BAD_REQUEST', 'Invalid application ID format.');
+    }
+
+    const pdfBuffer = await generateApplicationPdf(appId, studentId);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="OD_Application_${appId}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    res.status(200).send(pdfBuffer);
   } catch (error) {
     next(error);
   }

@@ -45,6 +45,7 @@ router.post('/', authenticate, requireRole(['Student']), handleMulterProof, appl
 router.get('/my', authenticate, requireRole(['Student']), applicationsController.getStudentHistory);
 router.get('/', authenticate, requireRole(['Mentor', 'Event Coordinator', 'Program Coordinator', 'Head of Department']), applicationsController.listDepartmentApplications);
 router.get('/:id', authenticate, requireRole(['Student', 'Mentor', 'Event Coordinator', 'Program Coordinator', 'Head of Department']), applicationsController.viewApplicationDetails);
+router.get('/:id/export-pdf', authenticate, requireRole(['Student']), applicationsController.exportApplicationPdf);
 router.post('/:id/decide', authenticate, requireRole(['Event Coordinator', 'Mentor', 'Program Coordinator', 'Head of Department']), handleDecision);
 router.post('/:id/withdraw', authenticate, requireRole(['Student']), applicationsController.withdrawApplication);
 
