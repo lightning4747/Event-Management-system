@@ -10,13 +10,13 @@ export class S3StorageProvider implements IStorageProvider {
 
   constructor() {
     const region = process.env.AWS_REGION;
-    const bucket = process.env.S3_BUCKET_NAME;
+    const bucket = process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET;
 
     if (!region || !bucket) {
       throw new AppError(
         500,
         'STORAGE_CONFIG_ERROR',
-        'AWS_REGION and S3_BUCKET_NAME environment variables are required for S3 storage.'
+        'AWS_REGION and S3_BUCKET_NAME (or AWS_S3_BUCKET) environment variables are required for S3 storage.'
       );
     }
 

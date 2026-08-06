@@ -6,11 +6,11 @@ class StorageServiceFactory {
   private provider: IStorageProvider;
 
   constructor() {
-    const providerType = process.env.STORAGE_PROVIDER || 's3';
+    const isTest = process.env.NODE_ENV === 'test';
+    const providerType = process.env.STORAGE_PROVIDER || (isTest ? 'local' : 's3');
     if (providerType === 'local') {
       this.provider = new LocalStorageProvider();
     } else {
-      // Default to S3 for all non-local environments
       this.provider = new S3StorageProvider();
     }
   }

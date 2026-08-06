@@ -65,11 +65,21 @@ export const getMediaUrl = (url: string | null | undefined): string => {
   }
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   const base = import.meta.env.VITE_API_URL || '';
+  let fullUrl = '';
+
   if (base.endsWith('/api')) {
-    return `${base.replace(/\/api$/, '')}${cleanPath}`;
+    fullUrl = `${base.replace(/\/api$/, '')}${cleanPath}`;
+  } else if (base.startsWith('http')) {
+    fullUrl = `${base}${cleanPath}`;
+  } else {
+    fullUrl = `http://localhost:8000${cleanPath}`;
   }
-  if (base.startsWith('http')) {
-    return `${base}${cleanPath}`;
+
+  const token = getAuthToken();
+  if (token) {
+    const separator = fullUrl.includes('?') ? '&' : '?';
+    fullUrl += `${separator}token=${encodeURIComponent(token)}`;
   }
-  return `http://localhost:8000${cleanPath}`;
+
+  return fullUrl;
 };

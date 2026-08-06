@@ -6,14 +6,19 @@ import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 export const authenticate = async (req: Request, _res: Response, next: NextFunction) => {
+  let token: string | undefined;
+
   const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next(new AppError(401, 'UNAUTHORIZED', 'Authorization header is missing or malformed.'));
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && typeof req.query.token === 'string' && req.query.token) {
+    token = req.query.token;
   }
 
-  const token = authHeader.split(' ')[1];
-  
+  if (!token) {
+    return next(new AppError(401, 'UNAUTHORIZED', 'Authorization token is missing or malformed.'));
+  }
+
   let decoded: { userId: string; role: string };
   try {
     decoded = verifyToken(token) as { userId: string; role: string };

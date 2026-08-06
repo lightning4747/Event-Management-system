@@ -20,8 +20,7 @@ router.get('/:key(*)', authenticate, async (req: Request, res: Response, next: N
     const rawKey = decodeURIComponent(req.params.key);
 
     // Prevent path traversal
-    const normalized = path.normalize(rawKey).replace(/^(\.\.(\/|\\|$))+/, '');
-    if (normalized !== rawKey.replace(/\\/g, '/')) {
+    if (rawKey.includes('..')) {
       res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid file path.' });
       return;
     }
@@ -31,7 +30,7 @@ router.get('/:key(*)', authenticate, async (req: Request, res: Response, next: N
     if (providerType === 'local') {
       // Serve directly from local uploads directory
       const uploadsDir = path.resolve(process.cwd(), 'uploads');
-      const filePath = path.resolve(uploadsDir, normalized);
+      const filePath = path.resolve(uploadsDir, rawKey);
 
       // Ensure resolved path is inside uploads dir
       if (!filePath.startsWith(uploadsDir + path.sep) && filePath !== uploadsDir) {
@@ -52,7 +51,7 @@ router.get('/:key(*)', authenticate, async (req: Request, res: Response, next: N
     // S3 mode: issue a pre-signed URL and redirect
     // Lazy-import to avoid constructing S3Client in local/test mode
     const { storageService } = await import('../../services/storage/storage.service');
-    const signedUrl = await storageService.getDownloadUrl(normalized);
+    const signedUrl = await storageService.getDownloadUrl(rawKey);
     res.redirect(302, signedUrl);
   } catch (err) {
     logger.error({ err }, 'File proxy error');
