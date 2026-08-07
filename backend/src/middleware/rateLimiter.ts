@@ -19,8 +19,8 @@ export const globalLimiter = rateLimit({
 
 // Stricter login/auth limiter to prevent brute-force credential cracking
 export const loginLimiter = rateLimit({
-  windowMs: 3 * 60 * 1000, // 3 minutes
-  max: 500, // Limit each IP to 5 login attempts per window
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 login attempts per 15-minute window
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => isTestEnv,

@@ -2,6 +2,12 @@ const getAuthToken = (): string | null => {
   return localStorage.getItem('mcet_auth_token');
 };
 
+const getCsrfTokenFromCookie = (): string | null => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
 export interface APIError extends Error {
   status?: number;
   code?: string;
@@ -12,10 +18,17 @@ export const apiFetch = async (
   options: RequestInit = {}
 ): Promise<Response> => {
   const token = getAuthToken();
+  const csrfToken = getCsrfTokenFromCookie();
   const headers = new Headers(options.headers || {});
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  // Attach X-XSRF-TOKEN header on mutating requests
+  const method = (options.method || 'GET').toUpperCase();
+  if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    headers.set('X-XSRF-TOKEN', csrfToken);
   }
 
   // Set content type for JSON payloads
@@ -28,6 +41,7 @@ export const apiFetch = async (
   
   const response = await fetch(`${baseUrl}${cleanPath}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 

@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 const loginFormSchema = z.object({
   userId: z.string().min(1, 'Register Number or Faculty ID is required.').trim(),
@@ -54,7 +54,7 @@ export const Login: React.FC = () => {
       login(data.token, data.role, data.userId);
       navigate('/dashboard');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Incorrect credentials. Please try again.');
+      setErrorMsg(err.message || 'The Register/Faculty ID or password provided is incorrect. Please check your credentials and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -64,13 +64,18 @@ export const Login: React.FC = () => {
     <main className="min-h-screen bg-background text-foreground flex items-start sm:items-center justify-center p-6 pt-10 sm:pt-16 font-sans">
       <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 shadow-2xl space-y-6">
         <div className="space-y-2 text-center">
-          <img src="/mcet_logo.jpg" alt="MCET Logo" className="h-16 w-32 object-contain mx-auto " />
+          <img src="/mcet_logo.jpg" alt="MCET Logo" className="h-16 w-32 object-contain mx-auto" />
           <h1 className="text-xl font-bold tracking-tight">Department of AI&DS</h1>
+          <p className="text-xs text-gray-500 font-medium">On-Duty Portal Access</p>
         </div>
 
         {errorMsg && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg text-center font-medium">
-            {errorMsg}
+          <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-800 text-xs p-3.5 rounded-xl font-medium animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-red-900">Authentication Failed</p>
+              <p className="mt-0.5 text-red-700 leading-relaxed">{errorMsg}</p>
+            </div>
           </div>
         )}
 
@@ -82,6 +87,7 @@ export const Login: React.FC = () => {
               placeholder="e.g. 727624BAD089"
               {...register('userId')}
               disabled={isSubmitting}
+              className={errorMsg ? 'border-red-400 focus:ring-red-500' : ''}
             />
             {errors.userId && (
               <p className="text-xs text-destructive font-medium">{errors.userId.message}</p>
@@ -97,7 +103,7 @@ export const Login: React.FC = () => {
                 placeholder="••••••••"
                 {...register('password')}
                 disabled={isSubmitting}
-                className="pr-10"
+                className={`pr-10 ${errorMsg ? 'border-red-400 focus:ring-red-500' : ''}`}
               />
               <button
                 type="button"

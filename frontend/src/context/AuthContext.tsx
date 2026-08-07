@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { apiFetch } from '../lib/api';
 
 export interface UserSession {
   userId: string;
@@ -61,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
     localStorage.removeItem('mcet_auth_token');
     setToken(null);
     setUser(null);

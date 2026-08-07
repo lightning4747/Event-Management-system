@@ -66,6 +66,7 @@ describe('Certificates Re-upload & Skip Integration Tests', () => {
     // 1. Setup test student & application
     const studentId = 'TEST_STUDENT_REUPLOAD_01';
 
+    await db.delete(odApplications).where(eq(odApplications.studentId, studentId));
     await db.delete(users).where(eq(users.userId, studentId));
     await db.insert(users).values({
       userId: studentId,
