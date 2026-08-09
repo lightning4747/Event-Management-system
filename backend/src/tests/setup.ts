@@ -6,6 +6,9 @@ if (process.env.DATABASE_URL) {
   );
 }
 
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_fallback_min_32_characters';
+process.env.STORAGE_PROVIDER = process.env.STORAGE_PROVIDER || 'local';
+
 import { beforeAll } from 'vitest';
 import { sql } from 'drizzle-orm';
 import path from 'path';

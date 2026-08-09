@@ -10,7 +10,7 @@
     "db:seed": "bun src/db/seed.ts",
     "db:clear": "bun src/db/clear.ts",
     "test:workflow": "bun src/scripts/test_workflow_simulation.ts",
-    "test": "bun --env-file=.env vitest run",
+    "test": "vitest run",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
