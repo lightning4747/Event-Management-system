@@ -5,9 +5,6 @@ import path from 'path';
 
 export async function runMigrations() {
   try {
-    // Safely ensure 'Skipped' value exists in PostgreSQL cert_status enum type
-    await pool.query(`ALTER TYPE "public"."cert_status" ADD VALUE IF NOT EXISTS 'Skipped';`);
-
     const migrationsFolder = path.join(process.cwd(), 'drizzle');
     logger.info(`Running database migrations from ${migrationsFolder}...`);
     await migrate(db, { migrationsFolder });

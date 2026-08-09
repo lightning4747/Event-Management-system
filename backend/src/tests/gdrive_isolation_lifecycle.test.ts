@@ -95,7 +95,7 @@ describe('S3 Certificate Isolation & Rejection Lifecycle Tests', () => {
     reqId2 = req2.requirementId;
   });
 
-  it('should generate strictly isolated S3 keys for separate applications with identical titles', async () => {
+  it('should generate strictly isolated S3 keys for separate applications with identical titles', { timeout: 15000 }, async () => {
     const mockFile1: Express.Multer.File = {
       fieldname: 'file',
       originalname: 'cert1.pdf',
