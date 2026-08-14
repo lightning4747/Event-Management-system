@@ -13,7 +13,6 @@ import { reportsRoutes } from './modules/reports/reports.routes';
 import { dashboardsRoutes } from './modules/dashboards/dashboards.routes';
 import { studentsRoutes } from './modules/students/students.routes';
 import filesRouter from './modules/files/files.routes';
-import { checkCertificateDeadlines } from './modules/certificates/certificates.service';
 import { errorHandler } from './middleware/error';
 import { globalLimiter } from './middleware/rateLimiter';
 
@@ -85,23 +84,9 @@ runMigrations()
 │  ➜ Local API: http://${host}:${port}                    │
 └──────────────────────────────────────────────────────────┘
       `);
-
-  // Daily automated deadline checks
-  const runDeadlineChecks = async () => {
-    try {
-      const expiredCount = await checkCertificateDeadlines();
-      logger.info(`Automated certificate deadline check finished. Expired count: ${expiredCount}`);
-    } catch (err) {
-      logger.error(err, 'Failed running certificate deadline checks');
-    }
-  };
-
-  // Run immediately on start
-  runDeadlineChecks();
-  // Run once daily (24-hour interval)
-  setInterval(runDeadlineChecks, 24 * 60 * 60 * 1000);
-});
-}).catch((err) => {
-  logger.error({ err }, 'Failed to start server due to migration error');
-  process.exit(1);
-});
+    });
+  })
+  .catch((err) => {
+    logger.error({ err }, 'Failed to start server due to migration error');
+    process.exit(1);
+  });

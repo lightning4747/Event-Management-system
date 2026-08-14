@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { odApplications, certificateRequirements, certificates, users, students } from '../../db/schema';
-import { eq, lt, and, isNull } from 'drizzle-orm';
+import { eq, lt, and, isNull, sql } from 'drizzle-orm';
 import { AppError } from '../../lib/errors';
 import { UploadCertificateInput, VerifyCertificateInput } from './certificates.types';
 import { isAchievementEligible } from '../applications/applications.types';
@@ -284,25 +284,38 @@ export const verifyCertificate = async (
 };
 
 export const checkCertificateDeadlines = async (): Promise<number> => {
-  const currentDateStr = new Date().toISOString().split('T')[0];
+  return await db.transaction(async (tx) => {
+    // Acquire a non-blocking PostgreSQL transaction advisory lock (deterministic key for deadline job)
+    const lockKey = 894372981;
+    const lockRes = await tx.execute<{ lockAcquired: boolean }>(
+      sql`SELECT pg_try_advisory_xact_lock(${lockKey}) AS "lockAcquired"`
+    );
+    const lockAcquired = lockRes.rows?.[0]?.lockAcquired ?? false;
 
-  const expiredReqs = await db
-    .update(certificateRequirements)
-    .set({
-      status: 'Deadline Expired',
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(certificateRequirements.status, 'Pending Upload'),
-        lt(certificateRequirements.submissionDeadline, currentDateStr)
+    if (!lockAcquired) {
+      return 0; // Another worker instance is currently executing the deadline check
+    }
+
+    const currentDateStr = new Date().toISOString().split('T')[0];
+
+    const expiredReqs = await tx
+      .update(certificateRequirements)
+      .set({
+        status: 'Deadline Expired',
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(certificateRequirements.status, 'Pending Upload'),
+          lt(certificateRequirements.submissionDeadline, currentDateStr)
+        )
       )
-    )
-    .returning({
-      requirementId: certificateRequirements.requirementId,
-    });
+      .returning({
+        requirementId: certificateRequirements.requirementId,
+      });
 
-  return expiredReqs.length;
+    return expiredReqs.length;
+  });
 };
 
 export const skipCertificateUpload = async (

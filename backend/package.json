@@ -10,6 +10,7 @@
     "db:seed": "bun src/db/seed.ts",
     "db:clear": "bun src/db/clear.ts",
     "test:workflow": "bun src/scripts/test_workflow_simulation.ts",
+    "cron:deadlines": "bun src/scripts/cron_check_deadlines.ts",
     "test": "vitest run",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },

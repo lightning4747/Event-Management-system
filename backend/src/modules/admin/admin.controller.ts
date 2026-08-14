@@ -64,3 +64,17 @@ export const handleUpdateFaculty = async (req: Request, res: Response, next: Nex
     next(error);
   }
 };
+
+export const triggerDeadlineCheck = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { checkCertificateDeadlines } = await import('../certificates/certificates.service');
+    const expiredCount = await checkCertificateDeadlines();
+    res.status(200).json({
+      message: 'Certificate deadline check executed successfully.',
+      expiredCount,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};

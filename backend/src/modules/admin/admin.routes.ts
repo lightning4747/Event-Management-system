@@ -10,5 +10,6 @@ router.post('/faculty', adminController.onboardFaculty);
 router.get('/faculty', adminController.listFaculty);
 router.patch('/faculty/:userId', adminController.handleUpdateFaculty);
 router.patch('/assign-role', adminController.assignRole);
+router.post('/cron/check-deadlines', adminController.triggerDeadlineCheck);
 
 export const adminRoutes = router;
