@@ -79,14 +79,23 @@ describe('Achievement Position Integration Tests', () => {
   });
 
   it('defaults achievement to Participation on application creation', async () => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+
     const app = await createApplication(
       {
         title: 'Smart India Hackathon 2026',
         activityCategory: 'Co-curricular',
         activityType: 'Hackathon',
         institutionName: 'Tech Park',
-        fromDate: '2026-08-10',
-        toDate: '2026-08-12',
+        fromDate: tomorrowStr,
+        toDate: dayAfterStr,
         numberOfEvents: 1,
       },
       TEST_STUDENT_ID

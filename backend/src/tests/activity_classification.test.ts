@@ -62,13 +62,22 @@ describe('Activity Type Classification Feature', () => {
   });
 
   it('validates Extracurricular activity types using Zod schema', () => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+
     const valid = createApplicationSchema.safeParse({
       title: 'Inter-College Football Tournament',
       activityCategory: 'Extracurricular',
       activityType: 'Sports',
       institutionName: 'Main Stadium',
-      fromDate: '2026-08-10',
-      toDate: '2026-08-12',
+      fromDate: tomorrowStr,
+      toDate: dayAfterStr,
       numberOfEvents: 1,
     });
     expect(valid.success).toBe(true);
@@ -78,35 +87,53 @@ describe('Activity Type Classification Feature', () => {
       activityCategory: 'Extracurricular',
       activityType: 'InvalidType',
       institutionName: 'Main Hall',
-      fromDate: '2026-08-10',
-      toDate: '2026-08-12',
+      fromDate: tomorrowStr,
+      toDate: dayAfterStr,
       numberOfEvents: 1,
     });
     expect(invalid.success).toBe(false);
   });
 
   it('validates Co-curricular activity types using Zod schema', () => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+
     const valid = createApplicationSchema.safeParse({
       title: 'National Level Hackathon 2026',
       activityCategory: 'Co-curricular',
       activityType: 'Hackathon',
       institutionName: 'Tech Park',
-      fromDate: '2026-08-10',
-      toDate: '2026-08-12',
+      fromDate: tomorrowStr,
+      toDate: dayAfterStr,
       numberOfEvents: 1,
     });
     expect(valid.success).toBe(true);
   });
 
   it('creates an application with Activity Category and Activity Type', async () => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const dayAfterStr = dayAfter.toISOString().split('T')[0];
+
     const app = await createApplication(
       {
         title: 'Dance Performance Fest',
         activityCategory: 'Extracurricular',
         activityType: 'Dance',
         institutionName: 'Auditorium',
-        fromDate: '2026-09-01',
-        toDate: '2026-09-02',
+        fromDate: tomorrowStr,
+        toDate: dayAfterStr,
         numberOfEvents: 1,
       },
       TEST_STUDENT_ID
