@@ -1,3 +1,12 @@
 #!/bin/sh
-echo "🚀 Running pre-push checks (lint, build & tests)..."
-(cd backend && bunx --bun eslint . --ext ts --report-unused-disable-directives --max-warnings 0 && bun run build && bun run test) && (cd frontend && bun run build && bun run test)
+echo "🚀 Running pre-push checks (lint, build & verification)..."
+(cd backend && bunx --bun eslint . --ext ts --report-unused-disable-directives --max-warnings 0 && bun run build) && \
+(cd frontend && bun run build && bun run test) && \
+(
+  if nc -z localhost 5432 2>/dev/null || pg_isready -h localhost -p 5432 2>/dev/null; then
+    echo "🟢 PostgreSQL detected on port 5432 — running backend integration tests..."
+    cd backend && bun run test
+  else
+    echo "ℹ️  PostgreSQL not running locally — backend DB tests deferred to GitHub Actions CI."
+  fi
+)
